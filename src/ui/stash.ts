@@ -22,6 +22,8 @@ try {
 }
 
 const REROLL = 40;
+/** Copies of the same item at the same upgrade level share one stash line. */
+const stackKey = (i: Item) => i.k + ":" + (i.lv || 0);
 const costTxt = (c: Cost) =>
   `${c.cr} cr` + costParts(c).map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`).join("");
 
@@ -43,11 +45,14 @@ function tabRaid() {
   const lo = S.lo, meds = count("med"), keys = count("vkey"), need = needed();
   const others = S.stash.filter((i) => i.k !== "med" && i.k !== "vkey").sort((a, b) => valOf(b) - valOf(a));
   const stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
-  const list = others.map((i) => {
-    const t = def(i.k).t;
-    const btns = `<div class="btns">${t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}<button data-a="sell" data-u="${i.u}">${valOf(i)} cr</button></div>`;
+  const stacks = new Map<string, Item[]>();
+  for (const i of others) stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
+  const list = [...stacks.values()].map((g) => {
+    const i = g[0], t = def(i.k).t;
+    const all = g.length > 1 ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">Tout · ${valOf(i) * g.length} cr</button>` : "";
+    const btns = `<div class="btns">${t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}<button data-a="sell" data-u="${i.u}">${valOf(i)} cr</button>${all}</div>`;
     const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
-    return row(i, btns, [desc(i), ...tags].join(" · "));
+    return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
   });
   const st = gearStats(lo.eq);
   return `<div class="card"><div class="lbl">Personnage · touche un emplacement pour le vider</div>
@@ -64,8 +69,8 @@ function tabRaid() {
     <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>
     <div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
-      ${meds ? row(mk("med"), `<div class="btns"><button data-a="sellmed">${ITEMS.med.v} cr</button></div>`, `${meds} en stock · Rend 40 PV en 2 s`) : ""}
-      ${keys ? row(mk("vkey"), `<div class="btns"><button data-a="sellkey">${ITEMS.vkey.v} cr</button></div>`, `${keys} en stock · Ouvre une salle forte`) : ""}
+      ${meds ? row(mk("med"), `<div class="btns"><button data-a="sellmed">${ITEMS.med.v} cr</button></div>`, "Rend 40 PV en 2 s", meds) : ""}
+      ${keys ? row(mk("vkey"), `<div class="btns"><button data-a="sellkey">${ITEMS.vkey.v} cr</button></div>`, "Ouvre une salle forte", keys) : ""}
     </div>`;
 }
 
@@ -192,6 +197,11 @@ export function initStash() {
       const it = take(b.dataset.u);
       if (it) S.credits += valOf(it);
     }
+    if (a === "sellall")
+      for (const it of S.stash.filter((i) => stackKey(i) === b.dataset.g)) {
+        take(it.u);
+        S.credits += valOf(it);
+      }
     if (a === "sellmed" && take(S.stash.find((i) => i.k === "med")?.u)) S.credits += ITEMS.med.v;
     if (a === "sellkey" && take(S.stash.find((i) => i.k === "vkey")?.u)) S.credits += ITEMS.vkey.v;
     if (a === "keyp" && lo.keys < KEY_MAX && take(S.stash.find((i) => i.k === "vkey")?.u)) lo.keys++;
