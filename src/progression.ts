@@ -80,7 +80,7 @@ export function newQuest(): Quest {
     const roll = Math.random();
     if (roll < 0.2) q.rew = "vkey";
     else if (roll < 0.4)
-      q.rew = pick(KEYS.filter((k) => (def(k).t === "wpn" || def(k).t === "arm") && def(k).r >= 1 && def(k).r <= lvl + 1));
+      q.rew = pick(KEYS.filter((k) => (def(k).t === "wpn" || def(k).t === "gear") && def(k).r >= 1 && def(k).r <= lvl + 1));
     return { u: uid(), have: 0, ...q };
   }
   return { u: uid(), have: 0, t: "kills", n: 5, cr: 225 };

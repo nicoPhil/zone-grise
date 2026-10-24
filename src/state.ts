@@ -1,4 +1,4 @@
-import { isBlade, isItemKey, type Item, type ItemKey } from "./items";
+import { emptyGear, isItemKey, slotOf, type Gear, type Item, type ItemKey, type Slot } from "./items";
 
 export type Mode = "stash" | "raid" | "bag" | "end";
 export type QuestType = "bring" | "kills" | "violet" | "haul" | "vault" | "boss";
@@ -19,8 +19,8 @@ export interface Upgrades {
 export interface Save {
   credits: number;
   stash: Item[];
-  /** w = gun, m = blade (null means the free knife) */
-  lo: { w: Item | null; m: Item | null; a: Item | null; meds: number; keys: number };
+  /** what the character wears into the raid; an empty blade slot means the free knife */
+  lo: { eq: Gear; meds: number; keys: number };
   st: { raids: number; ext: number; dead: number; best: number };
   up: Upgrades;
   q: Quest[];
@@ -33,7 +33,7 @@ export const KEY = "zone-grise-save";
 export const fresh = (): Save => ({
   credits: 250,
   stash: [],
-  lo: { w: null, m: null, a: null, meds: 0, keys: 0 },
+  lo: { eq: emptyGear(), meds: 0, keys: 0 },
   st: { raids: 0, ext: 0, dead: 0, best: 0 },
   up: { bag: 0, meds: 0, hp: 0 },
   q: [],
@@ -60,13 +60,18 @@ export function parseSave(raw: string | null): Save {
   }
   if (!s || typeof s.credits !== "number" || !Array.isArray(s.stash) || !s.lo || !s.st) return fresh();
   const ok = (it: Item | null | undefined) => (it && isItemKey(it.k) ? it : null);
-  // saves from before the two weapon slots kept a blade in the gun slot
-  const w = ok(s.lo.w), blade = w && isBlade(w);
+  // older saves kept one weapon (w), then a gun and a blade (w, m), and armour (a): each piece goes to its own slot
+  const eq = emptyGear();
+  const old = s.lo as Partial<Record<"w" | "m" | "a", Item>> & { eq?: Partial<Gear> };
+  for (const it of [...Object.values(old.eq || {}), old.w, old.m, old.a]) {
+    const i = ok(it), slot: Slot | null = i && slotOf(i);
+    if (i && slot && !eq[slot]) eq[slot] = i;
+  }
   return {
     ...fresh(),
     ...s,
     stash: s.stash.filter((i) => isItemKey(i?.k)),
-    lo: { w: blade ? null : w, m: blade ? w : ok(s.lo.m), a: ok(s.lo.a), meds: s.lo.meds || 0, keys: s.lo.keys || 0 },
+    lo: { eq, meds: s.lo.meds || 0, keys: s.lo.keys || 0 },
     up: { ...fresh().up, ...s.up },
     q: Array.isArray(s.q) ? s.q : [],
     // extractions made before zones existed all happened in the first zone

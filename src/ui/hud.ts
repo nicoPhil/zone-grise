@@ -1,6 +1,5 @@
 import { bagUsed } from "../items";
-import { cap } from "../progression";
-import type { Raid } from "../raid";
+import { rcap, type Raid } from "../raid";
 import { prefs } from "../input";
 import { C } from "../render/canvas";
 import { $, clamp } from "../util";
@@ -49,8 +48,8 @@ export function updHud(r: Raid) {
   $("timer").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   $("timer").classList.toggle("warn", s <= 60);
   const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
-  $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + cap() + (keys ? ` · ${keys} clé${keys > 1 ? "s" : ""}` : "");
+  $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + rcap(r) + (keys ? ` · ${keys} clé${keys > 1 ? "s" : ""}` : "");
   // the fire toggle only matters with a gun
-  $("bFire").hidden = !p.wpn;
+  $("bFire").hidden = !p.eq.gun;
   $("bHeal").textContent = "Soin (" + (p.meds + r.bag.filter((i) => i.k === "med").length) + ")";
 }

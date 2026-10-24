@@ -21,8 +21,8 @@ describe("zones", () => {
   it("rate the free knife above the first zone's advice and a geared player above the last", () => {
     expect(power()).toBeGreaterThanOrEqual(ZONES[0].power);
     expect(power()).toBeLessThan(ZONES[1].power);
-    S.lo.w = { ...mk("ar"), lv: 2 };
-    S.lo.a = mk("vest2");
+    S.lo.eq.gun = { ...mk("ar"), lv: 2 };
+    S.lo.eq.body = mk("vest2");
     S.up.hp = 2;
     expect(power()).toBeGreaterThan(ZONES[2].power);
   });

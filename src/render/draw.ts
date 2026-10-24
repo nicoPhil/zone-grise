@@ -1,6 +1,6 @@
 import { def, nameOf, upgradeOver, wstat } from "../items";
 import { STICK_R, moveVec, stick } from "../input";
-import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
+import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
 import { MELEE_ARC, los } from "../world/geometry";
@@ -9,7 +9,9 @@ import { C, FONT, ctx, cv, rarCol, sg, shade, view } from "./canvas";
 import { T, floorPattern, sprite, tile, type CharKey } from "./assets";
 import { GN } from "./decor";
 
-const VR = 560;
+const BASE_VR = 560;
+/** view radius this frame: a headlamp or visor pushes it out */
+let VR = BASE_VR;
 const GOLD = "#f0c040";
 const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
 const LOOK: Record<Kind, [CharKey, number]> = { walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], boss: ["boss", 1.4] };
@@ -88,7 +90,7 @@ function groundLabels(r: Raid) {
   ctx.lineWidth = 3;
   ctx.strokeStyle = "rgba(0,0,0,.8)";
   for (const q of near) {
-    const t = (upgradeOver(q.it, p) ? "↑ " : "") + nameOf(q.it), w = ctx.measureText(t).width + 6;
+    const t = (upgradeOver(q.it, p.eq) ? "↑ " : "") + nameOf(q.it), w = ctx.measureText(t).width + 6;
     let y = q.y - 13;
     while (placed.some((l) => Math.abs(l.y - y) < 13 && Math.abs(l.x - q.x) < (l.w + w) / 2)) y -= 13;
     placed.push({ x: q.x, y, w });
@@ -136,6 +138,7 @@ export function draw(r: Raid | null) {
   ctx.fillStyle = C.ground;
   ctx.fillRect(0, 0, cv.width, cv.height);
   if (!r) return;
+  VR = BASE_VR * (1 + r.p.st.vis);
   const p = r.p, sx = r.shake > 0 ? rnd(-4, 4) : 0, sy = r.shake > 0 ? rnd(-4, 4) : 0;
   const cx = p.x - vw / 2 / zoom + sx, cy = p.y - vh / 2 / zoom + sy, k = dpr * zoom, ww = vw / zoom, wh = vh / zoom;
   const tt = performance.now() / 1000;
@@ -200,7 +203,7 @@ export function draw(r: Raid | null) {
       ctx.fillRect(e.x - bw / 2, e.y + 20, (bw * e.hp) / e.max, 4);
     }
   }
-  if (p.arm) {
+  if (p.eq.body) {
     ctx.strokeStyle = C.r2;
     ctx.globalAlpha = 0.6;
     ctx.lineWidth = 2;
@@ -210,9 +213,9 @@ export function draw(r: Raid | null) {
     ctx.globalAlpha = 1;
   }
   // the gun stays in hand; the blade comes out for a swing, or for good with no gun
-  const gun = p.swing > 0 ? null : p.wpn;
+  const gun = p.swing > 0 ? null : p.eq.gun;
   sprite(gun ? wpnPose(gun.k) : "pHold", p.x, p.y, p.face, p.hit > 0);
-  if (!gun) drawBlade(p.x, p.y, p.face, wstat(p.mel).range, p.swing);
+  if (!gun) drawBlade(p.x, p.y, p.face, wstat(bladeOf(p)).range, p.swing);
   for (const q of r.parts)
     if (!q.glow) {
       ctx.globalAlpha = clamp(q.life * 3, 0, 1);

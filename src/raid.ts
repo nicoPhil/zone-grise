@@ -1,4 +1,4 @@
-import { FREE, RAR, armorRed, bagUsed, def, isBlade, mk, valOf, wstat, type Item, type WeaponStats } from "./items";
+import { FREE, KNIFE, RAR, bagUsed, def, emptyGear, gearStats, mk, slotOf, valOf, wstat, type Gear, type Item, type Mods, type Slot, type WeaponStats } from "./items";
 import { applyRaid, cap, maxHp, type RaidTally } from "./progression";
 import { C } from "./render/canvas";
 import { blood, makeDecal, makeDecor, makeGround, stampCasing, type Decal, type Decor } from "./render/decor";
@@ -77,9 +77,9 @@ export interface Player extends Pt {
   cd: number;
   mcd: number;
   face: number;
-  wpn: Item | null;
-  mel: Item;
-  arm: Item | null;
+  eq: Gear;
+  /** bonuses from what is worn, refreshed on every equip */
+  st: Required<Mods>;
   meds: number;
   keys: number;
   /** HP still to restore from the medkit in use, and how fast */
@@ -186,10 +186,11 @@ export function startRaid() {
   const e1 = freePt(walls, 70, (x, y) => Math.min(x, y, W - x, H - y) < 260 && out(x, y));
   const e2 = freePt(walls, 70, (x, y) => Math.min(x, y, W - x, H - y) < 260 && out(x, y) && Math.hypot(x - e1.x, y - e1.y) > 1400);
   const sp = freePt(walls, 30, (x, y) => out(x, y) && Math.min(Math.hypot(x - e1.x, y - e1.y), Math.hypot(x - e2.x, y - e2.y)) > 1100);
+  const st = gearStats(S.lo.eq);
   const r: Raid = {
     zi, zone, power0: power(),
     walls, bld, nav: makeNav(walls), ground: makeGround(), decor: makeDecor(walls, bld), decal: makeDecal(),
-    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, mcd: 0, face: 0, wpn: S.lo.w, mel: S.lo.m || mk(FREE), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
+    p: { x: sp.x, y: sp.y, hp: maxHp() + st.hp, max: maxHp() + st.hp, cd: 0, mcd: 0, face: 0, eq: { ...S.lo.eq }, st, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
     exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
     crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], nums: [], bag: [],
     t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
@@ -229,7 +230,7 @@ export function startRaid() {
   setMode("raid");
   clearStick();
   setRaidHud(true);
-  showHint(!r.p.wpn);
+  showHint(!r.p.eq.gun);
   updHud(r);
   clock.last = performance.now();
 }
@@ -251,7 +252,7 @@ function hurt(r: Raid, d: number) {
   if (over()) return;
   const p = r.p;
   d *= r.zone.dmg;
-  p.hp -= d * (1 - armorRed(p.arm));
+  p.hp -= d * (1 - p.st.red);
   p.hit = 0.15;
   r.shake = 0.12 + 0.004 * d;
   if (p.hp <= 0) endRaid(false, "Tu es mort.");
@@ -296,16 +297,21 @@ export const ground = (r: Raid) =>
 /** Drops an item at the player's feet; it is not picked up again until the player walks away. */
 export const drop = (r: Raid, it: Item) => r.pick.push({ x: r.p.x + rnd(-14, 14), y: r.p.y + rnd(-14, 14), it, nop: true });
 
-/** Puts a weapon or armour in its slot and returns what it replaced (never the free knife). */
-export function equip(r: Raid, it: Item): Item | null {
-  const p = r.p;
-  let old: Item | null;
-  if (def(it.k).t === "arm") [old, p.arm] = [p.arm, it];
-  else if (isBlade(it)) [old, p.mel] = [p.mel.k === FREE ? null : p.mel, it];
-  else [old, p.wpn] = [p.wpn, it];
+/** Bag places this raid: the hideout upgrade plus whatever backpack is worn. */
+export const rcap = (r: Raid) => cap() + r.p.st.cap;
+export const bladeOf = (p: Player) => p.eq.blade || KNIFE;
+
+/** Puts a piece in its slot (or empties the slot with null) and returns what it replaced. */
+export function setSlot(r: Raid, slot: Slot, it: Item | null): Item | null {
+  const p = r.p, old = p.eq[slot], hp0 = p.max;
+  p.eq[slot] = it;
+  p.st = gearStats(p.eq);
+  p.max = maxHp() + p.st.hp;
+  p.hp = Math.min(p.max, p.hp + Math.max(0, p.max - hp0));
   updHud(r);
   return old;
 }
+export const equip = (r: Raid, it: Item) => setSlot(r, slotOf(it)!, it);
 
 export function useItem(it: Item) {
   const r = R;
@@ -431,7 +437,7 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
   e.cd -= dt;
   e.hit -= dt;
   const see = d < 600 && los(r.walls, e, p);
-  if (!e.aggro && d < k.see && see && mode !== "bag") e.aggro = true;
+  if (!e.aggro && d < k.see * (1 - p.st.quiet) && see && mode !== "bag") e.aggro = true;
   if (e.aggro && d > 950) e.aggro = false;
   let vx = 0, vy = 0;
   if (!e.aggro) {
@@ -499,7 +505,7 @@ export function update(dt: number) {
   // the raid keeps running while the bag is open: the player stands still, doesn't fight and isn't spotted
   const sorting = mode === "bag";
   const p = r.p, m = sorting ? { x: 0, y: 0 } : moveVec(), moving = m.x !== 0 || m.y !== 0;
-  const spd = p.boost > 0 ? 236 : 175;
+  const spd = (p.boost > 0 ? 236 : 175) * (1 + p.st.spd);
   p.x += m.x * spd * dt;
   p.y += m.y * spd * dt;
   collide(r.walls, p, 13);
@@ -534,8 +540,11 @@ export function update(dt: number) {
   }
 
   // the blade always strikes what reaches it, even on the move; the gun fires only standing still, and only when fire is on
-  if (!sorting && p.mcd <= 0) strike(r, wstat(p.mel));
-  const wd = p.wpn && wstat(p.wpn);
+  if (!sorting && p.mcd <= 0) {
+    const bw = wstat(bladeOf(p));
+    strike(r, { ...bw, dmg: Math.round(bw.dmg * (1 + p.st.mel)) });
+  }
+  const gw = p.eq.gun && wstat(p.eq.gun), wd = gw && { ...gw, rate: gw.rate * (1 + p.st.fire) };
   if (wd && !sorting && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null, bd = wd.range;
     for (const e of r.enemies) {
@@ -584,7 +593,7 @@ export function update(dt: number) {
       continue;
     }
     if (d >= 26) continue;
-    if (bagUsed(r.bag) + def(k.it.k).s <= cap()) {
+    if (bagUsed(r.bag) + def(k.it.k).s <= rcap(r)) {
       const d = def(k.it.k);
       r.bag.push(k.it);
       r.pick.splice(i, 1);
@@ -677,9 +686,7 @@ export function endRaid(ok: boolean, why = "") {
   if (ok) {
     const gained = r.bag.filter((i) => i.k !== FREE), val = gained.reduce((s, i) => s + valOf(i), 0);
     S.stash.push(...gained);
-    S.lo.w = p.wpn;
-    S.lo.m = p.mel.k === FREE ? null : p.mel;
-    S.lo.a = p.arm;
+    S.lo.eq = { ...p.eq };
     S.lo.meds = p.meds;
     S.lo.keys = p.keys;
     S.st.ext++;
@@ -690,9 +697,9 @@ export function endRaid(ok: boolean, why = "") {
     save();
     renderEnd({ ok, why, val, items: gained, meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
   } else {
-    const lost = [p.wpn, p.mel.k !== FREE ? p.mel : null, p.arm, ...r.bag].filter((i): i is Item => !!i);
+    const lost = [...Object.values(p.eq), ...r.bag].filter((i): i is Item => !!i);
     const val = lost.reduce((s, i) => s + valOf(i), 0) + p.meds * def("med").v + p.keys * def("vkey").v;
-    S.lo = { w: null, m: null, a: null, meds: 0, keys: 0 };
+    S.lo = { eq: emptyGear(), meds: 0, keys: 0 };
     S.st.dead++;
     save();
     renderEnd({ ok, why, val, items: lost, meds: p.meds, keys: p.keys, quests: [], power: [r.power0, power()], opened: "" });

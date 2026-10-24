@@ -9,19 +9,25 @@ describe("parseSave", () => {
     expect(s.up).toEqual({ bag: 0, meds: 0, hp: 0 });
     expect(s.q).toEqual([]);
     expect(s.credits).toBe(900);
-    expect(s.lo.w?.k).toBe("p9");
+    expect(s.lo.eq.gun?.k).toBe("p9");
   });
 
   it("drops items whose key no longer exists", () => {
     const s = parseSave(JSON.stringify({ ...fresh(), stash: [{ k: "hdd", u: "a" }, { k: "laser", u: "b" }], lo: { w: { k: "laser", u: "w" }, a: null, meds: 0 } }));
     expect(s.stash.map((i) => i.k)).toEqual(["hdd"]);
-    expect(s.lo.w).toBeNull();
+    expect(s.lo.eq.gun).toBeNull();
   });
 
   it("moves a blade from the gun slot to its own slot", () => {
     const s = parseSave(JSON.stringify({ ...fresh(), lo: { w: { k: "bat", u: "w" }, a: null, meds: 0 } }));
-    expect(s.lo.w).toBeNull();
-    expect(s.lo.m?.k).toBe("bat");
+    expect(s.lo.eq.gun).toBeNull();
+    expect(s.lo.eq.blade?.k).toBe("bat");
+  });
+
+  it("moves the two-weapon loadout onto the character sheet", () => {
+    const s = parseSave(JSON.stringify({ ...fresh(), lo: { w: { k: "p9", u: "w" }, m: { k: "bat", u: "m" }, a: { k: "vest1", u: "a" }, meds: 1, keys: 0 } }));
+    expect([s.lo.eq.gun?.k, s.lo.eq.blade?.k, s.lo.eq.body?.k, s.lo.eq.head]).toEqual(["p9", "bat", "vest1", null]);
+    expect(s.lo.meds).toBe(1);
   });
 
   it("starts fresh on garbage", () => {

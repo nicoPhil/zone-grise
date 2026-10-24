@@ -1,4 +1,4 @@
-import { FREE, ITEMS, SHOP, def, desc, isBlade, mk, nameOf, price, valOf, wstat, type Item, type ItemKey } from "../items";
+import { ITEMS, SHOP, def, desc, gearStats, mk, nameOf, price, slotOf, upgradeOver, valOf, wstat, type Item, type ItemKey, type Slot } from "../items";
 import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
@@ -7,6 +7,7 @@ import { $, fmtRate } from "../util";
 import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
 import { row } from "./row";
+import { sheet } from "./sheet";
 
 type Tab = "raid" | "quest" | "shop" | "trade";
 const TABS: Tab[] = ["raid", "quest", "shop", "trade"];
@@ -22,7 +23,7 @@ const REROLL = 40;
 const costTxt = (c: Cost) =>
   `${c.cr} cr` + costParts(c).map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`).join("");
 
-const weapons = () => [S.lo.w, S.lo.m].filter((w): w is Item => !!w);
+const weapons = () => [S.lo.eq.gun, S.lo.eq.blade].filter((w): w is Item => !!w);
 
 /** Items a contract or the next upgrade still asks for, so the player doesn't sell them by mistake. */
 function needed() {
@@ -42,18 +43,20 @@ function tabRaid() {
   const stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
   const list = others.map((i) => {
     const t = def(i.k).t;
-    const btns = `<div class="btns">${t === "wpn" || t === "arm" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}<button data-a="sell" data-u="${i.u}">${valOf(i)} cr</button></div>`;
-    return row(i, btns, need.has(i.k) ? `${desc(i)} · <span class="need">utile : ${need.get(i.k)}</span>` : "");
+    const btns = `<div class="btns">${t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}<button data-a="sell" data-u="${i.u}">${valOf(i)} cr</button></div>`;
+    const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
+    return row(i, btns, [desc(i), ...tags].join(" · "));
   });
-  return `<div class="card"><div class="lbl">Ce que tu emportes</div>
-      ${lo.w ? row(lo.w, `<div class="btns"><button data-a="unw">Retirer</button></div>`) : `<div class="item"><div class="nm"><b>Pas d'arme à feu</b><small>Tu te bats à la lame</small></div></div>`}
-      ${lo.m ? row(lo.m, `<div class="btns"><button data-a="unm">Retirer</button></div>`) : row(mk(FREE), "", "Kit gratuit, donné si tu n'as pas de lame · corps à corps")}
-      ${lo.a ? row(lo.a, `<div class="btns"><button data-a="una">Retirer</button></div>`) : `<div class="item"><div class="nm"><b>Pas de gilet</b><small>Dégâts subis normaux</small></div></div>`}
-      <div class="item"><div class="nm"><b>Trousses de soin : ${lo.meds} / ${medMax()}</b><small>${meds} en planque · ${maxHp()} PV · sac de ${cap()} places</small></div>
+  const st = gearStats(lo.eq);
+  return `<div class="card"><div class="lbl">Personnage · touche un emplacement pour le vider</div>
+      ${sheet(lo.eq, { st, hp: maxHp() + st.hp, cap: cap() + st.cap })}
+    </div>
+    <div class="card"><div class="lbl">Ce que tu emportes</div>
+      <div class="item"><div class="nm"><b>Trousses de soin : ${lo.meds} / ${medMax()}</b><small>${meds} en planque</small></div>
         <div class="btns"><button data-a="medm" ${lo.meds ? "" : "disabled"} aria-label="Laisser une trousse">−</button><button data-a="medp" ${meds && lo.meds < medMax() ? "" : "disabled"} aria-label="Prendre une trousse">+</button></div></div>
       <div class="item"><div class="nm"><b>Clés de salle forte : ${lo.keys} / ${KEY_MAX}</b><small>${keys} en planque · ouvrent la salle forte gardée par la Brute</small></div>
         <div class="btns"><button data-a="keym" ${lo.keys ? "" : "disabled"} aria-label="Laisser une clé">−</button><button data-a="keyp" ${keys && lo.keys < KEY_MAX ? "" : "disabled"} aria-label="Prendre une clé">+</button></div></div>
-      <p class="note">Si tu meurs, tu perds tout ce qui est ici et tout ce qu'il y a dans ton sac.</p>
+      <p class="note">Si tu meurs, tu perds tout ton équipement, ce qui est ici et tout ce qu'il y a dans ton sac.</p>
     </div>
     ${zonePicker()}
     <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>
@@ -89,7 +92,7 @@ function tabQuest() {
     <p class="note">Les ennemis éliminés et les caisses fouillées ne comptent que si tu t'extrais vivant.</p></div>`;
 }
 
-function benchRow(w: Item, slot: "w" | "m") {
+function benchRow(w: Item, slot: "gun" | "blade") {
   const lv = w.lv || 0;
   if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
   const cur = wstat(w), nx = wstat({ ...w, lv: lv + 1 }), c = BENCH[lv];
@@ -99,7 +102,7 @@ function benchRow(w: Item, slot: "w" | "m") {
 }
 
 function tabShop() {
-  const rows = [S.lo.w && benchRow(S.lo.w, "w"), S.lo.m && benchRow(S.lo.m, "m")].filter(Boolean);
+  const rows = [S.lo.eq.gun && benchRow(S.lo.eq.gun, "gun"), S.lo.eq.blade && benchRow(S.lo.eq.blade, "blade")].filter(Boolean);
   const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme dans l'onglet Raid pour l'améliorer.</p>`;
   const ups = (Object.keys(UP) as (keyof Upgrades)[]).map((k) => {
     const u = UP[k], l = S.up[k], more = l < MAX_LV;
@@ -165,17 +168,10 @@ export function initStash() {
       assetsReady.then(startRaid);
       return;
     }
-    if (a === "unw" && lo.w) {
-      S.stash.push(lo.w);
-      lo.w = null;
-    }
-    if (a === "unm" && lo.m) {
-      S.stash.push(lo.m);
-      lo.m = null;
-    }
-    if (a === "una" && lo.a) {
-      S.stash.push(lo.a);
-      lo.a = null;
+    const slot = b.dataset.slot as Slot | undefined, worn = slot && lo.eq[slot];
+    if (slot && worn) {
+      S.stash.push(worn);
+      lo.eq[slot] = null;
     }
     if (a === "medp" && lo.meds < medMax() && take(S.stash.find((i) => i.k === "med")?.u)) lo.meds++;
     if (a === "medm" && lo.meds) {
@@ -185,10 +181,9 @@ export function initStash() {
     if (a === "eq") {
       const it = take(b.dataset.u);
       if (it) {
-        const slot = def(it.k).t !== "wpn" ? "a" : isBlade(it) ? "m" : "w";
-        const old = lo[slot];
+        const s = slotOf(it)!, old = lo.eq[s];
         if (old) S.stash.push(old);
-        lo[slot] = it;
+        lo.eq[s] = it;
       }
     }
     if (a === "sell") {
@@ -217,7 +212,7 @@ export function initStash() {
         toast(UP[k].n + " : " + UP[k].lv[S.up[k]]);
       }
     }
-    const bw = a === "bench" ? lo[b.dataset.s === "m" ? "m" : "w"] : null;
+    const bw = a === "bench" ? lo.eq[b.dataset.s === "blade" ? "blade" : "gun"] : null;
     if (bw) {
       const l = bw.lv || 0;
       if (l < MAX_LV && canPay(BENCH[l])) {

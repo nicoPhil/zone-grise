@@ -109,7 +109,7 @@ export function rollItem(d: number, minR = 0): Item {
   const x = Math.random();
   const r = Math.max(minR, x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0);
   const tr = Math.random();
-  const types: ItemDef["t"][] = tr < 0.68 ? ["val"] : tr < 0.82 ? ["med", "stim"] : tr < 0.92 ? ["wpn"] : ["arm"];
+  const types: ItemDef["t"][] = tr < 0.64 ? ["val"] : tr < 0.78 ? ["med", "stim"] : tr < 0.88 ? ["wpn"] : ["gear"];
   const ofType = KEYS.filter((k) => types.includes(def(k).t) && k !== FREE);
   for (let k = r; k >= 0; k--) {
     const c = ofType.filter((id) => def(id).r === k);
