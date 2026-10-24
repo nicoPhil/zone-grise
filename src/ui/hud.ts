@@ -37,7 +37,7 @@ export function setRaidHud(on: boolean) {
 
 export function updFire() {
   const b = $("bFire");
-  b.textContent = prefs.fire ? "Tir ON" : "Discret";
+  b.textContent = prefs.fire ? "Attaque auto" : "Discret";
   b.setAttribute("aria-pressed", String(prefs.fire));
 }
 

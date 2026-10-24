@@ -57,7 +57,7 @@ export const ITEMS = {
   med: { n: "Trousse de soin", t: "med", r: 1, v: 60, s: 1, heal: 40, dur: 2 },
   stim: { n: "Stimulant", t: "stim", r: 1, v: 90, s: 1, dur: 8 },
   vkey: { n: "Clé de salle forte", t: "key", r: 2, v: 150, s: 1 },
-  knife: melee("Couteau", 0, 0, 14, 2.2, 34),
+  knife: melee("Couteau", 0, 0, 18, 2.5, 38, 6),
   pipe: melee("Tuyau de plomb", 0, 40, 20, 1.6, 38, 10),
   bat: melee("Batte cloutée", 1, 140, 22, 1.7, 44, 22),
   machete: melee("Machette", 1, 160, 26, 1.8, 40),

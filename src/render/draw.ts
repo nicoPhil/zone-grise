@@ -83,8 +83,8 @@ function drawBlade(x: number, y: number, face: number, reach: number, swing: num
   const t = swing > 0 ? 1 - swing / 0.18 : 0.5, a = face + (t - 0.5) * 2 * MELEE_ARC, len = 10 + reach * 0.35;
   const hx = x + Math.cos(face) * 13 + Math.cos(face + 1.57) * 5, hy = y + Math.sin(face) * 13 + Math.sin(face + 1.57) * 5;
   if (swing > 0) {
-    ctx.strokeStyle = "rgba(235,240,245,.35)";
-    ctx.lineWidth = 6;
+    ctx.strokeStyle = "rgba(235,240,245,.6)";
+    ctx.lineWidth = 9;
     ctx.beginPath();
     ctx.arc(x, y, 14 + len, face - MELEE_ARC, a);
     ctx.stroke();
@@ -328,6 +328,17 @@ export function draw(r: Raid | null) {
       ctx.textAlign = "center";
       ctx.fillText("!", e.x, e.y - 24);
     }
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0,0,0,.7)";
+  for (const n of r.nums) {
+    ctx.globalAlpha = clamp(n.life * 2, 0, 1);
+    ctx.font = (n.big ? "700 17px " : "600 13px ") + FONT;
+    ctx.strokeText(String(n.v), n.x, n.y);
+    ctx.fillStyle = n.big ? "#ffe2a8" : C.fg;
+    ctx.fillText(String(n.v), n.x, n.y);
+  }
+  ctx.globalAlpha = 1;
   for (const c of r.crates) if (!c.open && c.prog > 0) ring(c.x, c.y, c.prog / CRATE_TIME, C.accent);
   if (r.vault && !r.vault.open)
     for (const l of r.vault.locks) {

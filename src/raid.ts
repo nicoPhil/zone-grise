@@ -116,6 +116,8 @@ export interface Raid {
   pick: Pickup[];
   parts: Particle[];
   cas: Casing[];
+  /** floating damage numbers */
+  nums: (Pt & { v: number; life: number; big: boolean })[];
   bag: Item[];
   t: number;
   spawnT: number;
@@ -186,7 +188,7 @@ export function startRaid() {
     walls, bld, nav: makeNav(walls), ground: makeGround(), decor: makeDecor(walls, bld), decal: makeDecal(),
     p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, face: 0, wpn: S.lo.w || mk(FREE), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
     exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
-    crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], bag: [],
+    crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], nums: [], bag: [],
     t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
   };
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== plan?.room);
@@ -346,9 +348,10 @@ function killed(r: Raid, e: Enemy) {
   if (Math.random() < 0.45) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y))));
 }
 
-function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number) {
+function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = false) {
   e.hp -= dmg;
-  e.hit = 0.1;
+  e.hit = big ? 0.16 : 0.1;
+  r.nums.push({ x: e.x + rnd(-6, 6), y: e.y - 18, v: dmg, life: 0.7, big });
   e.aggro = true;
   burst(r, x, y, C.bad, 4, 90);
   blood(r.decal, x, y, 3, false);
@@ -377,8 +380,11 @@ function strike(r: Raid, wd: WeaponStats) {
     const a = Math.atan2(e.y - p.y, e.x - p.x), kb = (wd.kb || 0) * (e.kind === "boss" ? 0.2 : 1);
     e.x += Math.cos(a) * kb;
     e.y += Math.sin(a) * kb;
-    hitEnemy(r, e, wd.dmg, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10);
+    collide(r.walls, e, KINDS[e.kind].r);
+    hitEnemy(r, e, wd.dmg, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10, true);
+    burst(r, e.x - Math.cos(a) * 12, e.y - Math.sin(a) * 12, "#f4efe4", 5, 120, true);
   }
+  r.shake = Math.max(r.shake, 0.05);
   noise(r, p.x, p.y, wd.noise);
 }
 
@@ -451,6 +457,13 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
       e.x += ((ox / od) * (min - od)) / 2;
       e.y += ((oy / od) * (min - od)) / 2;
     }
+  }
+  // enemies stop at the player's edge instead of standing on top of the sprite
+  const px = e.x - p.x, py = e.y - p.y, pd = Math.hypot(px, py), touch = k.r + 11;
+  if (pd < touch) {
+    const ux = pd ? px / pd : Math.cos(e.wt), uy = pd ? py / pd : Math.sin(e.wt);
+    e.x = p.x + ux * touch;
+    e.y = p.y + uy * touch;
   }
   collide(r.walls, e, k.r);
 }
@@ -591,6 +604,12 @@ export function update(dt: number) {
     }
   }
 
+  for (let i = r.nums.length - 1; i >= 0; i--) {
+    const n = r.nums[i];
+    n.y -= 40 * dt;
+    n.life -= dt;
+    if (n.life <= 0) r.nums.splice(i, 1);
+  }
   for (let i = r.parts.length - 1; i >= 0; i--) {
     const q = r.parts[i];
     q.x += q.vx * dt;
