@@ -55,3 +55,13 @@ export function collide(walls: Rect[], o: Pt, r: number) {
     }
   }
 }
+
+/** The closest unopened one within reach: crates open one at a time. */
+export function nearestInReach<T extends Pt & { open: boolean }>(xs: T[], p: Pt, reach: number) {
+  let best: T | undefined, bd = reach;
+  for (const c of xs) {
+    const d = Math.hypot(c.x - p.x, c.y - p.y);
+    if (!c.open && d < bd) [best, bd] = [c, d];
+  }
+  return best;
+}

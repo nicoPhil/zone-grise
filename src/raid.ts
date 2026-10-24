@@ -8,7 +8,7 @@ import { clearStick, moveVec, prefs } from "./input";
 import { setRaidHud, showHint, toast, updHud } from "./ui/hud";
 import { renderEnd } from "./ui/end";
 import { pick, rnd, type Pt, type Rect } from "./util";
-import { MELEE_ARC, collide, inArc, inWall, los } from "./world/geometry";
+import { MELEE_ARC, collide, inArc, inWall, los, nearestInReach } from "./world/geometry";
 import { H, W, depth, freePt, genMap, inBld, rollItem, type Building } from "./world/mapgen";
 import { flowDir, makeNav, updFlow, type Nav } from "./world/nav";
 import { pickVault } from "./world/vault";
@@ -525,9 +525,10 @@ export function update(dt: number) {
     p.regen = p.hp >= p.max ? 0 : p.regen - g;
   }
 
+  const near = nearestInReach(r.crates, p, 48);
   for (const c of r.crates) {
     if (c.open) continue;
-    c.prog = Math.hypot(c.x - p.x, c.y - p.y) < 48 && !moving && !sorting ? c.prog + dt : 0;
+    c.prog = c === near && !moving && !sorting ? c.prog + dt : 0;
     if (c.prog >= CRATE_TIME) openCrate(r, c);
   }
 

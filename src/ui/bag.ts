@@ -8,9 +8,8 @@ import { toast, updHud } from "./hud";
 import { icon } from "./icons";
 
 type Where = "bag" | "ground" | "eq";
-const LONG_PRESS = 450;
 const DANGER_R = 500;
-/** Item whose detail panel is open (long press). */
+/** Item whose detail popup is open. */
 let detail: string | null = null;
 /** Shake the bag grid on the next render: the player tried to take something that doesn't fit. */
 let full = false;
@@ -31,10 +30,12 @@ export function closeBag() {
 
 const perSlot = (it: Item) => Math.round(valOf(it) / def(it.k).s);
 
-function tile(it: Item, where: Where) {
-  const d = def(it.k), up = where !== "eq" && R && upgradeOver(it, R.p.eq);
-  return `<button class="tile" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-w="${where}" data-u="${it.u}" aria-pressed="${detail === it.u}">
-    <b>${nameOf(it)}</b><small>${where === "eq" ? "équipé" : perSlot(it) + " cr/pl"}</small>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}</button>`;
+function tile(it: Item, where: "bag" | "ground") {
+  const d = def(it.k), up = R && upgradeOver(it, R.p.eq);
+  const move = where === "bag" ? ["drop", "Poser"] : ["take", "Prendre"];
+  return `<div class="tile" role="button" tabindex="0" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-u="${it.u}" aria-pressed="${detail === it.u}">
+    <b>${nameOf(it)}</b><small>${perSlot(it)} cr/pl</small>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}
+    <button class="mv" data-a="${move[0]}" data-u="${it.u}" aria-label="${move[1]}">${icon(move[0] as "drop" | "take")}</button></div>`;
 }
 
 function findItem(u: string): { it: Item; where: Where } | null {
@@ -54,11 +55,9 @@ function detailPanel() {
     where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
     where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
     where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
-    where === "bag" ? `<button data-a="drop">${icon("drop")}Poser</button>` : "",
-    where === "ground" ? `<button data-a="take">${icon("take")}Prendre</button>` : "",
     `<button data-a="close" aria-label="Fermer">${icon("close")}</button>`,
   ];
-  return `<div class="card detail"><b style="color:var(--r${def(it.k).r})">${nameOf(it)}</b>
+  return `<div class="scrim" data-a="close"></div><div class="card detail" role="dialog"><b style="color:var(--r${def(it.k).r})">${nameOf(it)}</b>
     <small>${desc(it)} · ${def(it.k).s} place${def(it.k).s > 1 ? "s" : ""} · ${valOf(it)} cr</small><div class="btns">${btns.join("")}</div></div>`;
 }
 
@@ -71,11 +70,11 @@ function renderBag() {
     <div class="top"><h2>Sac ${used} / ${rcap(r)}</h2><div class="val">${val} cr</div></div>
     <div id="bagLive" class="live"></div>
     ${detailPanel()}
-    <div class="card"><div class="lbl">Sac · touche pour ${icon("drop")} poser</div><div class="grid${full ? " full" : ""}">${r.bag.map((i) => tile(i, "bag")).join("")}${free}</div></div>
-    <div class="card"><div class="lbl">Au sol · touche pour ${icon("take")} prendre</div>
+    <div class="card"><div class="lbl">Sac</div><div class="grid${full ? " full" : ""}">${r.bag.map((i) => tile(i, "bag")).join("")}${free}</div></div>
+    <div class="card"><div class="lbl">Au sol</div>
       ${near.length ? `<div class="grid">${near.map((k) => tile(k.it, "ground")).join("")}</div>` : `<p class="empty">Rien à tes pieds.</p>`}</div>
     <div class="card"><div class="lbl">Personnage · touche un emplacement</div>${sheet(p.eq, { st: p.st, hp: p.max, cap: rcap(r), sel: detail })}</div>
-    <p class="note">Appui long sur un objet : détails et équiper. Le raid continue pendant le tri : tu n'es pas repéré, mais ceux qui te chassent déjà arrivent.</p>
+    <p class="note">Touche un objet pour ses détails · ${icon("drop")} poser · ${icon("take")} prendre. Le raid continue pendant le tri : tu n'es pas repéré, mais ceux qui te chassent déjà arrivent.</p>
     <button class="go" data-a="back">Reprendre</button></div>`;
   full = false;
   tickBag();
@@ -93,13 +92,10 @@ export function tickBag() {
   }
 }
 
-function tap(u: string) {
+/** Bag → ground or ground → bag. */
+function move(u: string) {
   const r = R, f = findItem(u);
-  if (!r || !f) return;
-  if (f.where === "eq") {
-    detail = detail === u ? null : u;
-    return;
-  }
+  if (!r || !f || f.where === "eq") return;
   detail = null;
   if (f.where === "bag") {
     r.bag.splice(r.bag.indexOf(f.it), 1);
@@ -116,7 +112,6 @@ function tap(u: string) {
 function act(a: string) {
   const r = R, f = detail ? findItem(detail) : null;
   if (!r || !f) return;
-  if (a === "drop" || a === "take") return tap(f.it.u);
   if (a === "use") useItem(f.it);
   if (a === "eq") {
     if (f.where === "bag") r.bag.splice(r.bag.indexOf(f.it), 1);
@@ -136,34 +131,20 @@ function act(a: string) {
 
 export function initBag() {
   const el = $("bag");
-  let timer = 0, longFired = false;
-  el.addEventListener("pointerdown", (e) => {
-    const t = (e.target as HTMLElement).closest<HTMLElement>(".tile");
-    longFired = false;
-    clearTimeout(timer);
-    if (!t) return;
-    timer = window.setTimeout(() => {
-      longFired = true;
-      detail = t.dataset.u!;
-      renderBag();
-    }, LONG_PRESS);
-  });
-  const cancel = () => clearTimeout(timer);
-  el.addEventListener("pointerup", cancel);
-  el.addEventListener("pointercancel", cancel);
   el.addEventListener("contextmenu", (e) => e.preventDefault());
   el.addEventListener("click", (e) => {
-    const b = (e.target as HTMLElement).closest("button");
-    if (!b || !R || longFired) return;
-    const a = b.dataset.a;
+    const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim"), card = t.closest<HTMLElement>(".tile");
+    if (!R) return;
+    const a = b?.dataset.a;
     if (a === "back") return closeBag();
     if (a === "close") detail = null;
+    else if (a === "drop" || a === "take") move(b!.dataset.u!);
     else if (a) act(a);
-    else if (b.dataset.u) tap(b.dataset.u);
-    else if (b.dataset.slot) {
+    else if (card) detail = detail === card.dataset.u ? null : card.dataset.u!;
+    else if (b?.dataset.slot) {
       const it = R.p.eq[b.dataset.slot as Slot];
       detail = it && detail !== it.u ? it.u : null;
-    }
+    } else return;
     updHud(R);
     renderBag();
   });
