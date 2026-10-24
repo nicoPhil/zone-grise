@@ -1,4 +1,4 @@
-import { bagUsed, def, nameOf, slotOf, upgradeOver, valOf, type Item, type Slot } from "../items";
+import { bagUsed, def, nameOf, slotOf, upgradeOver, type Item, type Slot } from "../items";
 import { R, drop, equip, ground, rcap, setSlot, useItem } from "../raid";
 import { sheet } from "./sheet";
 import { setMode } from "../state";
@@ -29,13 +29,11 @@ export function closeBag() {
   setMode("raid");
 }
 
-const perSlot = (it: Item) => Math.round(valOf(it) / def(it.k).s);
-
 function tile(it: Item, where: "bag" | "ground") {
   const d = def(it.k), up = R && upgradeOver(it, R.p.eq);
   const move = where === "bag" ? ["drop", "Poser"] : ["take", "Prendre"];
   return `<div class="tile" role="button" tabindex="0" data-pin="${it.u}" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-u="${it.u}" aria-pressed="${detail === it.u}">
-    <b>${nameOf(it)}</b><small>${perSlot(it)} cr/pl</small>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}
+    <b>${nameOf(it)}</b>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}
     <button class="mv" data-a="${move[0]}" data-u="${it.u}" aria-label="${move[1]}">${icon(move[0] as "drop" | "take")}</button></div>`;
 }
 
@@ -56,16 +54,16 @@ function detailPanel() {
     where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
     where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
     where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
-  ]);
+  ], false);
 }
 
 function renderBag() {
   if (!R) return;
-  const r = R, p = r.p, used = bagUsed(r.bag), val = r.bag.reduce((s, i) => s + valOf(i), 0);
+  const r = R, p = r.p, used = bagUsed(r.bag);
   const free = Array.from({ length: Math.max(0, rcap(r) - used) }, () => `<div class="cell" aria-hidden="true"></div>`).join("");
   const near = ground(r);
   $("bag").innerHTML = `<div class="wrap">
-    <div class="top"><h2>Sac ${used} / ${rcap(r)}</h2><div class="val">${val} cr</div></div>
+    <div class="top"><h2>Sac ${used} / ${rcap(r)}</h2></div>
     <div id="bagLive" class="live"></div>
     ${detailPanel()}
     <div class="card"><div class="lbl">Sac</div><div class="grid${full ? " full" : ""}">${r.bag.map((i) => tile(i, "bag")).join("")}${free}</div></div>

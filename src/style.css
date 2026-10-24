@@ -89,19 +89,17 @@ button.claim{background:var(--ok);border-color:var(--ok);color:var(--accent-ink)
 #bag.screen.over{top:30vh;background:var(--ground);border-top:1px solid var(--line);border-radius:12px 12px 0 0;padding-top:16px;box-shadow:0 -10px 30px rgba(0,0,0,.6)}
 .live{font-family:var(--f-display);font-variant-numeric:tabular-nums;color:var(--muted);margin-top:-10px}
 .live.danger{color:var(--bad)}
-.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
 .grid.full{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-.cell{min-height:58px;border:1px dashed var(--line);border-radius:4px}
-.tile{position:relative;min-height:58px;padding:6px 6px 6px;border-radius:4px;cursor:pointer;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:2px;
+.cell{min-height:52px;border:1px dashed var(--line);border-radius:4px}
+.tile{position:relative;min-width:0;min-height:52px;padding:4px 4px 22px;overflow:hidden;border-radius:4px;cursor:pointer;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:2px;
   border:1px solid var(--rc);background:color-mix(in srgb,var(--rc) 14%,var(--panel));font-family:var(--f-body);-webkit-touch-callout:none}
-.tile b{font-size:12px;line-height:1.15;color:var(--rc);font-weight:600}
-.tile small{font-size:11px;color:var(--muted);font-family:var(--f-display);font-variant-numeric:tabular-nums}
+.tile b{font-size:10px;line-height:1.1;color:var(--rc);font-weight:600;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .tile[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:1px}
-.tile .up{position:absolute;top:3px;right:5px;font-style:normal;color:var(--ok);font-weight:700}
-.tile .mv{position:absolute;right:2px;bottom:2px;width:26px;height:26px;padding:0;display:grid;place-items:center;border:0;color:var(--fg);background:rgba(0,0,0,.35)}
-.tile .mv .ic{width:16px;height:16px}
-.tile small{padding-right:24px}
+.tile .up{position:absolute;top:1px;right:3px;font-size:11px;font-style:normal;color:var(--ok);font-weight:700}
+.tile .mv{position:absolute;right:1px;bottom:1px;width:22px;height:22px;padding:0;display:grid;place-items:center;border:0;color:var(--fg);background:rgba(0,0,0,.35)}
+.tile .mv .ic{width:14px;height:14px}
 /* item tooltip pinned to the tapped item, placed by pin(); tapping anywhere else closes it */
 .scrim{position:fixed;inset:0;z-index:6}
 .detail{position:fixed;z-index:7;top:0;left:0;visibility:hidden;width:min(290px,calc(100vw - 24px));gap:4px;padding:12px;
@@ -114,7 +112,7 @@ button.claim{background:var(--ok);border-color:var(--ok);color:var(--accent-ink)
 .detail ul{margin:4px 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:14px}
 .detail .btns{margin-top:6px;flex-wrap:wrap}
 /* character sheet: slots laid out around the body like a paper doll */
-.doll{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:"trinket head back" "gun body blade" "hands feet .";gap:6px}
+.doll{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"trinket head back" "gun body blade" "hands feet .";gap:6px}
 .slot{min-height:58px;padding:6px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:2px;background:var(--panel);font-family:var(--f-body)}
 .slot small{font-family:var(--f-display);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:4px}
 .slot small .ic{width:14px;height:14px}
