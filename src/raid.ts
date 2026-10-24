@@ -1,4 +1,4 @@
-import { FREE, RAR, armorRed, bagUsed, def, mk, valOf, wstat, type Item, type WeaponStats } from "./items";
+import { FREE, RAR, armorRed, bagUsed, def, isBlade, mk, valOf, wstat, type Item, type WeaponStats } from "./items";
 import { applyRaid, cap, maxHp, type RaidTally } from "./progression";
 import { C } from "./render/canvas";
 import { blood, makeDecal, makeDecor, makeGround, stampCasing, type Decal, type Decor } from "./render/decor";
@@ -285,6 +285,25 @@ export function heal() {
 }
 
 /** "Utiliser" from the bag: medical items and stimulants. */
+/** Loot lying within reach, best first: listed in the bag screen and labelled on the map. */
+export const GROUND_R = 70;
+export const ground = (r: Raid) =>
+  r.pick.filter((k) => Math.hypot(k.x - r.p.x, k.y - r.p.y) < GROUND_R).sort((a, b) => def(b.it.k).r - def(a.it.k).r || valOf(b.it) - valOf(a.it));
+
+/** Drops an item at the player's feet; it is not picked up again until the player walks away. */
+export const drop = (r: Raid, it: Item) => r.pick.push({ x: r.p.x + rnd(-14, 14), y: r.p.y + rnd(-14, 14), it, nop: true });
+
+/** Puts a weapon or armour in its slot and returns what it replaced (never the free knife). */
+export function equip(r: Raid, it: Item): Item | null {
+  const p = r.p;
+  let old: Item | null;
+  if (def(it.k).t === "arm") [old, p.arm] = [p.arm, it];
+  else if (isBlade(it)) [old, p.mel] = [p.mel.k === FREE ? null : p.mel, it];
+  else [old, p.wpn] = [p.wpn, it];
+  updHud(r);
+  return old;
+}
+
 export function useItem(it: Item) {
   const r = R;
   if (!r) return;
@@ -565,7 +584,7 @@ export function update(dt: number) {
       r.pick.splice(i, 1);
       toast((d.r >= 2 ? RAR[d.r] + " : " : "+ ") + d.n);
       updHud(r);
-    } else say(r, "Sac plein : ouvre le sac pour jeter un objet");
+    } else say(r, "Sac plein : ouvre le sac pour échanger");
   }
 
   r.flowT -= dt;

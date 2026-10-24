@@ -1,4 +1,4 @@
-import { def, wstat } from "../items";
+import { def, nameOf, wstat } from "../items";
 import { STICK_R, moveVec, stick } from "../input";
 import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
@@ -76,6 +76,28 @@ function drawCrate(c: Crate) {
     ctx.fillStyle = crateCol(c);
     ctx.fillRect(c.x - 17, c.y - 19, 34, 4);
   }
+}
+
+const LABEL_R = 130;
+/** Names of nearby loot in rarity colour, nudged up so close items don't print over each other. */
+function groundLabels(r: Raid) {
+  const p = r.p, placed: { x: number; y: number; w: number }[] = [];
+  const near = r.pick.filter((q) => Math.hypot(q.x - p.x, q.y - p.y) < LABEL_R).sort((a, b) => a.y - b.y);
+  ctx.font = "600 12px " + FONT;
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0,0,0,.8)";
+  for (const q of near) {
+    const t = nameOf(q.it), w = ctx.measureText(t).width + 6;
+    let y = q.y - 13;
+    while (placed.some((l) => Math.abs(l.y - y) < 13 && Math.abs(l.x - q.x) < (l.w + w) / 2)) y -= 13;
+    placed.push({ x: q.x, y, w });
+    ctx.globalAlpha = clamp((LABEL_R - Math.hypot(q.x - p.x, q.y - p.y)) / 30, 0, 1);
+    ctx.strokeText(t, q.x, y);
+    ctx.fillStyle = rarCol(def(q.it.k).r);
+    ctx.fillText(t, q.x, y);
+  }
+  ctx.globalAlpha = 1;
 }
 
 /** Held blade, swept through an arc while a strike plays, with a pale trail. */
@@ -340,6 +362,7 @@ export function draw(r: Raid | null) {
     ctx.fillText(String(n.v), n.x, n.y);
   }
   ctx.globalAlpha = 1;
+  groundLabels(r);
   for (const c of r.crates) if (!c.open && c.prog > 0) ring(c.x, c.y, c.prog / CRATE_TIME, C.accent);
   if (r.vault && !r.vault.open)
     for (const l of r.vault.locks) {

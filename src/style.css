@@ -71,3 +71,5 @@ button.claim{background:var(--ok);border-color:var(--ok);color:var(--accent-ink)
 .ver{font-family:var(--f-display);font-size:11px;letter-spacing:.08em;color:var(--muted)}
 .res{font-family:var(--f-display);font-size:28px;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){#toast,#hint{transition:none}}
+.swap{display:flex;align-items:center;gap:10px;justify-content:space-between;color:var(--fg)}
+#bag .btns button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
