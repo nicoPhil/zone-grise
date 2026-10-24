@@ -1,6 +1,7 @@
 import { FREE, KNIFE, RAR, bagUsed, def, emptyGear, gearStats, mk, slotOf, valOf, wstat, type Gear, type Item, type Mods, type Slot, type WeaponStats } from "./items";
 import { applyRaid, cap, maxHp, type RaidTally } from "./progression";
 import { C } from "./render/canvas";
+import { furnish } from "./render/furniture";
 import { THEMES, blood, makeDecal, makeDecor, makeGround, stampCasing, type Decal, type Decor } from "./render/decor";
 import type { Tile } from "./render/assets";
 import { S, mode, save, setMode } from "./state";
@@ -210,7 +211,7 @@ export function startRaid() {
   const st = gearStats(S.lo.eq);
   const r: Raid = {
     zi, zone, power0: power(),
-    walls, bld, nav: makeNav(walls), ground: makeGround(THEMES[zi]), decor: makeDecor(walls, bld, THEMES[zi]), decal: makeDecal(THEMES[zi]),
+    walls, bld, nav: makeNav(walls), ground: makeGround(THEMES[zi]), decor: [...furnish(bld, THEMES[zi].fit, THEMES[zi].mess), ...makeDecor(walls, bld, THEMES[zi])], decal: makeDecal(THEMES[zi]),
     p: { x: sp.x, y: sp.y, hp: maxHp() + st.hp, max: maxHp() + st.hp, cd: 0, mcd: 0, face: 0, eq: { ...S.lo.eq }, st, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
     exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
     crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], nums: [], bag: [],

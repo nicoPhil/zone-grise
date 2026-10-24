@@ -2,6 +2,7 @@ import { pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "../world/geometry";
 import { H, W, depth, inBld, type Building } from "../world/mapgen";
 import { T, type Tile } from "./assets";
+import type { Fit } from "./furniture";
 
 export interface Decal {
   c: HTMLCanvasElement;
@@ -30,6 +31,9 @@ export interface Theme {
   props: Prop[];
   stains: string[];
   cast?: string;
+  /** what the rooms hold, and how ransacked they are (0..1) */
+  fit: Fit;
+  mess: number;
 }
 
 const BUSH: Tile[] = [[20, 6], [18, 8], [20, 7], [23, 8]], DEAD: Tile[] = [[23, 6], [19, 8]];
@@ -38,15 +42,15 @@ const ROCK: Tile[] = [[20, 8], [21, 8], [22, 8]], WOOD: Tile[] = [[21, 9], [22, 
 
 export const THEMES: Theme[] = [
   // Faubourgs: gardens gone wild
-  { ground: (d) => (d > 0.56 ? PAVED() : d > 0.3 ? DIRT() : GRASS()), props: [[BUSH, 70, 34, 56], [DEAD, 20, 34, 50], [LOOSE, 110, 26, 40]], stains: ["rgba(52,44,30,.35)", "rgba(0,0,0,.3)"] },
+  { ground: (d) => (d > 0.56 ? PAVED() : d > 0.3 ? DIRT() : GRASS()), props: [[BUSH, 70, 34, 56], [DEAD, 20, 34, 50], [LOOSE, 110, 26, 40]], stains: ["rgba(52,44,30,.35)", "rgba(0,0,0,.3)"], fit: "house", mess: 0.1 },
   // Zone industrielle: concrete yards, barrels and oil
-  { ground: (d, q) => (d < 0.32 ? DIRT() : q > 0.4 ? SLAB() : ASPHALT), props: [[BARREL, 60, 34, 42], [OIL, 30, 50, 80], [CRATE, 30, 38, 48], [WOOD, 50, 30, 44], [LOOSE, 50, 26, 36]], stains: ["rgba(10,10,10,.35)", "rgba(60,50,30,.3)"] },
+  { ground: (d, q) => (d < 0.32 ? DIRT() : q > 0.4 ? SLAB() : ASPHALT), props: [[BARREL, 60, 34, 42], [OIL, 30, 50, 80], [CRATE, 30, 38, 48], [WOOD, 50, 30, 44], [LOOSE, 50, 26, 36]], stains: ["rgba(10,10,10,.35)", "rgba(60,50,30,.3)"], fit: "industry", mess: 0.2 },
   // Cœur: cracked tarmac and rubble
-  { ground: (d, q) => (q > 0.6 + 0.3 * d ? SLAB() : ASPHALT), props: [[ROCK, 110, 26, 44], [WOOD, 50, 30, 44], [OIL, 25, 50, 80], [CRATE, 15, 38, 48]], stains: ["rgba(0,0,0,.35)", "rgba(40,36,30,.3)"], cast: "rgba(20,20,30,.12)" },
+  { ground: (d, q) => (q > 0.6 + 0.3 * d ? SLAB() : ASPHALT), props: [[ROCK, 110, 26, 44], [WOOD, 50, 30, 44], [OIL, 25, 50, 80], [CRATE, 15, 38, 48]], stains: ["rgba(0,0,0,.35)", "rgba(40,36,30,.3)"], cast: "rgba(20,20,30,.12)", fit: "house", mess: 0.45 },
   // Quarantaine: pale slabs, tents and supply crates
-  { ground: (d, q) => (q < 0.45 - 0.2 * d ? SLAB() : PAVED()), props: [[TARP, 40, 70, 96], [CRATE, 60, 38, 52], [[[19, 11]], 30, 34, 42], [LOOSE, 40, 26, 36]], stains: ["rgba(0,0,0,.18)", "rgba(40,70,60,.15)"], cast: "rgba(120,160,150,.08)" },
+  { ground: (d, q) => (q < 0.45 - 0.2 * d ? SLAB() : PAVED()), props: [[TARP, 40, 70, 96], [CRATE, 60, 38, 52], [[[19, 11]], 30, 34, 42], [LOOSE, 40, 26, 36]], stains: ["rgba(0,0,0,.18)", "rgba(40,70,60,.15)"], cast: "rgba(120,160,150,.08)", fit: "camp", mess: 0.15 },
   // Épicentre: scorched ground, craters and embers
-  { ground: (d, q) => (q < 0.3 - 0.2 * d ? DIRT() : ASPHALT), props: [[OIL, 90, 60, 110], [ROCK, 80, 26, 44], [DEAD, 50, 34, 50], [WOOD, 40, 30, 44]], stains: ["rgba(0,0,0,.6)", "rgba(0,0,0,.45)", "rgba(170,50,10,.3)"], cast: "rgba(110,25,0,.22)" },
+  { ground: (d, q) => (q < 0.3 - 0.2 * d ? DIRT() : ASPHALT), props: [[OIL, 90, 60, 110], [ROCK, 80, 26, 44], [DEAD, 50, 34, 50], [WOOD, 40, 30, 44]], stains: ["rgba(0,0,0,.6)", "rgba(0,0,0,.45)", "rgba(170,50,10,.3)"], cast: "rgba(110,25,0,.22)", fit: "house", mess: 0.85 },
 ];
 
 /** Half-resolution layer under everything: dirt stains, then blood and casings stamped during the raid. */
