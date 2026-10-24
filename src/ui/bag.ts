@@ -5,6 +5,7 @@ import { setMode } from "../state";
 import { clearStick } from "../input";
 import { $ } from "../util";
 import { toast, updHud } from "./hud";
+import { icon } from "./icons";
 
 type Where = "bag" | "ground" | "eq";
 const LONG_PRESS = 450;
@@ -50,10 +51,12 @@ function detailPanel() {
   if (!f) return "";
   const { it, where } = f, t = def(it.k).t;
   const btns = [
-    where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">Équiper</button>` : "",
-    where === "eq" ? `<button data-a="unequip">Retirer</button>` : "",
-    where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">Utiliser</button>` : "",
-    `<button data-a="close">Fermer</button>`,
+    where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
+    where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
+    where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
+    where === "bag" ? `<button data-a="drop">${icon("drop")}Poser</button>` : "",
+    where === "ground" ? `<button data-a="take">${icon("take")}Prendre</button>` : "",
+    `<button data-a="close" aria-label="Fermer">${icon("close")}</button>`,
   ];
   return `<div class="card detail"><b style="color:var(--r${def(it.k).r})">${nameOf(it)}</b>
     <small>${desc(it)} · ${def(it.k).s} place${def(it.k).s > 1 ? "s" : ""} · ${valOf(it)} cr</small><div class="btns">${btns.join("")}</div></div>`;
@@ -68,8 +71,8 @@ function renderBag() {
     <div class="top"><h2>Sac ${used} / ${rcap(r)}</h2><div class="val">${val} cr</div></div>
     <div id="bagLive" class="live"></div>
     ${detailPanel()}
-    <div class="card"><div class="lbl">Sac · touche pour poser</div><div class="grid${full ? " full" : ""}">${r.bag.map((i) => tile(i, "bag")).join("")}${free}</div></div>
-    <div class="card"><div class="lbl">Au sol · touche pour prendre</div>
+    <div class="card"><div class="lbl">Sac · touche pour ${icon("drop")} poser</div><div class="grid${full ? " full" : ""}">${r.bag.map((i) => tile(i, "bag")).join("")}${free}</div></div>
+    <div class="card"><div class="lbl">Au sol · touche pour ${icon("take")} prendre</div>
       ${near.length ? `<div class="grid">${near.map((k) => tile(k.it, "ground")).join("")}</div>` : `<p class="empty">Rien à tes pieds.</p>`}</div>
     <div class="card"><div class="lbl">Personnage · touche un emplacement</div>${sheet(p.eq, { st: p.st, hp: p.max, cap: rcap(r), sel: detail })}</div>
     <p class="note">Appui long sur un objet : détails et équiper. Le raid continue pendant le tri : tu n'es pas repéré, mais ceux qui te chassent déjà arrivent.</p>
@@ -113,6 +116,7 @@ function tap(u: string) {
 function act(a: string) {
   const r = R, f = detail ? findItem(detail) : null;
   if (!r || !f) return;
+  if (a === "drop" || a === "take") return tap(f.it.u);
   if (a === "use") useItem(f.it);
   if (a === "eq") {
     if (f.where === "bag") r.bag.splice(r.bag.indexOf(f.it), 1);

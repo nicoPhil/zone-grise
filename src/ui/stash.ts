@@ -10,9 +10,9 @@ import { icon, type Icon } from "./icons";
 import { row } from "./row";
 import { sheet } from "./sheet";
 
-type Tab = "raid" | "quest" | "shop" | "trade";
-const TAB_IC: Record<Tab, Icon> = { raid: "fire", quest: "quest", shop: "shop", trade: "trade" };
-const TABS: Tab[] = ["raid", "quest", "shop", "trade"];
+type Tab = "raid" | "stash" | "quest" | "shop" | "trade";
+const TAB_IC: Record<Tab, Icon> = { raid: "fire", stash: "stash", quest: "quest", shop: "shop", trade: "trade" };
+const TABS: Tab[] = ["raid", "stash", "quest", "shop", "trade"];
 let tab: Tab = "raid";
 try {
   const t = localStorage.getItem(KEY + "-tab");
@@ -42,19 +42,7 @@ function needed() {
 }
 
 function tabRaid() {
-  const lo = S.lo, meds = count("med"), keys = count("vkey"), need = needed();
-  const others = S.stash.filter((i) => i.k !== "med" && i.k !== "vkey").sort((a, b) => valOf(b) - valOf(a));
-  const stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
-  const stacks = new Map<string, Item[]>();
-  for (const i of others) stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
-  const list = [...stacks.values()].map((g) => {
-    const i = g[0], t = def(i.k).t;
-    const all = g.length > 1 ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">Tout · ${valOf(i) * g.length} cr</button>` : "";
-    const btns = `<div class="btns">${t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}<button data-a="sell" data-u="${i.u}">${valOf(i)} cr</button>${all}</div>`;
-    const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
-    return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
-  });
-  const st = gearStats(lo.eq);
+  const lo = S.lo, meds = count("med"), keys = count("vkey"), st = gearStats(lo.eq);
   return `<div class="card"><div class="lbl">Personnage · touche un emplacement pour le vider</div>
       ${sheet(lo.eq, { st, hp: maxHp() + st.hp, cap: cap() + st.cap })}
     </div>
@@ -66,11 +54,24 @@ function tabRaid() {
       <p class="note">Si tu meurs, tu perds tout ton équipement, ce qui est ici et tout ce qu'il y a dans ton sac.</p>
     </div>
     ${zonePicker()}
-    <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>
-    <div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
+    <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>`;
+}
+
+function tabStash() {
+  const lo = S.lo, need = needed(), stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
+  const stacks = new Map<string, Item[]>();
+  for (const i of [...S.stash].sort((a, b) => valOf(b) - valOf(a))) stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
+  const list = [...stacks.values()].map((g) => {
+    const i = g[0], t = def(i.k).t;
+    const eq = t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
+    const all = g.length > 1 ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>` : "";
+    const btns = `<div class="btns">${eq}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${valOf(i)}</button>${all}</div>`;
+    const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
+    return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
+  });
+  return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
-      ${meds ? row(mk("med"), `<div class="btns"><button data-a="sellmed">${ITEMS.med.v} cr</button></div>`, "Rend 40 PV en 2 s", meds) : ""}
-      ${keys ? row(mk("vkey"), `<div class="btns"><button data-a="sellkey">${ITEMS.vkey.v} cr</button></div>`, "Ouvre une salle forte", keys) : ""}
+      <p class="note">${icon("equip")} équiper · ${icon("sell")} vendre un · ${icon("sellAll")} tout vendre (prix en cr)</p>
     </div>`;
 }
 
@@ -121,7 +122,7 @@ function tabShop() {
 }
 
 function tabTrade() {
-  const rows = SHOP.map((k) => row(mk(k), `<div class="btns"><button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"}>${price(k)} cr</button></div>`));
+  const rows = SHOP.map((k) => row(mk(k), `<div class="btns"><button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button></div>`));
   return `<div class="card"><div class="lbl">Marchand</div>${rows.join("")}
     <p class="note">Les objets de valeur ne s'achètent pas : il faut les trouver en raid.</p></div>`;
 }
@@ -134,11 +135,12 @@ export function renderStash() {
     weapons().some((w) => (w.lv || 0) < MAX_LV && canPay(BENCH[w.lv || 0]));
   const tabs: [Tab, string, boolean][] = [
     ["raid", "Raid", false],
+    ["stash", "Coffre", S.stash.some((i) => upgradeOver(i, S.lo.eq))],
     ["quest", "Contrats", S.q.some((q) => qInfo(q).done)],
     ["shop", "Atelier", upReady],
     ["trade", "Marchand", false],
   ];
-  const body = { raid: tabRaid, quest: tabQuest, shop: tabShop, trade: tabTrade }[tab];
+  const body = { raid: tabRaid, stash: tabStash, quest: tabQuest, shop: tabShop, trade: tabTrade }[tab];
   $("stash").innerHTML = `<div class="wrap">
     <div class="ver">version ${__BUILD__}</div>
     <div class="top"><div><div class="lbl">Planque</div><h1>Zone Grise</h1></div>
@@ -202,8 +204,6 @@ export function initStash() {
         take(it.u);
         S.credits += valOf(it);
       }
-    if (a === "sellmed" && take(S.stash.find((i) => i.k === "med")?.u)) S.credits += ITEMS.med.v;
-    if (a === "sellkey" && take(S.stash.find((i) => i.k === "vkey")?.u)) S.credits += ITEMS.vkey.v;
     if (a === "keyp" && lo.keys < KEY_MAX && take(S.stash.find((i) => i.k === "vkey")?.u)) lo.keys++;
     if (a === "keym" && lo.keys) {
       lo.keys--;

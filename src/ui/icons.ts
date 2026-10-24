@@ -19,6 +19,16 @@ const P = {
   quest: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h4"/>',
   shop: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
   trade: '<circle cx="9" cy="9" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.3 18M8 7h1.5v4"/>',
+  equip: '<circle cx="9" cy="7" r="4"/><path d="M2 21a7 7 0 0 1 14 0M22 11h-6M19 8l-3 3 3 3"/>',
+  unequip: '<circle cx="9" cy="7" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11h6M19 8l3 3-3 3"/>',
+  sell: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  sellAll: '<path d="M9 5H3v6l8.3 8.3a2 2 0 0 0 2.8 0M13 2H8v5l8.3 8.3a2 2 0 0 0 2.8 0l2.3-2.3a2 2 0 0 0 0-2.8z"/><circle cx="11.5" cy="5.5" r="1"/>',
+  buy: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 2h3l2.7 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
+  drop: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
+  take: '<path d="M12 15V3M7 8l5-5 5 5M4 21h16"/>',
+  use: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  stash: '<path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',
 } satisfies Record<string, string> & Record<Slot, string>;
 
 export type Icon = keyof typeof P;
