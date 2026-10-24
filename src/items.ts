@@ -97,6 +97,10 @@ export const price = (k: ItemKey) => Math.round(def(k).v * 1.6);
 export const bagUsed = (b: Item[]) => b.reduce((s, i) => s + def(i.k).s, 0);
 export const valOf = (it: Item) => Math.round(def(it.k).v * (1 + 0.3 * (it.lv || 0)));
 export const nameOf = (it: Item) => def(it.k).n + (it.lv ? " +" + it.lv : "");
+export const isBlade = (it: Item) => {
+  const d = def(it.k);
+  return d.t === "wpn" && !!d.mel;
+};
 export const armorRed = (it: Item | null) => {
   const d = it && def(it.k);
   return d && d.t === "arm" ? d.red : 0;

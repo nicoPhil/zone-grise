@@ -20,7 +20,7 @@ initEnd();
 function flipFire() {
   toggleFire();
   updFire();
-  toast(prefs.fire ? "Tir automatique activé" : "Tir coupé : tu ne tires plus, mode discret");
+  toast(prefs.fire ? "Tir automatique activé" : "Tir coupé : mode discret, lame seulement");
 }
 initInput({ toggleBag: () => (mode === "bag" ? closeBag() : openBag()), onMove: hideHint, onFire: flipFire });
 $("bFire").addEventListener("click", () => mode === "raid" && flipFire());

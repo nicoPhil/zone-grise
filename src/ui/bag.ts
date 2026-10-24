@@ -1,4 +1,4 @@
-import { bagUsed, def, desc, valOf } from "../items";
+import { FREE, bagUsed, def, desc, isBlade, valOf } from "../items";
 import { cap } from "../progression";
 import { R, clock, useItem } from "../raid";
 import { setMode } from "../state";
@@ -31,7 +31,7 @@ function renderBag() {
   });
   $("bag").innerHTML = `<div class="wrap">
     <div class="top"><h2>Sac ${bagUsed(R.bag)} / ${cap()}</h2><div class="val">${val} cr</div></div>
-    <div class="card"><div class="lbl">Équipé</div>${row(p.wpn, "")}${p.arm ? row(p.arm, "") : ""}
+    <div class="card"><div class="lbl">Équipé</div>${p.wpn ? row(p.wpn, "") : ""}${row(p.mel, "")}${p.arm ? row(p.arm, "") : ""}
       <div class="item"><div class="nm"><b>${Math.ceil(p.hp)} / ${p.max} PV</b><small>${p.meds} trousse(s) et ${p.keys} clé(s) emportée(s)</small></div></div></div>
     <div class="card">${items.length ? items.join("") : `<p class="empty">Sac vide. Arrête-toi près d'une caisse pour la fouiller.</p>`}</div>
     <p class="note">Les caisses violettes, au centre de la carte, contiennent le meilleur loot. Les tirs font du bruit et attirent les ennemis.</p>
@@ -53,8 +53,11 @@ export function initBag() {
     if (b.dataset.a === "use") useItem(it);
     if (b.dataset.a === "eq") {
       R.bag.splice(i, 1);
-      if (t === "wpn") {
-        R.bag.push(p.wpn);
+      if (t === "wpn" && isBlade(it)) {
+        if (p.mel.k !== FREE) R.bag.push(p.mel);
+        p.mel = it;
+      } else if (t === "wpn") {
+        if (p.wpn) R.bag.push(p.wpn);
         p.wpn = it;
       } else {
         if (p.arm) R.bag.push(p.arm);

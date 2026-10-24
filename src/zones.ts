@@ -1,4 +1,4 @@
-import { FREE, armorRed, wstat } from "./items";
+import { FREE, armorRed, wstat, type Item } from "./items";
 import { maxHp } from "./progression";
 import { S, type Save } from "./state";
 import { clamp } from "./util";
@@ -28,8 +28,12 @@ export const UNLOCK_AFTER = 3;
 export const zoneDepth = (z: Zone, d: number) => clamp(z.lo + z.span * d, 0, 1);
 export const unlocked = (s: Save, i: number) => i === 0 || s.zx[i - 1] >= UNLOCK_AFTER;
 
-/** One number for "how strong am I": weapon damage per second, scaled by armour and max HP. */
+/** One number for "how strong am I": the best weapon's damage per second, scaled by armour and max HP. */
 export function power(s: Save = S): number {
-  const w = wstat(s.lo.w || { k: FREE, u: "" });
-  return Math.round(((w.dmg * w.pel * w.rate) / (1 - armorRed(s.lo.a))) * (maxHp() / 100));
+  const dps = (it: Item) => {
+    const w = wstat(it);
+    return w.dmg * w.pel * w.rate;
+  };
+  const best = Math.max(dps(s.lo.m || { k: FREE, u: "" }), s.lo.w ? dps(s.lo.w) : 0);
+  return Math.round((best / (1 - armorRed(s.lo.a))) * (maxHp() / 100));
 }

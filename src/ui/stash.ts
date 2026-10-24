@@ -1,4 +1,4 @@
-import { FREE, ITEMS, SHOP, def, desc, mk, nameOf, price, valOf, wstat, type ItemKey } from "../items";
+import { FREE, ITEMS, SHOP, def, desc, isBlade, mk, nameOf, price, valOf, wstat, type Item, type ItemKey } from "../items";
 import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
@@ -22,6 +22,8 @@ const REROLL = 40;
 const costTxt = (c: Cost) =>
   `${c.cr} cr` + costParts(c).map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`).join("");
 
+const weapons = () => [S.lo.w, S.lo.m].filter((w): w is Item => !!w);
+
 /** Items a contract or the next upgrade still asks for, so the player doesn't sell them by mistake. */
 function needed() {
   const n = new Map<ItemKey, string>();
@@ -30,7 +32,7 @@ function needed() {
   };
   for (const q of S.q) if (q.t === "bring" && q.k) n.set(q.k, "contrat");
   for (const k of Object.keys(UP) as (keyof Upgrades)[]) if (S.up[k] < MAX_LV) add(UP[k].cost[S.up[k]], "atelier");
-  if (S.lo.w && (S.lo.w.lv || 0) < MAX_LV) add(BENCH[S.lo.w.lv || 0], "atelier");
+  for (const w of weapons()) if ((w.lv || 0) < MAX_LV) add(BENCH[w.lv || 0], "atelier");
   return n;
 }
 
@@ -44,7 +46,8 @@ function tabRaid() {
     return row(i, btns, need.has(i.k) ? `${desc(i)} · <span class="need">utile : ${need.get(i.k)}</span>` : "");
   });
   return `<div class="card"><div class="lbl">Ce que tu emportes</div>
-      ${lo.w ? row(lo.w, `<div class="btns"><button data-a="unw">Retirer</button></div>`) : row(mk(FREE), "", "Kit gratuit, donné si tu n'as pas d'arme · corps à corps")}
+      ${lo.w ? row(lo.w, `<div class="btns"><button data-a="unw">Retirer</button></div>`) : `<div class="item"><div class="nm"><b>Pas d'arme à feu</b><small>Tu te bats à la lame</small></div></div>`}
+      ${lo.m ? row(lo.m, `<div class="btns"><button data-a="unm">Retirer</button></div>`) : row(mk(FREE), "", "Kit gratuit, donné si tu n'as pas de lame · corps à corps")}
       ${lo.a ? row(lo.a, `<div class="btns"><button data-a="una">Retirer</button></div>`) : `<div class="item"><div class="nm"><b>Pas de gilet</b><small>Dégâts subis normaux</small></div></div>`}
       <div class="item"><div class="nm"><b>Trousses de soin : ${lo.meds} / ${medMax()}</b><small>${meds} en planque · ${maxHp()} PV · sac de ${cap()} places</small></div>
         <div class="btns"><button data-a="medm" ${lo.meds ? "" : "disabled"} aria-label="Laisser une trousse">−</button><button data-a="medp" ${meds && lo.meds < medMax() ? "" : "disabled"} aria-label="Prendre une trousse">+</button></div></div>
@@ -86,24 +89,25 @@ function tabQuest() {
     <p class="note">Les ennemis éliminés et les caisses fouillées ne comptent que si tu t'extrais vivant.</p></div>`;
 }
 
-function tabShop() {
-  const w = S.lo.w, lv = w ? w.lv || 0 : 0;
-  let bench: string;
-  if (!w) bench = `<p class="empty">Équipe une arme dans l'onglet Raid pour l'améliorer.</p>`;
-  else if (lv >= MAX_LV) bench = row(w, `<span class="val">Max</span>`);
-  else {
-    const cur = wstat(w), nx = wstat({ ...w, lv: lv + 1 }), c = BENCH[lv];
-    bench = `<div class="item"><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
+function benchRow(w: Item, slot: "w" | "m") {
+  const lv = w.lv || 0;
+  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
+  const cur = wstat(w), nx = wstat({ ...w, lv: lv + 1 }), c = BENCH[lv];
+  return `<div class="item"><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
       <small>Dégâts ${cur.dmg} → ${nx.dmg} · cadence ${fmtRate(cur.rate)} → ${fmtRate(nx.rate)}</small><small>${costTxt(c)}</small></div>
-      <div class="btns"><button data-a="bench" ${canPay(c) ? "" : "disabled"}>Améliorer</button></div></div>`;
-  }
+      <div class="btns"><button data-a="bench" data-s="${slot}" ${canPay(c) ? "" : "disabled"}>Améliorer</button></div></div>`;
+}
+
+function tabShop() {
+  const rows = [S.lo.w && benchRow(S.lo.w, "w"), S.lo.m && benchRow(S.lo.m, "m")].filter(Boolean);
+  const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme dans l'onglet Raid pour l'améliorer.</p>`;
   const ups = (Object.keys(UP) as (keyof Upgrades)[]).map((k) => {
     const u = UP[k], l = S.up[k], more = l < MAX_LV;
     return `<div class="item"><div class="nm"><b>${u.n} · ${u.lv[l]}</b><small>${more ? `Suivant : ${u.lv[l + 1]}` : "Niveau maximum"}</small>${more ? `<small>${costTxt(u.cost[l])}</small>` : ""}</div>
       <div class="btns">${more ? `<button data-a="up" data-k="${k}" ${canPay(u.cost[l]) ? "" : "disabled"}>Améliorer</button>` : `<span class="val">Max</span>`}</div></div>`;
   });
   return `<div class="card"><div class="lbl">Améliorations de la planque</div>${ups.join("")}</div>
-    <div class="card"><div class="lbl">Établi · arme équipée</div>${bench}</div>`;
+    <div class="card"><div class="lbl">Établi · armes équipées</div>${bench}</div>`;
 }
 
 function tabTrade() {
@@ -117,7 +121,7 @@ export function renderStash() {
   norm();
   const upReady =
     (Object.keys(UP) as (keyof Upgrades)[]).some((k) => S.up[k] < MAX_LV && canPay(UP[k].cost[S.up[k]])) ||
-    (!!S.lo.w && (S.lo.w.lv || 0) < MAX_LV && canPay(BENCH[S.lo.w.lv || 0]));
+    weapons().some((w) => (w.lv || 0) < MAX_LV && canPay(BENCH[w.lv || 0]));
   const tabs: [Tab, string, boolean][] = [
     ["raid", "Raid", false],
     ["quest", "Contrats", S.q.some((q) => qInfo(q).done)],
@@ -165,6 +169,10 @@ export function initStash() {
       S.stash.push(lo.w);
       lo.w = null;
     }
+    if (a === "unm" && lo.m) {
+      S.stash.push(lo.m);
+      lo.m = null;
+    }
     if (a === "una" && lo.a) {
       S.stash.push(lo.a);
       lo.a = null;
@@ -177,7 +185,7 @@ export function initStash() {
     if (a === "eq") {
       const it = take(b.dataset.u);
       if (it) {
-        const slot = def(it.k).t === "wpn" ? "w" : "a";
+        const slot = def(it.k).t !== "wpn" ? "a" : isBlade(it) ? "m" : "w";
         const old = lo[slot];
         if (old) S.stash.push(old);
         lo[slot] = it;
@@ -209,12 +217,13 @@ export function initStash() {
         toast(UP[k].n + " : " + UP[k].lv[S.up[k]]);
       }
     }
-    if (a === "bench" && lo.w) {
-      const l = lo.w.lv || 0;
+    const bw = a === "bench" ? lo[b.dataset.s === "m" ? "m" : "w"] : null;
+    if (bw) {
+      const l = bw.lv || 0;
       if (l < MAX_LV && canPay(BENCH[l])) {
         pay(BENCH[l]);
-        lo.w.lv = l + 1;
-        toast(nameOf(lo.w) + " prêt");
+        bw.lv = l + 1;
+        toast(nameOf(bw) + " prêt");
       }
     }
     if (a === "claim") {

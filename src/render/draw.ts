@@ -13,8 +13,8 @@ const VR = 560;
 const GOLD = "#f0c040";
 const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
 const LOOK: Record<Kind, [CharKey, number]> = { walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], boss: ["boss", 1.4] };
-const wpnPose = (k: string, mel: boolean): CharKey =>
-  mel ? "pHold" : k === "dmr" || k === "carbine" ? "pSil" : k === "smg" || k === "ar" || k === "sg" || k === "lmg" ? "pMach" : "pGun";
+const wpnPose = (k: string): CharKey =>
+  k === "dmr" || k === "carbine" ? "pSil" : k === "smg" || k === "ar" || k === "sg" || k === "lmg" ? "pMach" : "pGun";
 
 interface Ray extends Pt {
   a: number;
@@ -187,9 +187,10 @@ export function draw(r: Raid | null) {
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  const wd = wstat(p.wpn);
-  sprite(wpnPose(p.wpn.k, !!wd.mel), p.x, p.y, p.face, p.hit > 0);
-  if (wd.mel) drawBlade(p.x, p.y, p.face, wd.range, p.swing);
+  // the gun stays in hand; the blade comes out for a swing, or for good with no gun
+  const gun = p.swing > 0 ? null : p.wpn;
+  sprite(gun ? wpnPose(gun.k) : "pHold", p.x, p.y, p.face, p.hit > 0);
+  if (!gun) drawBlade(p.x, p.y, p.face, wstat(p.mel).range, p.swing);
   for (const q of r.parts)
     if (!q.glow) {
       ctx.globalAlpha = clamp(q.life * 3, 0, 1);

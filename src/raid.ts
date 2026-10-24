@@ -73,9 +73,12 @@ export interface Casing extends Pt {
 export interface Player extends Pt {
   hp: number;
   max: number;
+  /** gun and blade cooldowns */
   cd: number;
+  mcd: number;
   face: number;
-  wpn: Item;
+  wpn: Item | null;
+  mel: Item;
   arm: Item | null;
   meds: number;
   keys: number;
@@ -186,7 +189,7 @@ export function startRaid() {
   const r: Raid = {
     zi, zone, power0: power(),
     walls, bld, nav: makeNav(walls), ground: makeGround(), decor: makeDecor(walls, bld), decal: makeDecal(),
-    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, face: 0, wpn: S.lo.w || mk(FREE), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
+    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, mcd: 0, face: 0, wpn: S.lo.w, mel: S.lo.m || mk(FREE), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
     exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
     crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], nums: [], bag: [],
     t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
@@ -226,7 +229,7 @@ export function startRaid() {
   setMode("raid");
   clearStick();
   setRaidHud(true);
-  showHint(!!wstat(r.p.wpn).mel);
+  showHint(!r.p.wpn);
   updHud(r);
   clock.last = performance.now();
 }
@@ -373,7 +376,7 @@ function strike(r: Raid, wd: WeaponStats) {
   const a0 = Math.atan2(target.y - p.y, target.x - p.x);
   p.face = a0;
   p.faceLock = 0.25;
-  p.cd = 1 / wd.rate;
+  p.mcd = 1 / wd.rate;
   p.swing = 0.18;
   for (const e of [...r.enemies]) {
     if (!inArc(p.x, p.y, a0, e.x, e.y, reach(e), MELEE_ARC)) continue;
@@ -471,7 +474,7 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
 export function update(dt: number) {
   const r = R;
   if (!r) return;
-  const p = r.p, m = moveVec(), moving = m.x !== 0 || m.y !== 0, wd = wstat(p.wpn);
+  const p = r.p, m = moveVec(), moving = m.x !== 0 || m.y !== 0;
   const spd = p.boost > 0 ? 236 : 175;
   p.x += m.x * spd * dt;
   p.y += m.y * spd * dt;
@@ -482,6 +485,7 @@ export function update(dt: number) {
   if (moving && p.faceLock <= 0) p.face = Math.atan2(m.y, m.x);
   p.still = moving ? 0 : p.still + dt;
   p.cd -= dt;
+  p.mcd -= dt;
   p.hit -= dt;
   r.shake -= dt;
   r.toastT -= dt;
@@ -505,9 +509,10 @@ export function update(dt: number) {
     if (v.prog >= UNLOCK_TIME) unlockVault(r, v);
   }
 
-  // melee always strikes, even on the move; guns fire only while standing still, and only when fire is on
-  if (wd.mel && p.cd <= 0) strike(r, wd);
-  if (prefs.fire && !wd.mel && !moving && p.still > 0.08 && p.cd <= 0) {
+  // the blade always strikes what reaches it, even on the move; the gun fires only standing still, and only when fire is on
+  if (p.mcd <= 0) strike(r, wstat(p.mel));
+  const wd = p.wpn && wstat(p.wpn);
+  if (wd && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null, bd = wd.range;
     for (const e of r.enemies) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
@@ -647,7 +652,8 @@ export function endRaid(ok: boolean, why = "") {
   if (ok) {
     const gained = r.bag.filter((i) => i.k !== FREE), val = gained.reduce((s, i) => s + valOf(i), 0);
     S.stash.push(...gained);
-    S.lo.w = p.wpn.k === FREE ? null : p.wpn;
+    S.lo.w = p.wpn;
+    S.lo.m = p.mel.k === FREE ? null : p.mel;
     S.lo.a = p.arm;
     S.lo.meds = p.meds;
     S.lo.keys = p.keys;
@@ -659,9 +665,9 @@ export function endRaid(ok: boolean, why = "") {
     save();
     renderEnd({ ok, why, val, items: gained, meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
   } else {
-    const lost = [...(p.wpn.k !== FREE ? [p.wpn] : []), ...(p.arm ? [p.arm] : []), ...r.bag];
+    const lost = [p.wpn, p.mel.k !== FREE ? p.mel : null, p.arm, ...r.bag].filter((i): i is Item => !!i);
     const val = lost.reduce((s, i) => s + valOf(i), 0) + p.meds * def("med").v + p.keys * def("vkey").v;
-    S.lo = { w: null, a: null, meds: 0, keys: 0 };
+    S.lo = { w: null, m: null, a: null, meds: 0, keys: 0 };
     S.st.dead++;
     save();
     renderEnd({ ok, why, val, items: lost, meds: p.meds, keys: p.keys, quests: [], power: [r.power0, power()], opened: "" });

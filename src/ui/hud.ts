@@ -1,4 +1,4 @@
-import { bagUsed, wstat } from "../items";
+import { bagUsed } from "../items";
 import { cap } from "../progression";
 import type { Raid } from "../raid";
 import { prefs } from "../input";
@@ -17,9 +17,9 @@ export function toast(msg: string) {
 export const hideHint = () => {
   $("hint").style.opacity = "0";
 };
-export function showHint(melee: boolean) {
+export function showHint(bladeOnly: boolean) {
   const h = $("hint");
-  h.textContent = melee ? "Glisse pour bouger · Tu frappes au contact" : "Glisse pour bouger · Arrête-toi pour tirer";
+  h.textContent = bladeOnly ? "Glisse pour bouger · Tu frappes au contact" : "Glisse pour bouger · Arrête-toi pour tirer · Ta lame frappe au contact";
   h.hidden = false;
   h.style.opacity = "1";
   setTimeout(hideHint, 5000);
@@ -50,7 +50,7 @@ export function updHud(r: Raid) {
   $("timer").classList.toggle("warn", s <= 60);
   const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
   $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + cap() + (keys ? ` · ${keys} clé${keys > 1 ? "s" : ""}` : "");
-  // the fire toggle only matters with a gun in hand
-  $("bFire").hidden = !!wstat(p.wpn).mel;
+  // the fire toggle only matters with a gun
+  $("bFire").hidden = !p.wpn;
   $("bHeal").textContent = "Soin (" + (p.meds + r.bag.filter((i) => i.k === "med").length) + ")";
 }

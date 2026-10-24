@@ -18,6 +18,12 @@ describe("parseSave", () => {
     expect(s.lo.w).toBeNull();
   });
 
+  it("moves a blade from the gun slot to its own slot", () => {
+    const s = parseSave(JSON.stringify({ ...fresh(), lo: { w: { k: "bat", u: "w" }, a: null, meds: 0 } }));
+    expect(s.lo.w).toBeNull();
+    expect(s.lo.m?.k).toBe("bat");
+  });
+
   it("starts fresh on garbage", () => {
     expect(parseSave("{not json")).toEqual(fresh());
     expect(parseSave(null)).toEqual(fresh());
