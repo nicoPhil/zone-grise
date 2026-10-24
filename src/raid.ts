@@ -8,13 +8,13 @@ import { clearStick, moveVec, prefs } from "./input";
 import { setRaidHud, showHint, toast, updHud } from "./ui/hud";
 import { renderEnd } from "./ui/end";
 import { pick, rnd, type Pt, type Rect } from "./util";
-import { MELEE_ARC, collide, inArc, inWall, los, nearestInReach } from "./world/geometry";
+import { MELEE_ARC, collide, frontHit, inArc, inWall, los, nearestInReach } from "./world/geometry";
 import { H, W, depth, freePt, genMap, inBld, rollItem, type Building } from "./world/mapgen";
 import { flowDir, makeNav, updFlow, type Nav } from "./world/nav";
 import { pickVault } from "./world/vault";
 import { ZONES, UNLOCK_AFTER, power, unlocked, zoneDepth, type Zone } from "./zones";
 
-export type Kind = "walker" | "runner" | "gunner" | "boss";
+export type Kind = "walker" | "runner" | "gunner" | "boss" | "smg" | "bloat" | "sniper" | "shield" | "stalker" | "alpha";
 interface KindStats {
   hp: number;
   spd: number;
@@ -28,7 +28,15 @@ export const KINDS: Record<Kind, KindStats> = {
   runner: { hp: 22, spd: 160, r: 11, melee: 9, hitCd: 0.55, see: 340 },
   gunner: { hp: 55, spd: 85, r: 14, melee: 0, hitCd: 0, see: 340 },
   boss: { hp: 650, spd: 62, r: 22, melee: 25, hitCd: 1, see: 360 },
+  smg: { hp: 55, spd: 90, r: 14, melee: 0, hitCd: 0, see: 340 },
+  bloat: { hp: 70, spd: 72, r: 17, melee: 0, hitCd: 0, see: 280 },
+  sniper: { hp: 40, spd: 75, r: 14, melee: 0, hitCd: 0, see: 700 },
+  shield: { hp: 95, spd: 80, r: 15, melee: 18, hitCd: 0.9, see: 320 },
+  stalker: { hp: 48, spd: 270, r: 12, melee: 22, hitCd: 0.7, see: 380 },
+  alpha: { hp: 130, spd: 150, r: 15, melee: 16, hitCd: 0.7, see: 380 },
 };
+/** Bloater blast; sniper aim before the shot; how close the stalker creeps before charging; reach of the pack leader's howl. */
+export const BLAST_R = 95, AIM_TIME = 1.1, LUNGE_R = 260, PACK_R = 280;
 
 export interface Enemy extends Pt {
   kind: Kind;
@@ -40,6 +48,10 @@ export interface Enemy extends Pt {
   wt: number;
   cd: number;
   hit: number;
+  /** behaviour phase: bloater fuse lit, sniper aiming, stalker charging */
+  ph: number;
+  /** time spent in the current phase */
+  t: number;
 }
 export interface Crate extends Pt {
   d: number;
@@ -141,32 +153,41 @@ export const lockCentre = (l: Rect): Pt => ({ x: l.x + l.w / 2, y: l.y + l.h / 2
 
 function spawn(r: Raid, kind: Kind, x: number, y: number, aggro = false) {
   const hp = Math.round(KINDS[kind].hp * r.zone.hp);
-  r.enemies.push({ kind, x, y, hp, max: hp, aggro, wx: 0, wy: 0, wt: 0, cd: rnd(0.5, 1.5), hit: 0 });
+  r.enemies.push({ kind, x, y, hp, max: hp, aggro, wx: 0, wy: 0, wt: 0, cd: rnd(0.5, 1.5), hit: 0, ph: 0, t: 0 });
 }
 
-/** Walkers at the edge, runner packs further in, gunners near the centre; harder zones shift the mix inwards. */
+/** Walkers at the edge, runner packs further in, gunners near the centre; harder zones shift the mix inwards and add their own kinds. */
 function spawnByZone(r: Raid, x: number, y: number, aggro = false) {
-  const d = zoneDepth(r.zone, depth(x, y)), roll = Math.random();
+  const d = zoneDepth(r.zone, depth(x, y)), has = (k: Kind) => r.zone.adds.includes(k);
   const near = () => {
     const nx = x + rnd(-40, 40), ny = y + rnd(-40, 40);
     return inWall(r.walls, nx, ny, 14) ? { x, y } : { x: nx, y: ny };
   };
-  if (d < 0.3) return spawn(r, "walker", x, y, aggro);
-  if (d < 0.6) {
-    if (roll < 0.4) for (let i = 0, n = Math.random() < 0.5 ? 2 : 3; i < n; i++) {
+  const one = (k: Kind) => () => spawn(r, k, x, y, aggro);
+  const pack = (k: Kind, n: number, lead?: Kind) => () => {
+    if (lead) spawn(r, lead, x, y, aggro);
+    for (let i = 0; i < n; i++) {
       const c = near();
-      spawn(r, "runner", c.x, c.y, aggro);
+      spawn(r, k, c.x, c.y, aggro);
     }
-    else spawn(r, "walker", x, y, aggro);
-    return;
-  }
-  if (roll < 0.5) {
-    spawn(r, "gunner", x, y, aggro);
-    if (Math.random() < 0.5) {
-      const c = near();
-      spawn(r, "gunner", c.x, c.y, aggro);
-    }
-  } else spawn(r, "walker", x, y, aggro);
+  };
+  const table: [number, () => void][] =
+    d < 0.3
+      ? [[85, one("walker")], [has("bloat") ? 15 : 0, one("bloat")]]
+      : d < 0.6
+        ? [[40, pack("runner", Math.random() < 0.5 ? 2 : 3)], [45, one("walker")], [has("bloat") ? 15 : 0, one("bloat")], [has("alpha") ? 15 : 0, pack("runner", 3, "alpha")]]
+        : [
+            [30, pack("gunner", Math.random() < 0.5 ? 0 : 1, "gunner")],
+            [25, one("walker")],
+            [has("bloat") ? 12 : 0, one("bloat")],
+            [has("smg") ? 14 : 0, pack("gunner", Math.random() < 0.5 ? 0 : 1, "smg")],
+            [has("sniper") ? 12 : 0, one("sniper")],
+            [has("shield") ? 14 : 0, pack("gunner", Math.random() < 0.5 ? 0 : 1, "shield")],
+            [has("stalker") ? 12 : 0, pack("stalker", Math.random() < 0.4 ? 1 : 0, "stalker")],
+            [has("alpha") ? 12 : 0, pack("runner", 3, "alpha")],
+          ];
+  let roll = Math.random() * table.reduce((s, [w]) => s + w, 0);
+  for (const [w, go] of table) if ((roll -= w) < 0) return go();
 }
 
 function randIn(walls: Rect[], rm: Rect, pad: number): Pt | null {
@@ -358,7 +379,18 @@ function openCrate(r: Raid, c: Crate) {
   burst(r, c.x, c.y, c.vault ? "#f0c040" : C.accent, 10, 80);
 }
 
+function blast(r: Raid, x: number, y: number) {
+  const p = r.p;
+  burst(r, x, y, "#a6d36a", 34, 260);
+  burst(r, x, y, "#f2a33a", 16, 200, true);
+  r.shake = Math.max(r.shake, 0.3);
+  noise(r, x, y, 500);
+  if (Math.hypot(p.x - x, p.y - y) < BLAST_R) hurt(r, 24);
+  for (const o of [...r.enemies]) if (r.enemies.includes(o) && Math.hypot(o.x - x, o.y - y) < BLAST_R) hitEnemy(r, o, 60, o.x, o.y, true);
+}
+
 function killed(r: Raid, e: Enemy) {
+  if (!r.enemies.includes(e)) return;
   r.enemies.splice(r.enemies.indexOf(e), 1);
   r.tally.kills++;
   burst(r, e.x, e.y, C.bad, e.kind === "boss" ? 40 : 14, 160);
@@ -375,8 +407,10 @@ function killed(r: Raid, e: Enemy) {
     toast("La Brute est tombée");
     return;
   }
-  if (e.kind === "gunner" && Math.random() < 0.2) drop(mk("vkey"));
-  if (Math.random() < 0.45) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y))));
+  if (e.kind === "bloat") return blast(r, e.x, e.y);
+  const elite = e.kind === "smg" || e.kind === "sniper" || e.kind === "shield" || e.kind === "alpha";
+  if ((e.kind === "gunner" || elite) && Math.random() < 0.2) drop(mk("vkey"));
+  if (Math.random() < (elite ? 0.75 : 0.45)) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y)) + (elite ? 0.1 : 0)));
 }
 
 function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = false) {
@@ -441,7 +475,7 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
   if (e.aggro && d > 950) e.aggro = false;
   let vx = 0, vy = 0;
   if (!e.aggro) {
-    if (e.kind === "boss") return;
+    if (e.kind === "boss" || e.kind === "stalker" || e.kind === "sniper") return;
     e.wt -= dt;
     if (e.wt <= 0) {
       const a = rnd(0, 6.28);
@@ -452,7 +486,47 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
     }
     vx = e.wx * 40;
     vy = e.wy * 40;
-  } else if (e.kind === "gunner") {
+  } else if (e.kind === "bloat") {
+    // once lit, the fuse burns out even if the player steps away
+    if (!e.ph && d < k.r + 30) e.ph = 1;
+    if (e.ph) {
+      e.t += dt;
+      if (e.t >= 0.6) return killed(r, e);
+    } else {
+      const g = chase(r, e, see, dx, dy, d);
+      vx = g.x * k.spd;
+      vy = g.y * k.spd;
+    }
+  } else if (e.kind === "sniper") {
+    // stands still to aim; breaking the line of sight cancels the shot
+    e.ph = see && d < 760 && e.cd <= 0 ? 1 : 0;
+    e.t = e.ph ? e.t + dt : 0;
+    if (e.t >= AIM_TIME) {
+      shoot(r, e, Math.atan2(dy, dx), 1, 0, 950, 22);
+      e.cd = rnd(1.6, 2.2);
+      e.t = e.ph = 0;
+    } else if (!e.ph && (!see || d > 760)) {
+      const g = chase(r, e, see, dx, dy, d);
+      vx = g.x * k.spd;
+      vy = g.y * k.spd;
+    } else if (!e.ph && d < 260) {
+      vx = (-dx / d) * k.spd;
+      vy = (-dy / d) * k.spd;
+    }
+  } else if (e.kind === "stalker") {
+    // creeps up unseen, then charges for a short burst and rests
+    e.t += dt;
+    if (e.ph === 0 && see && d < LUNGE_R) [e.ph, e.t] = [1, 0];
+    else if (e.ph === 1 && e.t > 1.4) [e.ph, e.t] = [2, 0];
+    else if (e.ph === 2 && e.t > 1.1) [e.ph, e.t] = [0, 0];
+    const g = chase(r, e, see, dx, dy, d), v = e.ph === 1 ? k.spd : e.ph === 2 ? 0 : 70;
+    vx = g.x * v;
+    vy = g.y * v;
+    if (d < k.r + 16 && e.cd <= 0) {
+      hurt(r, k.melee);
+      e.cd = k.hitCd;
+    }
+  } else if (e.kind === "gunner" || e.kind === "smg") {
     if (!see || d > 320) {
       const g = chase(r, e, see, dx, dy, d);
       vx = g.x * k.spd;
@@ -461,15 +535,22 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
       vx = (-dx / d) * 70;
       vy = (-dy / d) * 70;
     }
-    if (see && d < 400 && e.cd <= 0) {
+    if (see && d < 400 && e.cd <= 0 && e.kind === "gunner") {
       shoot(r, e, Math.atan2(dy, dx), 1, 0.06, 300, 12);
       e.cd = rnd(1.3, 1.8);
+    } else if (see && d < 380 && e.cd <= 0) {
+      // bursts of five quick, weaker and less accurate shots
+      shoot(r, e, Math.atan2(dy, dx), 1, 0.14, 320, 5);
+      e.ph = (e.ph + 1) % 5;
+      e.cd = e.ph ? 0.11 : rnd(1.4, 1.9);
     }
   } else {
     if (e.kind !== "boss" || !see || d > 240) {
+      // runners near a living pack leader run faster
+      const howl = e.kind === "runner" && r.enemies.some((o) => o.kind === "alpha" && Math.hypot(o.x - e.x, o.y - e.y) < PACK_R) ? 1.35 : 1;
       const g = chase(r, e, see, dx, dy, d);
-      vx = g.x * k.spd;
-      vy = g.y * k.spd;
+      vx = g.x * k.spd * howl;
+      vy = g.y * k.spd * howl;
     }
     if (d < k.r + 16 && e.cd <= 0) {
       hurt(r, k.melee);
@@ -625,7 +706,10 @@ export function update(dt: number) {
     const e = r.enemies.find((e) => Math.hypot(e.x - b.x, e.y - b.y) < KINDS[e.kind].r + 1);
     if (!e) continue;
     r.bullets.splice(i, 1);
-    hitEnemy(r, e, b.dmg, b.x + b.vx * 0.02, b.y + b.vy * 0.02);
+    if (e.kind === "shield" && frontHit(Math.atan2(p.y - e.y, p.x - e.x), b.vx, b.vy)) {
+      burst(r, b.x, b.y, "#dfe8f0", 5, 140, true);
+      hitEnemy(r, e, Math.max(1, Math.round(b.dmg * 0.15)), b.x, b.y);
+    } else hitEnemy(r, e, b.dmg, b.x + b.vx * 0.02, b.y + b.vy * 0.02);
   }
 
   for (let i = r.ebul.length - 1; i >= 0; i--) {

@@ -1,6 +1,6 @@
 import { def, nameOf, upgradeOver, wstat } from "../items";
 import { STICK_R, moveVec, stick } from "../input";
-import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
+import { AIM_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
 import { MELEE_ARC, los } from "../world/geometry";
@@ -14,7 +14,10 @@ const BASE_VR = 560;
 let VR = BASE_VR;
 const GOLD = "#f0c040";
 const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
-const LOOK: Record<Kind, [CharKey, number]> = { walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], boss: ["boss", 1.4] };
+const LOOK: Record<Kind, [CharKey, number]> = {
+  walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], smg: ["soldM", 0.85], boss: ["boss", 1.4],
+  bloat: ["bloat", 1.15], sniper: ["hitman", 0.85], shield: ["robot", 0.9], stalker: ["stalker", 0.75], alpha: ["alpha", 1],
+};
 const wpnPose = (k: string): CharKey =>
   k === "dmr" || k === "carbine" ? "pSil" : k === "smg" || k === "ar" || k === "sg" || k === "lmg" ? "pMach" : "pGun";
 
@@ -194,7 +197,22 @@ export function draw(r: Raid | null) {
   for (const e of r.enemies) {
     if (!seen(e)) continue;
     const a = Math.atan2(p.y - e.y, p.x - e.x), [look, scale] = LOOK[e.kind];
-    sprite(look, e.x, e.y, e.kind === "gunner" || e.aggro ? a : Math.atan2(e.wy, e.wx) || 0, e.hit > 0, scale);
+    // a stalker only shows when it charges, or as a shimmer up close
+    const hidden = e.kind === "stalker" && e.ph !== 1 && e.hit <= 0;
+    if (hidden && Math.hypot(e.x - p.x, e.y - p.y) > 150) continue;
+    ctx.globalAlpha = hidden ? 0.18 : 1;
+    if (e.kind === "alpha") glow(e.x, e.y, 46, C.bad, 0.35 + 0.1 * Math.sin(performance.now() / 150));
+    // a lit fuse flashes white faster and faster
+    const fuse = e.kind === "bloat" && e.ph > 0 && Math.sin(e.t * (10 + e.t * 40)) > 0;
+    sprite(look, e.x, e.y, e.kind === "gunner" || e.kind === "smg" || e.aggro ? a : Math.atan2(e.wy, e.wx) || 0, e.hit > 0 || fuse, scale);
+    ctx.globalAlpha = 1;
+    if (e.kind === "shield") {
+      ctx.strokeStyle = "#cfe3f2";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, KINDS.shield.r + 7, a - 1.05, a + 1.05);
+      ctx.stroke();
+    }
     if (e.hp < e.max && e.kind !== "boss") {
       const bw = KINDS[e.kind].r * 2 + 2;
       ctx.fillStyle = "rgba(0,0,0,.6)";
@@ -304,6 +322,17 @@ export function draw(r: Raid | null) {
     ctx.restore();
   }
   ctx.lineCap = "round";
+  // a sniper's laser shows the shot coming, even from out of sight
+  for (const e of r.enemies)
+    if (e.kind === "sniper" && e.ph) {
+      const f = clamp(e.t / AIM_TIME, 0, 1);
+      ctx.strokeStyle = `rgba(255,40,40,${0.25 + 0.6 * f})`;
+      ctx.lineWidth = 1 + 2 * f;
+      ctx.beginPath();
+      ctx.moveTo(e.x, e.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
   for (const b of r.bullets) {
     ctx.strokeStyle = "rgba(255,190,90,.35)";
     ctx.lineWidth = 6;

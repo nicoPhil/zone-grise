@@ -65,3 +65,6 @@ export function nearestInReach<T extends Pt & { open: boolean }>(xs: T[], p: Pt,
   }
   return best;
 }
+
+/** A shot travelling along (vx,vy) meets the front of something facing `face`, within 60° either side. */
+export const frontHit = (face: number, vx: number, vy: number) => (Math.cos(face) * vx + Math.sin(face) * vy) / (Math.hypot(vx, vy) || 1) < -0.5;
