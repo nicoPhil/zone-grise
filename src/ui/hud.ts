@@ -1,0 +1,44 @@
+import { bagUsed } from "../items";
+import { cap } from "../progression";
+import type { Raid } from "../raid";
+import { C } from "../render/canvas";
+import { $, clamp } from "../util";
+
+let toastTimer = 0;
+export function toast(msg: string) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => t.classList.remove("on"), 1800);
+}
+
+export const hideHint = () => {
+  $("hint").style.opacity = "0";
+};
+export function showHint() {
+  const h = $("hint");
+  h.hidden = false;
+  h.style.opacity = "1";
+  setTimeout(hideHint, 5000);
+}
+
+export function setRaidHud(on: boolean) {
+  $("hud").hidden = !on;
+  $("act").hidden = !on;
+  $("stash").hidden = on || $("stash").hidden;
+  $("end").hidden = true;
+  $("bag").hidden = true;
+  if (!on) $("hint").hidden = true;
+}
+
+export function updHud(r: Raid) {
+  const p = r.p, f = clamp(p.hp / p.max, 0, 1), s = Math.max(0, Math.ceil(r.t));
+  $("hpfill").style.width = f * 100 + "%";
+  $("hpfill").style.background = f < 0.35 ? C.bad : C.ok;
+  $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";
+  $("timer").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  $("timer").classList.toggle("warn", s <= 60);
+  $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + cap();
+  $("bHeal").textContent = "Soin (" + (p.meds + r.bag.filter((i) => i.k === "med").length) + ")";
+}

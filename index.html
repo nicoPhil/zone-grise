@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#15171a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Zone Grise</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;600&display=swap">
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud" hidden>
+  <div class="hp"><div id="hpfill"></div><span id="hptxt"></span></div>
+  <div id="timer"></div>
+  <div id="bagc"></div>
+</div>
+<div id="act" hidden><button id="bHeal" type="button">Soin</button><button id="bBag" type="button">Sac</button></div>
+<div id="hint" hidden>Glisse pour bouger · Arrête-toi pour tirer</div>
+<div id="toast"></div>
+<div id="stash" class="screen"></div>
+<div id="bag" class="screen over" hidden></div>
+<div id="end" class="screen" hidden></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
