@@ -232,7 +232,20 @@ export function draw(r: Raid | null) {
   for (const l of locks) glow(lockCentre(l).x, lockCentre(l).y, 70, GOLD, 0.25 + 0.08 * Math.sin(tt * 2.5));
   for (const e of r.exits) glow(e.x, e.y, 130, C.ok, 0.32 + 0.1 * Math.sin(tt * 3));
   for (const c of r.crates) if (!c.open && c.d > 0.36) glow(c.x, c.y, 46, crateCol(c), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
-  for (const q of r.pick) glow(q.x, q.y, 22, rarCol(def(q.it.k).r), 0.45);
+  for (const q of r.pick) {
+    const rr = def(q.it.k).r, col = rarCol(rr);
+    glow(q.x, q.y, 22, col, 0.45);
+    // rare and epic loot sends a light beam up through the darkness
+    if (rr >= 2 && inView(q.x, q.y, 400)) {
+      const bg = ctx.createLinearGradient(q.x, q.y, q.x, q.y - 320);
+      bg.addColorStop(0, col);
+      bg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.3 + 0.1 * Math.sin(tt * 4 + q.x);
+      ctx.fillStyle = bg;
+      ctx.fillRect(q.x - (rr === 3 ? 7 : 5), q.y - 320, rr === 3 ? 14 : 10, 320);
+      ctx.globalAlpha = 1;
+    }
+  }
   if (r.flash > 0) {
     ctx.save();
     polyPath(ctx, poly);

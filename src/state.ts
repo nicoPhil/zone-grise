@@ -23,6 +23,9 @@ export interface Save {
   st: { raids: number; ext: number; dead: number; best: number };
   up: Upgrades;
   q: Quest[];
+  /** selected zone, and extractions made in each zone */
+  zone: number;
+  zx: number[];
 }
 
 export const KEY = "zone-grise-save";
@@ -33,6 +36,8 @@ export const fresh = (): Save => ({
   st: { raids: 0, ext: 0, dead: 0, best: 0 },
   up: { bag: 0, meds: 0, hp: 0 },
   q: [],
+  zone: 0,
+  zx: [0, 0, 0],
 });
 
 export let S: Save = fresh();
@@ -61,6 +66,9 @@ export function parseSave(raw: string | null): Save {
     lo: { w: ok(s.lo.w), a: ok(s.lo.a), meds: s.lo.meds || 0, keys: s.lo.keys || 0 },
     up: { ...fresh().up, ...s.up },
     q: Array.isArray(s.q) ? s.q : [],
+    // extractions made before zones existed all happened in the first zone
+    zx: Array.isArray(s.zx) ? s.zx : [s.st.ext || 0, 0, 0],
+    zone: typeof s.zone === "number" ? s.zone : 0,
   };
 }
 

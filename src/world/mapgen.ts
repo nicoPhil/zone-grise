@@ -108,7 +108,7 @@ export function freePt(walls: Rect[], pad: number, ok: (x: number, y: number) =>
 export function rollItem(d: number, minR = 0): Item {
   const x = Math.random();
   const r = Math.max(minR, x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0);
-  const tr = Math.random(), t = tr < 0.62 ? "val" : tr < 0.76 ? "med" : tr < 0.9 ? "wpn" : "arm";
+  const tr = Math.random(), t = tr < 0.7 ? "val" : tr < 0.82 ? "med" : tr < 0.92 ? "wpn" : "arm";
   if (t === "med") return mk("med");
   const ofType = KEYS.filter((k) => def(k).t === t && k !== "rusty");
   for (let k = r; k >= 0; k--) {

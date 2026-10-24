@@ -1,4 +1,4 @@
-import { armorRed, bagUsed, def, mk, valOf, wstat, type Item } from "./items";
+import { RAR, armorRed, bagUsed, def, mk, valOf, wstat, type Item } from "./items";
 import { applyRaid, cap, maxHp, type RaidTally } from "./progression";
 import { C } from "./render/canvas";
 import { blood, makeDecal, makeDecor, makeGround, stampCasing, type Decal, type Decor } from "./render/decor";
@@ -12,6 +12,7 @@ import { collide, inWall, los } from "./world/geometry";
 import { H, W, depth, freePt, genMap, inBld, rollItem, type Building } from "./world/mapgen";
 import { flowDir, makeNav, updFlow, type Nav } from "./world/nav";
 import { pickVault } from "./world/vault";
+import { ZONES, UNLOCK_AFTER, power, unlocked, zoneDepth, type Zone } from "./zones";
 
 export type Kind = "walker" | "runner" | "gunner" | "boss";
 interface KindStats {
@@ -23,10 +24,10 @@ interface KindStats {
   see: number;
 }
 export const KINDS: Record<Kind, KindStats> = {
-  walker: { hp: 42, spd: 118, r: 14, melee: 12, hitCd: 0.8, see: 250 },
-  runner: { hp: 22, spd: 160, r: 11, melee: 7, hitCd: 0.55, see: 300 },
-  gunner: { hp: 55, spd: 85, r: 14, melee: 0, hitCd: 0, see: 280 },
-  boss: { hp: 650, spd: 62, r: 22, melee: 20, hitCd: 1, see: 330 },
+  walker: { hp: 42, spd: 118, r: 14, melee: 15, hitCd: 0.8, see: 300 },
+  runner: { hp: 22, spd: 160, r: 11, melee: 9, hitCd: 0.55, see: 340 },
+  gunner: { hp: 55, spd: 85, r: 14, melee: 0, hitCd: 0, see: 340 },
+  boss: { hp: 650, spd: 62, r: 22, melee: 25, hitCd: 1, see: 360 },
 };
 
 export interface Enemy extends Pt {
@@ -78,6 +79,8 @@ export interface Player extends Pt {
   arm: Item | null;
   meds: number;
   keys: number;
+  /** HP still to restore from the medkit in use */
+  regen: number;
   hit: number;
   still: number;
 }
@@ -88,6 +91,9 @@ export interface Vault {
   prog: number;
 }
 export interface Raid {
+  zi: number;
+  zone: Zone;
+  power0: number;
   walls: Rect[];
   bld: Building[];
   nav: Nav;
@@ -123,13 +129,13 @@ export const hasKey = (r: Raid) => r.p.keys > 0 || r.bag.some((i) => i.k === "vk
 export const lockCentre = (l: Rect): Pt => ({ x: l.x + l.w / 2, y: l.y + l.h / 2 });
 
 function spawn(r: Raid, kind: Kind, x: number, y: number, aggro = false) {
-  const k = KINDS[kind];
-  r.enemies.push({ kind, x, y, hp: k.hp, max: k.hp, aggro, wx: 0, wy: 0, wt: 0, cd: rnd(0.5, 1.5), hit: 0 });
+  const hp = Math.round(KINDS[kind].hp * r.zone.hp);
+  r.enemies.push({ kind, x, y, hp, max: hp, aggro, wx: 0, wy: 0, wt: 0, cd: rnd(0.5, 1.5), hit: 0 });
 }
 
-/** Walkers at the edge, runner packs further in, gunners near the centre. */
+/** Walkers at the edge, runner packs further in, gunners near the centre; harder zones shift the mix inwards. */
 function spawnByZone(r: Raid, x: number, y: number, aggro = false) {
-  const d = depth(x, y), roll = Math.random();
+  const d = zoneDepth(r.zone, depth(x, y)), roll = Math.random();
   const near = () => {
     const nx = x + rnd(-40, 40), ny = y + rnd(-40, 40);
     return inWall(r.walls, nx, ny, 14) ? { x, y } : { x: nx, y: ny };
@@ -161,19 +167,21 @@ function randIn(walls: Rect[], rm: Rect, pad: number): Pt | null {
 }
 
 export function startRaid() {
+  const zi = unlocked(S, S.zone) ? S.zone : 0, zone = ZONES[zi];
   const { walls, bld } = genMap();
-  const plan = pickVault(walls, bld);
+  const plan = zone.vault ? pickVault(walls, bld) : null;
   if (plan) walls.push(...plan.locks);
   const out = (x: number, y: number) => !inBld(bld, x, y, 60);
   const e1 = freePt(walls, 70, (x, y) => Math.min(x, y, W - x, H - y) < 260 && out(x, y));
   const e2 = freePt(walls, 70, (x, y) => Math.min(x, y, W - x, H - y) < 260 && out(x, y) && Math.hypot(x - e1.x, y - e1.y) > 1400);
   const sp = freePt(walls, 30, (x, y) => out(x, y) && Math.min(Math.hypot(x - e1.x, y - e1.y), Math.hypot(x - e2.x, y - e2.y)) > 1100);
   const r: Raid = {
+    zi, zone, power0: power(),
     walls, bld, nav: makeNav(walls), ground: makeGround(), decor: makeDecor(walls, bld), decal: makeDecal(),
-    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, face: 0, wpn: S.lo.w || mk("rusty"), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, hit: 0, still: 0 },
+    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, face: 0, wpn: S.lo.w || mk("rusty"), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, hit: 0, still: 0 },
     exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
     crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], bag: [],
-    t: RAID_TIME, spawnT: 24, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
+    t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
   };
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== plan?.room);
   const far = (c: Pt | null, m: number): c is Pt => !!c && Math.hypot(c.x - sp.x, c.y - sp.y) > m;
@@ -181,9 +189,9 @@ export function startRaid() {
   for (let i = 0; i < 18; i++) {
     let c = Math.random() < 0.75 ? inRoom(30) : null;
     if (!far(c, 200)) c = freePt(walls, 30, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 260);
-    r.crates.push({ x: c.x, y: c.y, d: depth(c.x, c.y), open: false, prog: 0 });
+    r.crates.push({ x: c.x, y: c.y, d: zoneDepth(zone, depth(c.x, c.y)), open: false, prog: 0 });
   }
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < zone.enemies; i++) {
     let c = Math.random() < 0.5 ? inRoom(24) : null;
     if (!far(c, 480)) c = freePt(walls, 24, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 480);
     spawnByZone(r, c.x, c.y);
@@ -193,10 +201,16 @@ export function startRaid() {
       const c = randIn(walls, plan.room, 30);
       if (c) r.crates.push({ ...c, d: 1, open: false, prog: 0, vault: true });
     }
-    // the Brute waits in the vault's building, outside the locked room
+    // the vault's guards wait in its building, outside the locked room: the Brute in the Cœur, two gunners elsewhere
     const guardRooms = plan.b.rooms.filter((rm) => rm !== plan.room);
-    const g = (guardRooms.length && randIn(walls, pick(guardRooms), 26)) || freePt(walls, 26, (x, y) => Math.hypot(x - plan.room.x, y - plan.room.y) < 400);
-    spawn(r, "boss", g.x, g.y);
+    const guardAt = () => (guardRooms.length && randIn(walls, pick(guardRooms), 26)) || freePt(walls, 26, (x, y) => Math.hypot(x - plan.room.x, y - plan.room.y) < 400);
+    if (zone.boss) {
+      const g = guardAt();
+      spawn(r, "boss", g.x, g.y);
+    } else for (let i = 0; i < 2; i++) {
+      const g = guardAt();
+      spawn(r, "gunner", g.x, g.y);
+    }
   }
   R = r;
   S.st.raids++;
@@ -222,9 +236,10 @@ const noise = (r: Raid, x: number, y: number, rad: number) => {
 function hurt(r: Raid, d: number) {
   if (mode !== "raid") return;
   const p = r.p;
+  d *= r.zone.dmg;
   p.hp -= d * (1 - armorRed(p.arm));
   p.hit = 0.15;
-  r.shake = 0.12;
+  r.shake = 0.12 + 0.004 * d;
   if (p.hp <= 0) endRaid(false, "Tu es mort.");
 }
 
@@ -239,13 +254,14 @@ export function heal() {
   if (!r) return;
   const p = r.p;
   if (p.hp >= p.max) return toast("PV déjà au maximum");
+  if (p.regen > 0) return toast("Soin déjà en cours");
   if (p.meds > 0) p.meds--;
   else {
     const i = r.bag.findIndex((x) => x.k === "med");
     if (i < 0) return toast("Aucune trousse de soin");
     r.bag.splice(i, 1);
   }
-  p.hp = Math.min(p.max, p.hp + 50);
+  p.regen = 40;
   burst(r, p.x, p.y, C.ok, 10, 90);
   updHud(r);
 }
@@ -299,7 +315,7 @@ function killed(r: Raid, e: Enemy) {
     return;
   }
   if (e.kind === "gunner" && Math.random() < 0.2) drop(mk("vkey"));
-  if (Math.random() < 0.45) drop(rollItem(depth(e.x, e.y)));
+  if (Math.random() < 0.45) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y))));
 }
 
 /** Chase direction: straight at the player in sight, otherwise along the flow field around walls. */
@@ -345,7 +361,7 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
       vy = (-dy / d) * 70;
     }
     if (see && d < 400 && e.cd <= 0) {
-      shoot(r, e, Math.atan2(dy, dx), 1, 0.08, 290, 9);
+      shoot(r, e, Math.atan2(dy, dx), 1, 0.06, 300, 12);
       e.cd = rnd(1.3, 1.8);
     }
   } else {
@@ -358,7 +374,7 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
       hurt(r, k.melee);
       e.cd = k.hitCd;
     } else if (e.kind === "boss" && see && d < 420 && e.cd <= 0) {
-      shoot(r, e, Math.atan2(dy, dx), 5, 0.24, 260, 10);
+      shoot(r, e, Math.atan2(dy, dx), 5, 0.24, 260, 12);
       e.cd = 1.9;
     }
   }
@@ -388,6 +404,11 @@ export function update(dt: number) {
   p.hit -= dt;
   r.shake -= dt;
   r.toastT -= dt;
+  if (p.regen > 0) {
+    const g = Math.min(p.regen, 20 * dt);
+    p.hp = Math.min(p.max, p.hp + g);
+    p.regen = p.hp >= p.max ? 0 : p.regen - g;
+  }
 
   for (const c of r.crates) {
     if (c.open) continue;
@@ -452,9 +473,10 @@ export function update(dt: number) {
     }
     if (d >= 26) continue;
     if (bagUsed(r.bag) + def(k.it.k).s <= cap()) {
+      const d = def(k.it.k);
       r.bag.push(k.it);
       r.pick.splice(i, 1);
-      toast("+ " + def(k.it.k).n);
+      toast((d.r >= 2 ? RAR[d.r] + " : " : "+ ") + d.n);
       updHud(r);
     } else say(r, "Sac plein : ouvre le sac pour jeter un objet");
   }
@@ -523,10 +545,10 @@ export function update(dt: number) {
   if (r.t <= 0) return endRaid(false, "Temps écoulé : la zone a été verrouillée.");
   r.spawnT -= dt;
   if (r.spawnT <= 0) {
-    r.spawnT = 22;
+    r.spawnT = r.zone.wave;
     for (let i = 0; i < 2; i++) {
       const c = freePt(r.walls, 24, (x, y) => Math.hypot(x - p.x, y - p.y) > 600);
-      spawnByZone(r, c.x, c.y, r.t < 120);
+      spawnByZone(r, c.x, c.y, r.t < 150);
     }
   }
   updHud(r);
@@ -548,15 +570,17 @@ export function endRaid(ok: boolean, why = "") {
     S.lo.keys = p.keys;
     S.st.ext++;
     S.st.best = Math.max(S.st.best, val);
+    S.zx[r.zi]++;
+    const opened = S.zx[r.zi] === UNLOCK_AFTER && ZONES[r.zi + 1] ? ZONES[r.zi + 1].name : "";
     const done = applyRaid({ ...r.tally, haul: val });
     save();
-    renderEnd({ ok, why, val, items: gained, meds: 0, keys: 0, quests: done });
+    renderEnd({ ok, why, val, items: gained, meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
   } else {
     const lost = [...(p.wpn.k !== "rusty" ? [p.wpn] : []), ...(p.arm ? [p.arm] : []), ...r.bag];
     const val = lost.reduce((s, i) => s + valOf(i), 0) + p.meds * def("med").v + p.keys * def("vkey").v;
     S.lo = { w: null, a: null, meds: 0, keys: 0 };
     S.st.dead++;
     save();
-    renderEnd({ ok, why, val, items: lost, meds: p.meds, keys: p.keys, quests: [] });
+    renderEnd({ ok, why, val, items: lost, meds: p.meds, keys: p.keys, quests: [], power: [r.power0, power()], opened: "" });
   }
 }

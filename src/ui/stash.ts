@@ -4,6 +4,7 @@ import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
 import { KEY, S, save, setMode, type Upgrades } from "../state";
 import { $, fmtRate } from "../util";
+import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
 import { row } from "./row";
 
@@ -51,12 +52,24 @@ function tabRaid() {
         <div class="btns"><button data-a="keym" ${lo.keys ? "" : "disabled"} aria-label="Laisser une clé">−</button><button data-a="keyp" ${keys && lo.keys < KEY_MAX ? "" : "disabled"} aria-label="Prendre une clé">+</button></div></div>
       <p class="note">Si tu meurs, tu perds tout ce qui est ici et tout ce qu'il y a dans ton sac.</p>
     </div>
-    <button class="go" data-a="raid">Partir en raid</button>
+    ${zonePicker()}
+    <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>
     <div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
-      ${meds ? row(mk("med"), `<div class="btns"><button data-a="sellmed">${ITEMS.med.v} cr</button></div>`, `${meds} en stock · Rend 50 PV`) : ""}
+      ${meds ? row(mk("med"), `<div class="btns"><button data-a="sellmed">${ITEMS.med.v} cr</button></div>`, `${meds} en stock · Rend 40 PV en 2 s`) : ""}
       ${keys ? row(mk("vkey"), `<div class="btns"><button data-a="sellkey">${ITEMS.vkey.v} cr</button></div>`, `${keys} en stock · Ouvre une salle forte`) : ""}
     </div>`;
+}
+
+function zonePicker() {
+  const pw = power();
+  const cards = ZONES.map((z, i) => {
+    if (!unlocked(S, i))
+      return `<button class="zone" disabled><span class="zt"><b>${z.name}</b><span class="pw-low">verrouillée</span></span><small>${S.zx[i - 1]}/${UNLOCK_AFTER} extractions en ${ZONES[i - 1].name} pour débloquer</small></button>`;
+    return `<button class="zone" data-a="zone" data-z="${i}" aria-pressed="${S.zone === i}"><span class="zt"><b>${z.name}</b>
+      <span class="pw ${pw >= z.power ? "pw-ok" : "pw-low"}">conseillé ${z.power}</span></span><small>${z.blurb} · ${S.zx[i]} extraction${S.zx[i] > 1 ? "s" : ""}</small></button>`;
+  });
+  return `<div class="card"><div class="lbl">Zone</div><div class="zones">${cards.join("")}</div></div>`;
 }
 
 function tabQuest() {
@@ -113,11 +126,12 @@ export function renderStash() {
   ];
   const body = { raid: tabRaid, quest: tabQuest, shop: tabShop, trade: tabTrade }[tab];
   $("stash").innerHTML = `<div class="wrap">
+    <div class="ver">version ${__BUILD__}</div>
     <div class="top"><div><div class="lbl">Planque</div><h1>Zone Grise</h1></div>
-      <div style="text-align:right"><div class="lbl">Crédits</div><div class="cr">${S.credits} cr</div></div></div>
+      <div style="text-align:right"><div class="lbl">Puissance · crédits</div><div class="cr"><span class="pw">${power()}</span> · ${S.credits} cr</div></div></div>
     <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
     ${body()}
-    <p class="note">${S.st.raids} raids · ${S.st.ext} extractions · ${S.st.dead} morts · meilleur butin ${S.st.best} cr · graphismes Kenney (CC0) · version ${__BUILD__}</p>
+    <p class="note">${S.st.raids} raids · ${S.st.ext} extractions · ${S.st.dead} morts · meilleur butin ${S.st.best} cr · graphismes Kenney (CC0)</p>
   </div>`;
 }
 
@@ -139,6 +153,10 @@ export function initStash() {
       const i = S.stash.findIndex((x) => x.u === u);
       return i < 0 ? null : S.stash.splice(i, 1)[0];
     };
+    if (a === "zone") {
+      const z = Number(b.dataset.z);
+      if (unlocked(S, z)) S.zone = z;
+    }
     if (a === "raid") {
       assetsReady.then(startRaid);
       return;

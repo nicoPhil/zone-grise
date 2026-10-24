@@ -50,7 +50,7 @@ export interface Item {
 }
 
 export const KEYS = Object.keys(ITEMS) as ItemKey[];
-export const SHOP: ItemKey[] = ["p9", "smg", "sg", "vest1", "med"];
+export const SHOP: ItemKey[] = ["p9", "vest1", "med"];
 export const RAR = ["Commun", "Peu commun", "Rare", "Épique"];
 
 export const def = (k: ItemKey): ItemDef => ITEMS[k];
@@ -79,7 +79,7 @@ export function desc(it: Item): string {
     return `${w.pel > 1 ? w.pel + "×" : ""}${w.dmg} dég · ${fmtRate(w.rate)} tirs/s · portée ${fmtM(w.range)}`;
   }
   if (d.t === "arm") return `−${d.red * 100} % de dégâts subis`;
-  if (d.t === "med") return "Rend 50 PV";
+  if (d.t === "med") return "Rend 40 PV en 2 s";
   if (d.t === "key") return "Ouvre une salle forte";
   return RAR[d.r];
 }
