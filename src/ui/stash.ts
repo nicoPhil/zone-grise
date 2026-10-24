@@ -60,7 +60,9 @@ function tabRaid() {
 function tabStash() {
   const lo = S.lo, need = needed(), stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
   const stacks = new Map<string, Item[]>();
-  for (const i of [...S.stash].sort((a, b) => valOf(b) - valOf(a))) stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
+  const up = (i: Item) => (upgradeOver(i, lo.eq) ? 1 : 0);
+  // upgrades over what is worn come first, then by value
+  for (const i of [...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a))) stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
   const list = [...stacks.values()].map((g) => {
     const i = g[0], t = def(i.k).t;
     const eq = t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
