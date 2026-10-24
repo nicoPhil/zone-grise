@@ -6,10 +6,12 @@ import { KEY, S, save, setMode, type Upgrades } from "../state";
 import { $, fmtRate } from "../util";
 import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
+import { icon, type Icon } from "./icons";
 import { row } from "./row";
 import { sheet } from "./sheet";
 
 type Tab = "raid" | "quest" | "shop" | "trade";
+const TAB_IC: Record<Tab, Icon> = { raid: "fire", quest: "quest", shop: "shop", trade: "trade" };
 const TABS: Tab[] = ["raid", "quest", "shop", "trade"];
 let tab: Tab = "raid";
 try {
@@ -136,7 +138,7 @@ export function renderStash() {
     <div class="ver">version ${__BUILD__}</div>
     <div class="top"><div><div class="lbl">Planque</div><h1>Zone Grise</h1></div>
       <div style="text-align:right"><div class="lbl">Puissance · crédits</div><div class="cr"><span class="pw">${power()}</span> · ${S.credits} cr</div></div></div>
-    <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
+    <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${icon(TAB_IC[id])}${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
     ${body()}
     <p class="note">${S.st.raids} raids · ${S.st.ext} extractions · ${S.st.dead} morts · meilleur butin ${S.st.best} cr · graphismes Kenney (CC0)</p>
   </div>`;

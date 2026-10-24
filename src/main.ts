@@ -8,10 +8,12 @@ import { loadLocal, mode } from "./state";
 import { closeBag, initBag, openBag, tickBag } from "./ui/bag";
 import { initEnd } from "./ui/end";
 import { hideHint, toast, updFire } from "./ui/hud";
+import { mountIcons } from "./ui/icons";
 import { initStash, renderStash } from "./ui/stash";
 import { $ } from "./util";
 
 loadLocal();
+mountIcons();
 norm();
 initCanvas();
 initStash();

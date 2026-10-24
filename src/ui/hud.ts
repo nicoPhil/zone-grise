@@ -3,6 +3,7 @@ import { rcap, type Raid } from "../raid";
 import { prefs } from "../input";
 import { C } from "../render/canvas";
 import { $, clamp } from "../util";
+import { icon } from "./icons";
 
 let toastTimer = 0;
 export function toast(msg: string) {
@@ -36,7 +37,8 @@ export function setRaidHud(on: boolean) {
 
 export function updFire() {
   const b = $("bFire");
-  b.textContent = prefs.fire ? "Tir auto" : "Tir coupé";
+  b.innerHTML = icon(prefs.fire ? "fire" : "fireOff");
+  b.setAttribute("aria-label", prefs.fire ? "Tir auto" : "Tir coupé");
   b.setAttribute("aria-pressed", String(prefs.fire));
 }
 
@@ -45,11 +47,16 @@ export function updHud(r: Raid) {
   $("hpfill").style.width = f * 100 + "%";
   $("hpfill").style.background = f < 0.35 ? C.bad : C.ok;
   $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";
-  $("timer").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  $("timern").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   $("timer").classList.toggle("warn", s <= 60);
   const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
-  $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + rcap(r) + (keys ? ` · ${keys} clé${keys > 1 ? "s" : ""}` : "");
+  $("bagn").textContent = bagUsed(r.bag) + "/" + rcap(r);
+  $("keyc").hidden = !keys;
+  $("keyn").textContent = String(keys);
   // the fire toggle only matters with a gun
   $("bFire").hidden = !p.eq.gun;
-  $("bHeal").textContent = "Soin (" + (p.meds + r.bag.filter((i) => i.k === "med").length) + ")";
+  const meds = p.meds + r.bag.filter((i) => i.k === "med").length;
+  $("healn").textContent = String(meds);
+  $("bHeal").classList.toggle("none", !meds);
+  $("bHeal").setAttribute("aria-label", `Soin (${meds})`);
 }

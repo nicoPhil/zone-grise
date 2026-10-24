@@ -14,10 +14,10 @@
 <canvas id="cv"></canvas>
 <div id="hud" hidden>
   <div class="hp"><div id="hpfill"></div><span id="hptxt"></span></div>
-  <div id="timer"></div>
-  <div id="bagc"></div>
+  <div id="timer"><i data-ic="clock"></i><span id="timern"></span></div>
+  <div id="bagc"><i data-ic="bag"></i><span id="bagn"></span><span id="keyc" hidden><i data-ic="key"></i><span id="keyn"></span></span></div>
 </div>
-<div id="act" hidden><button id="bFire" type="button" aria-pressed="true">Tir auto</button><button id="bHeal" type="button">Soin</button><button id="bBag" type="button">Sac</button></div>
+<div id="act" hidden><button id="bFire" type="button" aria-pressed="true" aria-label="Tir auto"></button><button id="bHeal" type="button" aria-label="Soin"><i data-ic="heal"></i><span class="n" id="healn"></span></button><button id="bBag" type="button" aria-label="Sac"><i data-ic="bag"></i></button></div>
 <div id="hint" hidden>Glisse pour bouger · Arrête-toi pour tirer</div>
 <div id="toast"></div>
 <div id="stash" class="screen"></div>

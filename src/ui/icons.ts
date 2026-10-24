@@ -1,0 +1,33 @@
+import type { Slot } from "../items";
+
+const BAG = '<path d="M6 10a6 6 0 0 1 12 0v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M10 4V3h4v1M9 14h6v4H9z"/>';
+const P = {
+  fire: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>',
+  fireOff: '<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5M4 4l16 16"/>',
+  heal: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3M12 10.5v6M9 13.5h6"/>',
+  bag: BAG,
+  back: BAG,
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M16 7l3 3M14 9l2 2"/>',
+  head: '<path d="M4 16a8 8 0 0 1 16 0M2 16h20v3H2zM12 8v4"/>',
+  body: '<path d="M8 3l4 4 4-4 4 3v15H4V6zM12 7v14"/>',
+  hands: '<path d="M7 21v-9V6.5a1.5 1.5 0 0 1 3 0V11V4.5a1.5 1.5 0 0 1 3 0V11V5.5a1.5 1.5 0 0 1 3 0V12V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7z"/>',
+  feet: '<path d="M7 3h6v9l5 2.5a3 3 0 0 1 2 2.8V20H7zM7 17h13"/>',
+  trinket: '<path d="M6 3l6 8 6-8"/><circle cx="12" cy="16" r="4"/>',
+  gun: '<path d="M2 7h19v4h-8l-1 3H9l-1 5H4l1.5-8H2z"/>',
+  blade: '<path d="M4 20l3-3M6 15l3 3M8 16 20 4c0 6-4 10.5-9 12.5"/>',
+  quest: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h4"/>',
+  shop: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+  trade: '<circle cx="9" cy="9" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.3 18M8 7h1.5v4"/>',
+} satisfies Record<string, string> & Record<Slot, string>;
+
+export type Icon = keyof typeof P;
+
+/** Inline stroke icon in the current text colour; decorative, so the control carries the label. */
+export const icon = (n: Icon) =>
+  `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+/** Fill the static `<i data-ic="…">` placeholders of the page. */
+export function mountIcons() {
+  document.querySelectorAll<HTMLElement>("i[data-ic]").forEach((el) => (el.outerHTML = icon(el.dataset.ic as Icon)));
+}
