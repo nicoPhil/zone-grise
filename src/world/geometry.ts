@@ -22,6 +22,16 @@ export function segHits(x1: number, y1: number, x2: number, y2: number, r: Rect)
   return true;
 }
 
+/** Half-angle of a melee swing, radians. */
+export const MELEE_ARC = 0.9;
+
+/** Is (x,y) within `reach` of (px,py) and within ±half radians of direction `face`? */
+export function inArc(px: number, py: number, face: number, x: number, y: number, reach: number, half: number) {
+  if (Math.hypot(x - px, y - py) > reach) return false;
+  const d = Math.atan2(y - py, x - px) - face;
+  return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) <= half;
+}
+
 export const los = (walls: Rect[], a: Pt, b: Pt) => !walls.some((w) => segHits(a.x, a.y, b.x, b.y, w));
 export const inWall = (walls: Rect[], x: number, y: number, pad = 0) =>
   walls.some((w) => x > w.x - pad && x < w.x + w.w + pad && y > w.y - pad && y < w.y + w.h + pad);

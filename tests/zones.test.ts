@@ -18,8 +18,9 @@ describe("zones", () => {
     expect(unlocked(s, 1)).toBe(true);
   });
 
-  it("rate the free pistol at the first zone's advice and a geared player above the last", () => {
-    expect(power()).toBe(ZONES[0].power);
+  it("rate the free knife above the first zone's advice and a geared player above the last", () => {
+    expect(power()).toBeGreaterThanOrEqual(ZONES[0].power);
+    expect(power()).toBeLessThan(ZONES[1].power);
     S.lo.w = { ...mk("ar"), lv: 2 };
     S.lo.a = mk("vest2");
     S.up.hp = 2;

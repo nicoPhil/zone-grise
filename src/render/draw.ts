@@ -1,9 +1,9 @@
-import { def } from "../items";
+import { def, wstat } from "../items";
 import { STICK_R, moveVec, stick } from "../input";
 import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
-import { los } from "../world/geometry";
+import { MELEE_ARC, los } from "../world/geometry";
 import { H, W } from "../world/mapgen";
 import { C, FONT, ctx, cv, rarCol, sg, shade, view } from "./canvas";
 import { T, floorPattern, sprite, tile, type CharKey } from "./assets";
@@ -13,7 +13,8 @@ const VR = 560;
 const GOLD = "#f0c040";
 const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
 const LOOK: Record<Kind, [CharKey, number]> = { walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], boss: ["boss", 1.4] };
-const wpnPose = (k: string): CharKey => (k === "dmr" ? "pSil" : k === "smg" || k === "ar" || k === "sg" ? "pMach" : "pGun");
+const wpnPose = (k: string, mel: boolean): CharKey =>
+  mel ? "pHold" : k === "dmr" || k === "carbine" ? "pSil" : k === "smg" || k === "ar" || k === "sg" || k === "lmg" ? "pMach" : "pGun";
 
 interface Ray extends Pt {
   a: number;
@@ -75,6 +76,27 @@ function drawCrate(c: Crate) {
     ctx.fillStyle = crateCol(c);
     ctx.fillRect(c.x - 17, c.y - 19, 34, 4);
   }
+}
+
+/** Held blade, swept through an arc while a strike plays, with a pale trail. */
+function drawBlade(x: number, y: number, face: number, reach: number, swing: number) {
+  const t = swing > 0 ? 1 - swing / 0.18 : 0.5, a = face + (t - 0.5) * 2 * MELEE_ARC, len = 10 + reach * 0.35;
+  const hx = x + Math.cos(face) * 13 + Math.cos(face + 1.57) * 5, hy = y + Math.sin(face) * 13 + Math.sin(face + 1.57) * 5;
+  if (swing > 0) {
+    ctx.strokeStyle = "rgba(235,240,245,.35)";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(x, y, 14 + len, face - MELEE_ARC, a);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "#d9dde2";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(hx, hy);
+  ctx.lineTo(hx + Math.cos(a) * len, hy + Math.sin(a) * len);
+  ctx.stroke();
+  ctx.lineCap = "butt";
 }
 
 function ring(x: number, y: number, f: number, col: string) {
@@ -165,7 +187,9 @@ export function draw(r: Raid | null) {
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  sprite(wpnPose(p.wpn.k), p.x, p.y, p.face, p.hit > 0);
+  const wd = wstat(p.wpn);
+  sprite(wpnPose(p.wpn.k, !!wd.mel), p.x, p.y, p.face, p.hit > 0);
+  if (wd.mel) drawBlade(p.x, p.y, p.face, wd.range, p.swing);
   for (const q of r.parts)
     if (!q.glow) {
       ctx.globalAlpha = clamp(q.life * 3, 0, 1);

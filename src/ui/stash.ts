@@ -1,4 +1,4 @@
-import { ITEMS, SHOP, def, desc, mk, nameOf, price, valOf, wstat, type ItemKey } from "../items";
+import { FREE, ITEMS, SHOP, def, desc, mk, nameOf, price, valOf, wstat, type ItemKey } from "../items";
 import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
@@ -44,7 +44,7 @@ function tabRaid() {
     return row(i, btns, need.has(i.k) ? `${desc(i)} · <span class="need">utile : ${need.get(i.k)}</span>` : "");
   });
   return `<div class="card"><div class="lbl">Ce que tu emportes</div>
-      ${lo.w ? row(lo.w, `<div class="btns"><button data-a="unw">Retirer</button></div>`) : row(mk("rusty"), "", "Kit gratuit, donné si tu n'as pas d'arme")}
+      ${lo.w ? row(lo.w, `<div class="btns"><button data-a="unw">Retirer</button></div>`) : row(mk(FREE), "", "Kit gratuit, donné si tu n'as pas d'arme · corps à corps")}
       ${lo.a ? row(lo.a, `<div class="btns"><button data-a="una">Retirer</button></div>`) : `<div class="item"><div class="nm"><b>Pas de gilet</b><small>Dégâts subis normaux</small></div></div>`}
       <div class="item"><div class="nm"><b>Trousses de soin : ${lo.meds} / ${medMax()}</b><small>${meds} en planque · ${maxHp()} PV · sac de ${cap()} places</small></div>
         <div class="btns"><button data-a="medm" ${lo.meds ? "" : "disabled"} aria-label="Laisser une trousse">−</button><button data-a="medp" ${meds && lo.meds < medMax() ? "" : "disabled"} aria-label="Prendre une trousse">+</button></div></div>

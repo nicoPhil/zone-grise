@@ -10,6 +10,23 @@ interface Stick {
   y: number;
 }
 
+const FIRE_KEY = "zone-grise-fire";
+/** Per-device preference: auto-attack on or off (off = stealth). */
+export const prefs = { fire: true };
+try {
+  prefs.fire = localStorage.getItem(FIRE_KEY) !== "off";
+} catch {
+  // storage blocked: attack stays on
+}
+export function toggleFire() {
+  prefs.fire = !prefs.fire;
+  try {
+    localStorage.setItem(FIRE_KEY, prefs.fire ? "on" : "off");
+  } catch {
+    // the toggle still works for this session
+  }
+}
+
 /** Floating joystick: wherever the thumb lands becomes its centre. */
 export let stick: Stick | null = null;
 const keys: Record<string, boolean> = {};
@@ -33,7 +50,7 @@ export function moveVec(): Pt {
   return l > 1 ? { x: x / l, y: y / l } : { x, y };
 }
 
-export function initInput(h: { toggleBag: () => void; onMove: () => void }) {
+export function initInput(h: { toggleBag: () => void; onMove: () => void; onFire: () => void }) {
   cv.addEventListener("pointerdown", (e) => {
     if (mode !== "raid" || stick) return;
     stick = { id: e.pointerId, bx: e.clientX, by: e.clientY, x: e.clientX, y: e.clientY };
@@ -55,6 +72,7 @@ export function initInput(h: { toggleBag: () => void; onMove: () => void }) {
     const k = e.key.toLowerCase();
     keys[k] = true;
     if ((mode === "raid" || mode === "bag") && (e.key === "Escape" || k === "b")) h.toggleBag();
+    if (mode === "raid" && k === "f" && !e.repeat) h.onFire();
     if (mode === "raid") h.onMove();
   });
   addEventListener("keyup", (e) => {

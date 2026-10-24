@@ -1,14 +1,14 @@
-import { RAR, armorRed, bagUsed, def, mk, valOf, wstat, type Item } from "./items";
+import { FREE, RAR, armorRed, bagUsed, def, mk, valOf, wstat, type Item, type WeaponStats } from "./items";
 import { applyRaid, cap, maxHp, type RaidTally } from "./progression";
 import { C } from "./render/canvas";
 import { blood, makeDecal, makeDecor, makeGround, stampCasing, type Decal, type Decor } from "./render/decor";
 import type { Tile } from "./render/assets";
 import { S, mode, save, setMode } from "./state";
-import { clearStick, moveVec } from "./input";
+import { clearStick, moveVec, prefs } from "./input";
 import { setRaidHud, showHint, toast, updHud } from "./ui/hud";
 import { renderEnd } from "./ui/end";
 import { pick, rnd, type Pt, type Rect } from "./util";
-import { collide, inWall, los } from "./world/geometry";
+import { MELEE_ARC, collide, inArc, inWall, los } from "./world/geometry";
 import { H, W, depth, freePt, genMap, inBld, rollItem, type Building } from "./world/mapgen";
 import { flowDir, makeNav, updFlow, type Nav } from "./world/nav";
 import { pickVault } from "./world/vault";
@@ -79,8 +79,14 @@ export interface Player extends Pt {
   arm: Item | null;
   meds: number;
   keys: number;
-  /** HP still to restore from the medkit in use */
+  /** HP still to restore from the medkit in use, and how fast */
   regen: number;
+  regenRate: number;
+  /** seconds left on a stimulant */
+  boost: number;
+  /** melee swing animation, and how long the body keeps facing the last target */
+  swing: number;
+  faceLock: number;
   hit: number;
   still: number;
 }
@@ -178,7 +184,7 @@ export function startRaid() {
   const r: Raid = {
     zi, zone, power0: power(),
     walls, bld, nav: makeNav(walls), ground: makeGround(), decor: makeDecor(walls, bld), decal: makeDecal(),
-    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, face: 0, wpn: S.lo.w || mk("rusty"), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, hit: 0, still: 0 },
+    p: { x: sp.x, y: sp.y, hp: maxHp(), max: maxHp(), cd: 0, face: 0, wpn: S.lo.w || mk(FREE), arm: S.lo.a, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
     exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
     crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], bag: [],
     t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
@@ -218,7 +224,7 @@ export function startRaid() {
   setMode("raid");
   clearStick();
   setRaidHud(true);
-  showHint();
+  showHint(!!wstat(r.p.wpn).mel);
   updHud(r);
   clock.last = performance.now();
 }
@@ -249,20 +255,42 @@ function say(r: Raid, msg: string) {
   r.toastT = 2.5;
 }
 
+/** Heals over time from one medical item; false when it can't be used right now. */
+function applyMed(r: Raid, it: Item): boolean {
+  const p = r.p, d = def(it.k);
+  if (d.t !== "med") return false;
+  if (p.hp >= p.max) return toast("PV déjà au maximum"), false;
+  if (p.regen > 0) return toast("Soin déjà en cours"), false;
+  p.regen = d.heal;
+  p.regenRate = d.heal / d.dur;
+  burst(r, p.x, p.y, C.ok, 10, 90);
+  return true;
+}
+
+/** The heal button: carried medkits first, then whatever medical item is in the bag. */
 export function heal() {
   const r = R;
   if (!r) return;
-  const p = r.p;
-  if (p.hp >= p.max) return toast("PV déjà au maximum");
-  if (p.regen > 0) return toast("Soin déjà en cours");
-  if (p.meds > 0) p.meds--;
-  else {
-    const i = r.bag.findIndex((x) => x.k === "med");
-    if (i < 0) return toast("Aucune trousse de soin");
-    r.bag.splice(i, 1);
+  const i = r.bag.findIndex((x) => def(x.k).t === "med");
+  if (r.p.meds > 0) {
+    if (applyMed(r, mk("med"))) r.p.meds--;
+  } else if (i < 0) toast("Aucun soin");
+  else if (applyMed(r, r.bag[i])) r.bag.splice(i, 1);
+  updHud(r);
+}
+
+/** "Utiliser" from the bag: medical items and stimulants. */
+export function useItem(it: Item) {
+  const r = R;
+  if (!r) return;
+  const d = def(it.k);
+  let used = false;
+  if (d.t === "med") used = applyMed(r, it);
+  if (d.t === "stim") {
+    r.p.boost = d.dur;
+    used = true;
   }
-  p.regen = 40;
-  burst(r, p.x, p.y, C.ok, 10, 90);
+  if (used) r.bag.splice(r.bag.indexOf(it), 1);
   updHud(r);
 }
 
@@ -316,6 +344,42 @@ function killed(r: Raid, e: Enemy) {
   }
   if (e.kind === "gunner" && Math.random() < 0.2) drop(mk("vkey"));
   if (Math.random() < 0.45) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y))));
+}
+
+function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number) {
+  e.hp -= dmg;
+  e.hit = 0.1;
+  e.aggro = true;
+  burst(r, x, y, C.bad, 4, 90);
+  blood(r.decal, x, y, 3, false);
+  if (e.hp <= 0) killed(r, e);
+}
+
+/** Swings at the nearest enemy in reach and hits everyone inside the arc in front. */
+function strike(r: Raid, wd: WeaponStats) {
+  const p = r.p, reach = (e: Enemy) => wd.range + KINDS[e.kind].r;
+  let target: Enemy | null = null, bd = Infinity;
+  for (const e of r.enemies) {
+    const d = Math.hypot(e.x - p.x, e.y - p.y);
+    if (d < reach(e) && d < bd && los(r.walls, p, e)) {
+      bd = d;
+      target = e;
+    }
+  }
+  if (!target) return;
+  const a0 = Math.atan2(target.y - p.y, target.x - p.x);
+  p.face = a0;
+  p.faceLock = 0.25;
+  p.cd = 1 / wd.rate;
+  p.swing = 0.18;
+  for (const e of [...r.enemies]) {
+    if (!inArc(p.x, p.y, a0, e.x, e.y, reach(e), MELEE_ARC)) continue;
+    const a = Math.atan2(e.y - p.y, e.x - p.x), kb = (wd.kb || 0) * (e.kind === "boss" ? 0.2 : 1);
+    e.x += Math.cos(a) * kb;
+    e.y += Math.sin(a) * kb;
+    hitEnemy(r, e, wd.dmg, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10);
+  }
+  noise(r, p.x, p.y, wd.noise);
 }
 
 /** Chase direction: straight at the player in sight, otherwise along the flow field around walls. */
@@ -395,17 +459,21 @@ export function update(dt: number) {
   const r = R;
   if (!r) return;
   const p = r.p, m = moveVec(), moving = m.x !== 0 || m.y !== 0, wd = wstat(p.wpn);
-  p.x += m.x * 175 * dt;
-  p.y += m.y * 175 * dt;
+  const spd = p.boost > 0 ? 236 : 175;
+  p.x += m.x * spd * dt;
+  p.y += m.y * spd * dt;
   collide(r.walls, p, 13);
-  if (moving) p.face = Math.atan2(m.y, m.x);
+  p.boost -= dt;
+  p.swing -= dt;
+  p.faceLock -= dt;
+  if (moving && p.faceLock <= 0) p.face = Math.atan2(m.y, m.x);
   p.still = moving ? 0 : p.still + dt;
   p.cd -= dt;
   p.hit -= dt;
   r.shake -= dt;
   r.toastT -= dt;
   if (p.regen > 0) {
-    const g = Math.min(p.regen, 20 * dt);
+    const g = Math.min(p.regen, p.regenRate * dt);
     p.hp = Math.min(p.max, p.hp + g);
     p.regen = p.hp >= p.max ? 0 : p.regen - g;
   }
@@ -424,8 +492,9 @@ export function update(dt: number) {
     if (v.prog >= UNLOCK_TIME) unlockVault(r, v);
   }
 
-  // auto-fire only while standing still, at the nearest enemy in sight and in range
-  if (!moving && p.still > 0.08 && p.cd <= 0) {
+  // melee strikes on the move; guns fire only while standing still. Both stay quiet when the player turns fire off.
+  if (prefs.fire && wd.mel && p.cd <= 0) strike(r, wd);
+  if (prefs.fire && !wd.mel && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null, bd = wd.range;
     for (const e of r.enemies) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
@@ -502,13 +571,8 @@ export function update(dt: number) {
     }
     const e = r.enemies.find((e) => Math.hypot(e.x - b.x, e.y - b.y) < KINDS[e.kind].r + 1);
     if (!e) continue;
-    e.hp -= b.dmg;
-    e.hit = 0.1;
-    e.aggro = true;
     r.bullets.splice(i, 1);
-    burst(r, b.x, b.y, C.bad, 4, 90);
-    blood(r.decal, b.x + b.vx * 0.02, b.y + b.vy * 0.02, 3, false);
-    if (e.hp <= 0) killed(r, e);
+    hitEnemy(r, e, b.dmg, b.x + b.vx * 0.02, b.y + b.vy * 0.02);
   }
 
   for (let i = r.ebul.length - 1; i >= 0; i--) {
@@ -562,9 +626,9 @@ export function endRaid(ok: boolean, why = "") {
   clearStick();
   setRaidHud(false);
   if (ok) {
-    const gained = r.bag.filter((i) => i.k !== "rusty"), val = gained.reduce((s, i) => s + valOf(i), 0);
+    const gained = r.bag.filter((i) => i.k !== FREE), val = gained.reduce((s, i) => s + valOf(i), 0);
     S.stash.push(...gained);
-    S.lo.w = p.wpn.k === "rusty" ? null : p.wpn;
+    S.lo.w = p.wpn.k === FREE ? null : p.wpn;
     S.lo.a = p.arm;
     S.lo.meds = p.meds;
     S.lo.keys = p.keys;
@@ -576,7 +640,7 @@ export function endRaid(ok: boolean, why = "") {
     save();
     renderEnd({ ok, why, val, items: gained, meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
   } else {
-    const lost = [...(p.wpn.k !== "rusty" ? [p.wpn] : []), ...(p.arm ? [p.arm] : []), ...r.bag];
+    const lost = [...(p.wpn.k !== FREE ? [p.wpn] : []), ...(p.arm ? [p.arm] : []), ...r.bag];
     const val = lost.reduce((s, i) => s + valOf(i), 0) + p.meds * def("med").v + p.keys * def("vkey").v;
     S.lo = { w: null, a: null, meds: 0, keys: 0 };
     S.st.dead++;

@@ -1,4 +1,4 @@
-import { armorRed, wstat } from "./items";
+import { FREE, armorRed, wstat } from "./items";
 import { maxHp } from "./progression";
 import { S, type Save } from "./state";
 import { clamp } from "./util";
@@ -30,6 +30,6 @@ export const unlocked = (s: Save, i: number) => i === 0 || s.zx[i - 1] >= UNLOCK
 
 /** One number for "how strong am I": weapon damage per second, scaled by armour and max HP. */
 export function power(s: Save = S): number {
-  const w = wstat(s.lo.w || { k: "rusty", u: "" });
+  const w = wstat(s.lo.w || { k: FREE, u: "" });
   return Math.round(((w.dmg * w.pel * w.rate) / (1 - armorRed(s.lo.a))) * (maxHp() / 100));
 }

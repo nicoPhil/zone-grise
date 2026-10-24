@@ -1,6 +1,6 @@
 import { bagUsed, def, desc, valOf } from "../items";
 import { cap } from "../progression";
-import { R, clock, heal } from "../raid";
+import { R, clock, useItem } from "../raid";
 import { setMode } from "../state";
 import { clearStick } from "../input";
 import { $ } from "../util";
@@ -26,7 +26,7 @@ function renderBag() {
   const p = R.p, val = R.bag.reduce((s, i) => s + valOf(i), 0);
   const items = R.bag.map((i) => {
     const d = def(i.k);
-    const btns = `<div class="btns">${d.t === "wpn" || d.t === "arm" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}${d.t === "med" ? `<button data-a="use" data-u="${i.u}">Utiliser</button>` : ""}<button data-a="drop" data-u="${i.u}">Jeter</button></div>`;
+    const btns = `<div class="btns">${d.t === "wpn" || d.t === "arm" ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}${d.t === "med" || d.t === "stim" ? `<button data-a="use" data-u="${i.u}">Utiliser</button>` : ""}<button data-a="drop" data-u="${i.u}">Jeter</button></div>`;
     return row(i, btns, `${desc(i)} · ${d.s} place${d.s > 1 ? "s" : ""} · ${valOf(i)} cr`);
   });
   $("bag").innerHTML = `<div class="wrap">
@@ -50,11 +50,7 @@ export function initBag() {
       R.bag.splice(i, 1);
       R.pick.push({ x: p.x, y: p.y, it, nop: true });
     }
-    if (b.dataset.a === "use") {
-      R.bag.splice(i, 1);
-      p.meds++;
-      heal();
-    }
+    if (b.dataset.a === "use") useItem(it);
     if (b.dataset.a === "eq") {
       R.bag.splice(i, 1);
       if (t === "wpn") {

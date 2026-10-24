@@ -13,16 +13,25 @@ interface Upgrade {
 }
 
 export const UP: Record<keyof Upgrades, Upgrade> = {
-  bag: { n: "Sac à dos", lv: ["10 places", "14 places", "18 places"], cost: [{ cr: 600, it: { wires: 2 } }, { cr: 1800, it: { hdd: 2, gpu: 1 } }] },
-  meds: { n: "Poche à trousses", lv: ["3 trousses", "4 trousses", "5 trousses"], cost: [{ cr: 300, it: { pills: 2 } }, { cr: 900, it: { pills: 3, watch: 1 } }] },
-  hp: { n: "Entraînement", lv: ["100 PV", "125 PV", "150 PV"], cost: [{ cr: 500, it: { batt: 3 } }, { cr: 1500, it: { gold: 1, pills: 2 } }] },
+  bag: {
+    n: "Sac à dos", lv: ["10 places", "14 places", "18 places", "22 places"],
+    cost: [{ cr: 600, it: { wires: 2, tape: 2 } }, { cr: 1800, it: { hdd: 2, gpu: 1 } }, { cr: 4000, it: { laptop: 1, milbat: 2 } }],
+  },
+  meds: {
+    n: "Poche à trousses", lv: ["3 trousses", "4 trousses", "5 trousses", "6 trousses"],
+    cost: [{ cr: 300, it: { pills: 2 } }, { cr: 900, it: { pills: 3, radio: 1 } }, { cr: 2500, it: { jewels: 1, binoc: 2 } }],
+  },
+  hp: {
+    n: "Entraînement", lv: ["100 PV", "125 PV", "150 PV", "175 PV"],
+    cost: [{ cr: 500, it: { batt: 3, cans: 2 } }, { cr: 1500, it: { gold: 1, pills: 2 } }, { cr: 4500, it: { virus: 1, goldwatch: 1 } }],
+  },
 };
-export const BENCH: Cost[] = [{ cr: 250, it: { scrap: 3 } }, { cr: 700, it: { wires: 2, hdd: 1 } }];
-export const MAX_LV = 2;
+export const BENCH: Cost[] = [{ cr: 250, it: { scrap: 3, bolts: 2 } }, { cr: 700, it: { wires: 2, hdd: 1 } }, { cr: 2000, it: { milbat: 1, dossier: 1 } }];
+export const MAX_LV = 3;
 
-export const cap = () => [10, 14, 18][S.up.bag];
+export const cap = () => [10, 14, 18, 22][S.up.bag];
 export const medMax = () => 3 + S.up.meds;
-export const maxHp = () => [100, 125, 150][S.up.hp];
+export const maxHp = () => [100, 125, 150, 175][S.up.hp];
 
 export const count = (k: ItemKey) => S.stash.filter((i) => i.k === k).length;
 const costItems = (c: Cost) => Object.entries(c.it) as [ItemKey, number][];
@@ -34,7 +43,7 @@ export function pay(c: Cost) {
 }
 export const costParts = (c: Cost) => costItems(c).map(([k, n]) => ({ k, n, have: Math.min(count(k), n) }));
 
-const BRING: ItemKey[] = ["wires", "batt", "pills", "watch", "hdd", "gpu", "gold"];
+const BRING: ItemKey[] = ["tape", "wires", "batt", "cigs", "torch", "pills", "watch", "radio", "hdd", "binoc", "gpu", "milbat", "gold", "laptop", "jewels"];
 
 export interface RaidTally {
   kills: number;
