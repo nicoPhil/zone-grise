@@ -117,7 +117,7 @@ export function renderStash() {
       <div style="text-align:right"><div class="lbl">Crédits</div><div class="cr">${S.credits} cr</div></div></div>
     <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
     ${body()}
-    <p class="note">${S.st.raids} raids · ${S.st.ext} extractions · ${S.st.dead} morts · meilleur butin ${S.st.best} cr · graphismes Kenney (CC0)</p>
+    <p class="note">${S.st.raids} raids · ${S.st.ext} extractions · ${S.st.dead} morts · meilleur butin ${S.st.best} cr · graphismes Kenney (CC0) · version ${__BUILD__}</p>
   </div>`;
 }
 
