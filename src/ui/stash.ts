@@ -8,7 +8,7 @@ import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
 import { icon, type Icon } from "./icons";
 import { pin, popup } from "./popup";
-import { row } from "./row";
+import { pinned, row } from "./row";
 import { sheet } from "./sheet";
 
 type Tab = "raid" | "stash" | "quest" | "shop" | "trade";
@@ -72,7 +72,7 @@ function tabStash() {
     const all = g.length > 1 ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>` : "";
     const btns = `<div class="btns">${eq}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${valOf(i)}</button>${all}</div>`;
     const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
-    return row(i, btns, [desc(i), ...tags].join(" · "), g.length, `data-u="${i.u}" data-pin="${i.u}" role="button" tabindex="0"`);
+    return row(i, btns, [desc(i), ...tags].join(" · "), g.length, pinned(i.u));
   });
   return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
@@ -107,9 +107,9 @@ function tabQuest() {
 
 function benchRow(w: Item, slot: "gun" | "blade") {
   const lv = w.lv || 0;
-  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
+  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`, "", 1, pinned(w.u));
   const cur = wstat(w), nx = wstat({ ...w, lv: lv + 1 }), c = BENCH[lv];
-  return `<div class="item"><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
+  return `<div class="item" ${pinned(w.u)}><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
       <small>Dégâts ${cur.dmg} → ${nx.dmg} · cadence ${fmtRate(cur.rate)} → ${fmtRate(nx.rate)}</small><small>${costTxt(c)}</small></div>
       <div class="btns"><button data-a="bench" data-s="${slot}" ${canPay(c) ? "" : "disabled"}>Améliorer</button></div></div>`;
 }
@@ -126,13 +126,20 @@ function tabShop() {
     <div class="card"><div class="lbl">Établi · armes équipées</div>${bench}</div>`;
 }
 
+const SHOP_PIN = "shop:";
+const buyBtn = (k: ItemKey) => `<button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button>`;
+
 function tabTrade() {
-  const rows = SHOP.map((k) => row(mk(k), `<div class="btns"><button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button></div>`));
+  const rows = SHOP.map((k) => row({ k, u: SHOP_PIN + k }, `<div class="btns">${buyBtn(k)}</div>`, "", 1, pinned(SHOP_PIN + k)));
   return `<div class="card"><div class="lbl">Marchand</div>${rows.join("")}
     <p class="note">Les objets de valeur ne s'achètent pas : il faut les trouver en raid.</p></div>`;
 }
 
 function stashPopup() {
+  if (sel?.startsWith(SHOP_PIN)) {
+    const k = sel.slice(SHOP_PIN.length) as ItemKey;
+    return popup({ k, u: sel }, [`${count(k)} au coffre`], [buyBtn(k)]);
+  }
   const lo = S.lo, it = sel && S.stash.find((i) => i.u === sel);
   if (it) {
     const t = def(it.k).t, n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
