@@ -38,7 +38,7 @@ describe("contracts", () => {
       { u: "v", t: "violet", n: 2, have: 0, cr: 520 },
       { u: "h", t: "haul", n: 600, have: 0, cr: 300 },
     ];
-    const done = applyRaid(3, 1, 650);
+    const done = applyRaid({ kills: 3, violet: 1, vaults: 0, boss: 0, haul: 650 });
     expect(done.map((q) => q.u)).toEqual(["k", "h"]);
     expect(qInfo(S.q[1])).toMatchObject({ h: 1, done: false });
   });

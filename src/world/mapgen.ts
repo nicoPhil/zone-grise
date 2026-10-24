@@ -6,6 +6,8 @@ export const W = 2400, H = 2400, TH = 20, DOOR = 84;
 
 export interface Building extends Rect {
   rooms: Rect[];
+  /** every door gap, outer and inner, as the rect a locked door would fill */
+  doors: Rect[];
   floor: number;
 }
 
@@ -72,7 +74,7 @@ function genBuildings(walls: Rect[]): Building[] {
     vWall(walls, y + TH, y + h - TH, x + w - TH, door(3, y + TH, y + h - TH));
     const rooms: Rect[] = [];
     splitRooms(walls, { x: x + TH, y: y + TH, w: w - 2 * TH, h: h - 2 * TH }, 0, rooms, doors);
-    bs.push({ x, y, w, h, rooms, floor: Math.floor(rnd(0, 3)) });
+    bs.push({ x, y, w, h, rooms, doors, floor: Math.floor(rnd(0, 3)) });
   }
   return bs;
 }
@@ -103,9 +105,9 @@ export function freePt(walls: Rect[], pad: number, ok: (x: number, y: number) =>
   return { x: W / 2, y: H / 2 };
 }
 
-export function rollItem(d: number): Item {
+export function rollItem(d: number, minR = 0): Item {
   const x = Math.random();
-  const r = x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0;
+  const r = Math.max(minR, x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0);
   const tr = Math.random(), t = tr < 0.62 ? "val" : tr < 0.76 ? "med" : tr < 0.9 ? "wpn" : "arm";
   if (t === "med") return mk("med");
   const ofType = KEYS.filter((k) => def(k).t === t && k !== "rusty");

@@ -1,7 +1,7 @@
 import { isItemKey, type Item, type ItemKey } from "./items";
 
 export type Mode = "stash" | "raid" | "bag" | "end";
-export type QuestType = "bring" | "kills" | "violet" | "haul";
+export type QuestType = "bring" | "kills" | "violet" | "haul" | "vault" | "boss";
 export interface Quest {
   u: string;
   t: QuestType;
@@ -19,7 +19,7 @@ export interface Upgrades {
 export interface Save {
   credits: number;
   stash: Item[];
-  lo: { w: Item | null; a: Item | null; meds: number };
+  lo: { w: Item | null; a: Item | null; meds: number; keys: number };
   st: { raids: number; ext: number; dead: number; best: number };
   up: Upgrades;
   q: Quest[];
@@ -29,7 +29,7 @@ export const KEY = "zone-grise-save";
 export const fresh = (): Save => ({
   credits: 250,
   stash: [],
-  lo: { w: null, a: null, meds: 0 },
+  lo: { w: null, a: null, meds: 0, keys: 0 },
   st: { raids: 0, ext: 0, dead: 0, best: 0 },
   up: { bag: 0, meds: 0, hp: 0 },
   q: [],
@@ -58,7 +58,7 @@ export function parseSave(raw: string | null): Save {
     ...fresh(),
     ...s,
     stash: s.stash.filter((i) => isItemKey(i?.k)),
-    lo: { w: ok(s.lo.w), a: ok(s.lo.a), meds: s.lo.meds || 0 },
+    lo: { w: ok(s.lo.w), a: ok(s.lo.a), meds: s.lo.meds || 0, keys: s.lo.keys || 0 },
     up: { ...fresh().up, ...s.up },
     q: Array.isArray(s.q) ? s.q : [],
   };

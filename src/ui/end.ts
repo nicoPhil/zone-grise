@@ -11,6 +11,7 @@ export interface RaidResult {
   val: number;
   items: Item[];
   meds: number;
+  keys: number;
   quests: Quest[];
 }
 
@@ -23,7 +24,10 @@ export function renderEnd(res: RaidResult) {
     html = `<div class="lbl">Extraction réussie</div><h1 style="color:var(--ok)">Sorti vivant</h1><div class="res">+ ${res.val} cr de butin</div>${quests}
       <div class="card">${res.items.length ? res.items.map((i) => row(i, valTag(valOf(i)))).join("") : `<p class="empty">Sac vide, mais ton équipement est sauf.</p>`}</div>`;
   } else {
-    const lost = res.items.map((i) => row(i, valTag(valOf(i)))).join("") + (res.meds ? row(mk("med"), "", res.meds + " trousse(s)") : "");
+    const lost =
+      res.items.map((i) => row(i, valTag(valOf(i)))).join("") +
+      (res.meds ? row(mk("med"), "", res.meds + " trousse(s)") : "") +
+      (res.keys ? row(mk("vkey"), "", res.keys + " clé(s) emportée(s)") : "");
     html = `<div class="lbl">Raid perdu</div><h1 style="color:var(--bad)">${res.why}</h1><div class="res">− ${res.val} cr perdus</div>
       <div class="card">${lost || `<p class="empty">Tu n'avais rien à perdre. Le kit gratuit t'attend.</p>`}</div>`;
   }

@@ -36,11 +36,20 @@ export const costParts = (c: Cost) => costItems(c).map(([k, n]) => ({ k, n, have
 
 const BRING: ItemKey[] = ["wires", "batt", "pills", "watch", "hdd", "gpu", "gold"];
 
+export interface RaidTally {
+  kills: number;
+  violet: number;
+  vaults: number;
+  boss: number;
+  haul: number;
+}
+
 export function newQuest(): Quest {
   const lvl = Math.min(3, Math.floor(S.st.ext / 3));
   const taken = new Set(S.q.map((q) => q.t + (q.k || "")));
+  const types = ["bring", "bring", "kills", "violet", "haul", "vault", ...(lvl >= 1 ? (["boss"] as const) : [])] as const;
   for (let t = 0; t < 40; t++) {
-    const ty = pick(["bring", "bring", "kills", "violet", "haul"] as const);
+    const ty = pick(types);
     let q: Omit<Quest, "u" | "have">;
     if (ty === "bring") {
       const k = pick(BRING.filter((k) => def(k).r <= Math.min(2, lvl + 1)));
@@ -52,44 +61,54 @@ export function newQuest(): Quest {
     } else if (ty === "violet") {
       const n = [1, 2, 2, 3][lvl];
       q = { t: ty, n, cr: n * 260 };
-    } else {
+    } else if (ty === "vault") q = { t: ty, n: 1, cr: 450 };
+    else if (ty === "boss") q = { t: ty, n: 1, cr: 800 };
+    else {
       const n = [300, 600, 1000, 1600][lvl];
       q = { t: ty, n, cr: Math.round(n * 0.5) };
     }
     if (taken.has(q.t + (q.k || ""))) continue;
-    if (Math.random() < 0.25)
+    const roll = Math.random();
+    if (roll < 0.2) q.rew = "vkey";
+    else if (roll < 0.4)
       q.rew = pick(KEYS.filter((k) => (def(k).t === "wpn" || def(k).t === "arm") && def(k).r >= 1 && def(k).r <= lvl + 1));
     return { u: uid(), have: 0, ...q };
   }
   return { u: uid(), have: 0, t: "kills", n: 5, cr: 225 };
 }
 
+const TALLY: Partial<Record<Quest["t"], [keyof RaidTally, (n: number) => string]>> = {
+  kills: ["kills", (n) => `Éliminer ${n} ennemis et s'extraire`],
+  violet: ["violet", (n) => `Fouiller ${n} caisse${n > 1 ? "s" : ""} violette${n > 1 ? "s" : ""} et s'extraire`],
+  vault: ["vaults", () => "Ouvrir une salle forte et s'extraire"],
+  boss: ["boss", () => "Abattre la Brute et s'extraire"],
+};
+
 export function qInfo(q: Quest) {
   if (q.t === "bring" && q.k) {
     const h = count(q.k);
     return { txt: `Livrer ${q.n} × ${ITEMS[q.k].n}`, h: Math.min(h, q.n), n: q.n, done: h >= q.n, act: "Livrer" };
   }
-  if (q.t === "kills")
-    return { txt: `Éliminer ${q.n} ennemis et s'extraire`, h: Math.min(q.have, q.n), n: q.n, done: q.have >= q.n, act: "Réclamer" };
-  if (q.t === "violet") {
-    const pl = q.n > 1 ? "s" : "";
-    return { txt: `Fouiller ${q.n} caisse${pl} violette${pl} et s'extraire`, h: Math.min(q.have, q.n), n: q.n, done: q.have >= q.n, act: "Réclamer" };
-  }
+  const t = TALLY[q.t];
+  if (t) return { txt: t[1](q.n), h: Math.min(q.have, q.n), n: q.n, done: q.have >= q.n, act: "Réclamer" };
   return { txt: `S'extraire avec au moins ${q.n} cr de butin en un seul raid`, h: q.have ? 1 : 0, n: 1, done: !!q.have, act: "Réclamer" };
 }
 
 /** Raid tallies only count once the player is out alive; returns the contracts this raid completed. */
-export function applyRaid(kills: number, violet: number, haul: number): Quest[] {
+export function applyRaid(tally: RaidTally): Quest[] {
   const before = new Set(S.q.filter((q) => qInfo(q).done).map((q) => q.u));
   for (const q of S.q) {
-    if (q.t === "kills") q.have += kills;
-    if (q.t === "violet") q.have += violet;
-    if (q.t === "haul" && haul >= q.n) q.have = 1;
+    const t = TALLY[q.t];
+    if (t) q.have += tally[t[0]];
+    if (q.t === "haul" && tally.haul >= q.n) q.have = 1;
   }
   return S.q.filter((q) => qInfo(q).done && !before.has(q.u));
 }
 
+export const KEY_MAX = 2;
+
 export function norm() {
   while (S.q.length < 3) S.q.push(newQuest());
   S.lo.meds = Math.min(S.lo.meds, medMax());
+  S.lo.keys = Math.min(S.lo.keys, KEY_MAX);
 }

@@ -1,6 +1,6 @@
 import { def } from "../items";
 import { STICK_R, moveVec, stick } from "../input";
-import { EXTRACT_TIME, CRATE_TIME, VIOLET, type Crate, type Raid } from "../raid";
+import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
 import { los } from "../world/geometry";
@@ -10,7 +10,9 @@ import { T, floorPattern, sprite, tile, type CharKey } from "./assets";
 import { GN } from "./decor";
 
 const VR = 560;
-const crateCol = (d: number) => (d > VIOLET ? C.r3 : d > 0.36 ? C.r2 : C.r0);
+const GOLD = "#f0c040";
+const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
+const LOOK: Record<Kind, [CharKey, number]> = { walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], boss: ["boss", 1.4] };
 const wpnPose = (k: string): CharKey => (k === "dmr" ? "pSil" : k === "smg" || k === "ar" || k === "sg" ? "pMach" : "pGun");
 
 interface Ray extends Pt {
@@ -70,7 +72,7 @@ function drawCrate(c: Crate) {
     ctx.fillStyle = "rgba(10,8,6,.62)";
     ctx.fillRect(c.x - 17, c.y - 17, 34, 34);
   } else {
-    ctx.fillStyle = crateCol(c.d);
+    ctx.fillStyle = crateCol(c);
     ctx.fillRect(c.x - 17, c.y - 19, 34, 4);
   }
 }
@@ -144,13 +146,14 @@ export function draw(r: Raid | null) {
   }
   for (const e of r.enemies) {
     if (!seen(e)) continue;
-    const a = Math.atan2(p.y - e.y, p.x - e.x);
-    sprite(e.gun ? "sold" : "zomb", e.x, e.y, e.gun || e.aggro ? a : Math.atan2(e.wy, e.wx) || 0, e.hit > 0);
-    if (e.hp < e.max) {
+    const a = Math.atan2(p.y - e.y, p.x - e.x), [look, scale] = LOOK[e.kind];
+    sprite(look, e.x, e.y, e.kind === "gunner" || e.aggro ? a : Math.atan2(e.wy, e.wx) || 0, e.hit > 0, scale);
+    if (e.hp < e.max && e.kind !== "boss") {
+      const bw = KINDS[e.kind].r * 2 + 2;
       ctx.fillStyle = "rgba(0,0,0,.6)";
-      ctx.fillRect(e.x - 15, e.y + 20, 30, 4);
+      ctx.fillRect(e.x - bw / 2, e.y + 20, bw, 4);
       ctx.fillStyle = C.bad;
-      ctx.fillRect(e.x - 15, e.y + 20, (30 * e.hp) / e.max, 4);
+      ctx.fillRect(e.x - bw / 2, e.y + 20, (bw * e.hp) / e.max, 4);
     }
   }
   if (p.arm) {
@@ -194,7 +197,9 @@ export function draw(r: Raid | null) {
   const dg = ctx.createRadialGradient(p.x, p.y, 40, p.x, p.y, VR * 1.15);
   dg.addColorStop(0, "rgba(0,0,0,0)");
   dg.addColorStop(1, "rgba(0,0,0,.78)");
+  const locks = new Set(r.vault && !r.vault.open ? r.vault.locks : []);
   for (const w of near) {
+    if (locks.has(w)) continue;
     ctx.fillStyle = "#c9611f";
     ctx.fillRect(w.x, w.y, w.w, w.h);
     ctx.fillStyle = "#474747";
@@ -205,10 +210,28 @@ export function draw(r: Raid | null) {
     ctx.fillRect(w.x, w.y, w.w, w.h);
   }
 
+  for (const l of locks) {
+    ctx.fillStyle = "#3a2e12";
+    ctx.fillRect(l.x, l.y, l.w, l.h);
+    ctx.fillStyle = GOLD;
+    const along = l.w > l.h;
+    for (let o = 6; o < (along ? l.w : l.h) - 2; o += 12) along ? ctx.fillRect(l.x + o, l.y + 2, 4, l.h - 4) : ctx.fillRect(l.x + 2, l.y + o, l.w - 4, 4);
+    const m = lockCentre(l);
+    ctx.fillStyle = "#1a1408";
+    ctx.fillRect(m.x - 7, m.y - 4, 14, 11);
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(m.x - 7, m.y - 4, 14, 11);
+    ctx.beginPath();
+    ctx.arc(m.x, m.y - 4, 5, Math.PI, 0);
+    ctx.stroke();
+  }
+
   // light sources
   ctx.globalCompositeOperation = "lighter";
+  for (const l of locks) glow(lockCentre(l).x, lockCentre(l).y, 70, GOLD, 0.25 + 0.08 * Math.sin(tt * 2.5));
   for (const e of r.exits) glow(e.x, e.y, 130, C.ok, 0.32 + 0.1 * Math.sin(tt * 3));
-  for (const c of r.crates) if (!c.open && c.d > 0.36) glow(c.x, c.y, 46, crateCol(c.d), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
+  for (const c of r.crates) if (!c.open && c.d > 0.36) glow(c.x, c.y, 46, crateCol(c), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
   for (const q of r.pick) glow(q.x, q.y, 22, rarCol(def(q.it.k).r), 0.45);
   if (r.flash > 0) {
     ctx.save();
@@ -269,6 +292,17 @@ export function draw(r: Raid | null) {
       ctx.fillText("!", e.x, e.y - 24);
     }
   for (const c of r.crates) if (!c.open && c.prog > 0) ring(c.x, c.y, c.prog / CRATE_TIME, C.accent);
+  if (r.vault && !r.vault.open)
+    for (const l of r.vault.locks) {
+      const m = lockCentre(l), d = Math.hypot(m.x - p.x, m.y - p.y);
+      if (r.vault.prog > 0 && d < 64) ring(m.x, m.y, r.vault.prog / UNLOCK_TIME, GOLD);
+      if (d < 140) {
+        ctx.fillStyle = GOLD;
+        ctx.font = "600 13px " + FONT;
+        ctx.textAlign = "center";
+        ctx.fillText(hasKey(r) ? "SALLE FORTE · reste immobile" : "SALLE FORTE · clé requise", m.x, m.y - 30);
+      }
+    }
   if (r.ext > 0) {
     ring(p.x, p.y, r.ext / EXTRACT_TIME, C.ok);
     ctx.fillStyle = C.ok;
@@ -285,7 +319,19 @@ export function draw(r: Raid | null) {
   vg.addColorStop(1, hurtA ? `rgba(120,10,10,${hurtA.toFixed(2)})` : "rgba(0,0,0,.45)");
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, vw, vh);
-  const top = 60, bot = vh - 90;
+  const boss = r.enemies.find((e) => e.kind === "boss" && e.aggro && seen(e));
+  if (boss) {
+    const bw = Math.min(320, vw - 32), bx = (vw - bw) / 2, by = 100;
+    ctx.fillStyle = "rgba(0,0,0,.6)";
+    ctx.fillRect(bx, by, bw, 8);
+    ctx.fillStyle = C.bad;
+    ctx.fillRect(bx, by, (bw * boss.hp) / boss.max, 8);
+    ctx.fillStyle = C.fg;
+    ctx.font = "600 13px " + FONT;
+    ctx.textAlign = "center";
+    ctx.fillText("LA BRUTE", vw / 2, by - 5);
+  }
+  const top = boss ? 120 : 60, bot = vh - 90;
   for (const e of r.exits) {
     const ex = (e.x - cx) * zoom, ey = (e.y - cy) * zoom;
     if (ex > 0 && ex < vw && ey > top && ey < bot) continue;

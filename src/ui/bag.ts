@@ -32,7 +32,7 @@ function renderBag() {
   $("bag").innerHTML = `<div class="wrap">
     <div class="top"><h2>Sac ${bagUsed(R.bag)} / ${cap()}</h2><div class="val">${val} cr</div></div>
     <div class="card"><div class="lbl">Équipé</div>${row(p.wpn, "")}${p.arm ? row(p.arm, "") : ""}
-      <div class="item"><div class="nm"><b>${Math.ceil(p.hp)} / ${p.max} PV</b><small>${p.meds} trousse(s) sur toi</small></div></div></div>
+      <div class="item"><div class="nm"><b>${Math.ceil(p.hp)} / ${p.max} PV</b><small>${p.meds} trousse(s) et ${p.keys} clé(s) emportée(s)</small></div></div></div>
     <div class="card">${items.length ? items.join("") : `<p class="empty">Sac vide. Arrête-toi près d'une caisse pour la fouiller.</p>`}</div>
     <p class="note">Les caisses violettes, au centre de la carte, contiennent le meilleur loot. Les tirs font du bruit et attirent les ennemis.</p>
     <button class="go" data-a="back">Reprendre</button></div>`;

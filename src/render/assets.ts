@@ -9,12 +9,14 @@ const CHAR = {
   pSil: [0, 220, 56, 43],
   sold: [110, 220, 52, 43],
   zomb: [300, 88, 35, 43],
+  boss: [58, 132, 52, 43],
 } as const;
-export type CharKey = keyof typeof CHAR;
+// runners reuse the zombie frame, tinted red
+export type CharKey = keyof typeof CHAR | "zombR";
 
 interface Assets {
-  ch: HTMLImageElement;
   ti: HTMLImageElement;
+  frames: Record<CharKey, HTMLCanvasElement>;
   white: Record<CharKey, HTMLCanvasElement>;
   floors: CanvasPattern[];
 }
@@ -28,29 +30,29 @@ const loadImg = (src: string) =>
     i.src = import.meta.env.BASE_URL + src;
   });
 
-function whiteCopy(img: HTMLImageElement, [x, y, w, h]: readonly number[]) {
+function crop(img: CanvasImageSource, [x, y, w, h]: readonly number[], fill?: string) {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
   const g = c.getContext("2d")!;
   g.drawImage(img, x, y, w, h, 0, 0, w, h);
-  g.globalCompositeOperation = "source-in";
-  g.fillStyle = "#fff";
-  g.fillRect(0, 0, w, h);
+  if (fill) {
+    g.globalCompositeOperation = "source-atop";
+    g.fillStyle = fill;
+    g.fillRect(0, 0, w, h);
+  }
   return c;
 }
 
 export const assetsReady: Promise<void> = Promise.all([loadImg("assets/characters.png"), loadImg("assets/tiles.png")]).then(
   ([ch, ti]) => {
-    const white = {} as Record<CharKey, HTMLCanvasElement>;
-    for (const k of Object.keys(CHAR) as CharKey[]) white[k] = whiteCopy(ch, CHAR[k]);
-    const floors = [1, 2, 3].map((r) => {
-      const c = document.createElement("canvas");
-      c.width = c.height = T;
-      c.getContext("2d")!.drawImage(ti, 14 * T, r * T, T, T, 0, 0, T, T);
-      return ctx.createPattern(c, "repeat")!;
-    });
-    A = { ch, ti, white, floors };
+    const frames = {} as Record<CharKey, HTMLCanvasElement>, white = {} as Record<CharKey, HTMLCanvasElement>;
+    for (const k of Object.keys(CHAR) as (keyof typeof CHAR)[]) frames[k] = crop(ch, CHAR[k]);
+    frames.zombR = crop(frames.zomb, [0, 0, CHAR.zomb[2], CHAR.zomb[3]], "rgba(190,30,30,.45)");
+    frames.boss = crop(frames.boss, [0, 0, CHAR.boss[2], CHAR.boss[3]], "rgba(70,8,8,.4)");
+    for (const k of Object.keys(frames) as CharKey[]) white[k] = crop(frames[k], [0, 0, frames[k].width, frames[k].height], "#fff");
+    const floors = [1, 2, 3].map((r) => ctx.createPattern(crop(ti, [14 * T, r * T, T, T]), "repeat")!);
+    A = { ti, frames, white, floors };
   },
 );
 
@@ -65,14 +67,13 @@ export function shadow(x: number, y: number, r: number) {
 }
 
 export function sprite(key: CharKey, x: number, y: number, a: number, hit: boolean, s = 0.85) {
-  const [sx, sy, w, h] = CHAR[key];
-  shadow(x, y, 12);
+  const h = A.frames[key].height;
+  shadow(x, y, 14 * s);
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(a);
   ctx.scale(s, s);
   // the body sits 17px from the sprite's left edge; the gun sticks out to the right
-  if (hit) ctx.drawImage(A.white[key], -17, -h / 2);
-  else ctx.drawImage(A.ch, sx, sy, w, h, -17, -h / 2, w, h);
+  ctx.drawImage((hit ? A.white : A.frames)[key], -17, -h / 2);
   ctx.restore();
 }

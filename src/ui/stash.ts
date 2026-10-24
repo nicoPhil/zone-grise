@@ -1,5 +1,5 @@
 import { ITEMS, SHOP, def, desc, mk, nameOf, price, valOf, wstat, type ItemKey } from "../items";
-import { BENCH, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
+import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
 import { KEY, S, save, setMode, type Upgrades } from "../state";
@@ -34,8 +34,8 @@ function needed() {
 }
 
 function tabRaid() {
-  const lo = S.lo, meds = count("med"), need = needed();
-  const others = S.stash.filter((i) => i.k !== "med").sort((a, b) => valOf(b) - valOf(a));
+  const lo = S.lo, meds = count("med"), keys = count("vkey"), need = needed();
+  const others = S.stash.filter((i) => i.k !== "med" && i.k !== "vkey").sort((a, b) => valOf(b) - valOf(a));
   const stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
   const list = others.map((i) => {
     const t = def(i.k).t;
@@ -47,12 +47,15 @@ function tabRaid() {
       ${lo.a ? row(lo.a, `<div class="btns"><button data-a="una">Retirer</button></div>`) : `<div class="item"><div class="nm"><b>Pas de gilet</b><small>Dégâts subis normaux</small></div></div>`}
       <div class="item"><div class="nm"><b>Trousses de soin : ${lo.meds} / ${medMax()}</b><small>${meds} en planque · ${maxHp()} PV · sac de ${cap()} places</small></div>
         <div class="btns"><button data-a="medm" ${lo.meds ? "" : "disabled"} aria-label="Laisser une trousse">−</button><button data-a="medp" ${meds && lo.meds < medMax() ? "" : "disabled"} aria-label="Prendre une trousse">+</button></div></div>
+      <div class="item"><div class="nm"><b>Clés de salle forte : ${lo.keys} / ${KEY_MAX}</b><small>${keys} en planque · ouvrent la salle forte gardée par la Brute</small></div>
+        <div class="btns"><button data-a="keym" ${lo.keys ? "" : "disabled"} aria-label="Laisser une clé">−</button><button data-a="keyp" ${keys && lo.keys < KEY_MAX ? "" : "disabled"} aria-label="Prendre une clé">+</button></div></div>
       <p class="note">Si tu meurs, tu perds tout ce qui est ici et tout ce qu'il y a dans ton sac.</p>
     </div>
     <button class="go" data-a="raid">Partir en raid</button>
     <div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
       ${meds ? row(mk("med"), `<div class="btns"><button data-a="sellmed">${ITEMS.med.v} cr</button></div>`, `${meds} en stock · Rend 50 PV`) : ""}
+      ${keys ? row(mk("vkey"), `<div class="btns"><button data-a="sellkey">${ITEMS.vkey.v} cr</button></div>`, `${keys} en stock · Ouvre une salle forte`) : ""}
     </div>`;
 }
 
@@ -167,6 +170,12 @@ export function initStash() {
       if (it) S.credits += valOf(it);
     }
     if (a === "sellmed" && take(S.stash.find((i) => i.k === "med")?.u)) S.credits += ITEMS.med.v;
+    if (a === "sellkey" && take(S.stash.find((i) => i.k === "vkey")?.u)) S.credits += ITEMS.vkey.v;
+    if (a === "keyp" && lo.keys < KEY_MAX && take(S.stash.find((i) => i.k === "vkey")?.u)) lo.keys++;
+    if (a === "keym" && lo.keys) {
+      lo.keys--;
+      S.stash.push(mk("vkey"));
+    }
     if (a === "buy") {
       const k = b.dataset.k as ItemKey;
       if (S.credits >= price(k)) {

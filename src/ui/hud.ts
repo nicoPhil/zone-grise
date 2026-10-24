@@ -39,6 +39,7 @@ export function updHud(r: Raid) {
   $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";
   $("timer").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   $("timer").classList.toggle("warn", s <= 60);
-  $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + cap();
+  const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
+  $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + cap() + (keys ? ` · ${keys} clé${keys > 1 ? "s" : ""}` : "");
   $("bHeal").textContent = "Soin (" + (p.meds + r.bag.filter((i) => i.k === "med").length) + ")";
 }

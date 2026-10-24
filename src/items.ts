@@ -15,7 +15,7 @@ interface Base {
   s: number;
 }
 export type ItemDef =
-  | (Base & { t: "val" | "med" })
+  | (Base & { t: "val" | "med" | "key" })
   | (Base & WeaponStats & { t: "wpn" })
   | (Base & { t: "arm"; red: number });
 
@@ -31,6 +31,7 @@ export const ITEMS = {
   key: { n: "Clé chiffrée", t: "val", r: 3, v: 900, s: 1 },
   proto: { n: "Prototype", t: "val", r: 3, v: 1300, s: 2 },
   med: { n: "Trousse de soin", t: "med", r: 1, v: 60, s: 1 },
+  vkey: { n: "Clé de salle forte", t: "key", r: 2, v: 150, s: 1 },
   rusty: { n: "Pistolet rouillé", t: "wpn", r: 0, v: 0, s: 2, dmg: 10, rate: 2, range: 260, spr: 0.07, pel: 1, noise: 300 },
   p9: { n: "Pistolet 9 mm", t: "wpn", r: 0, v: 120, s: 2, dmg: 14, rate: 2.8, range: 300, spr: 0.05, pel: 1, noise: 320 },
   smg: { n: "PM compact", t: "wpn", r: 1, v: 380, s: 2, dmg: 8, rate: 8, range: 250, spr: 0.13, pel: 1, noise: 380 },
@@ -79,5 +80,6 @@ export function desc(it: Item): string {
   }
   if (d.t === "arm") return `−${d.red * 100} % de dégâts subis`;
   if (d.t === "med") return "Rend 50 PV";
+  if (d.t === "key") return "Ouvre une salle forte";
   return RAR[d.r];
 }
