@@ -113,6 +113,20 @@ export function wstat(it: Item): WeaponStats {
   return { ...d, dmg: Math.round(d.dmg * (1 + 0.15 * lv)), rate: +(d.rate * (1 + 0.1 * lv)).toFixed(1) };
 }
 
+export const dps = (it: Item) => {
+  const w = wstat(it);
+  return w.dmg * w.pel * w.rate;
+};
+
+/** Would this piece beat what sits in the slot it would take? */
+export function upgradeOver(it: Item, gear: { wpn: Item | null; mel: Item; arm: Item | null }): boolean {
+  const d = def(it.k);
+  if (d.t === "arm") return d.red > armorRed(gear.arm);
+  if (d.t !== "wpn") return false;
+  const cur = isBlade(it) ? gear.mel : gear.wpn;
+  return !cur || dps(it) > dps(cur);
+}
+
 export function desc(it: Item): string {
   const d = def(it.k);
   if (d.t === "wpn") {

@@ -1,16 +1,24 @@
-import { bagUsed, def, desc, nameOf, valOf } from "../items";
+import { bagUsed, def, desc, nameOf, upgradeOver, valOf, type Item } from "../items";
 import { cap } from "../progression";
-import { R, clock, drop, equip, ground, useItem } from "../raid";
+import { R, drop, equip, ground, useItem } from "../raid";
 import { setMode } from "../state";
 import { clearStick } from "../input";
 import { $ } from "../util";
-import { updHud } from "./hud";
-import { row } from "./row";
+import { toast, updHud } from "./hud";
+
+type Where = "bag" | "ground" | "eq";
+const LONG_PRESS = 450;
+const DANGER_R = 500;
+/** Item whose detail panel is open (long press). */
+let detail: string | null = null;
+/** Shake the bag grid on the next render: the player tried to take something that doesn't fit. */
+let full = false;
 
 export function openBag() {
   if (!R) return;
   setMode("bag");
   clearStick();
+  detail = null;
   renderBag();
   $("bag").hidden = false;
 }
@@ -18,82 +26,131 @@ export function openBag() {
 export function closeBag() {
   $("bag").hidden = true;
   setMode("raid");
-  clock.last = performance.now();
 }
 
-/** Ground item picked for a swap while the bag is full: the bag rows then offer to put something down for it. */
-let swapFor: string | null = null;
+const perSlot = (it: Item) => Math.round(valOf(it) / def(it.k).s);
+
+function tile(it: Item, where: Where) {
+  const d = def(it.k), up = where !== "eq" && R && upgradeOver(it, R.p);
+  return `<button class="tile" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-w="${where}" data-u="${it.u}" aria-pressed="${detail === it.u}">
+    <b>${nameOf(it)}</b><small>${where === "eq" ? "équipé" : perSlot(it) + " cr/pl"}</small>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}</button>`;
+}
+
+function findItem(u: string): { it: Item; where: Where } | null {
+  if (!R) return null;
+  const p = R.p, b = R.bag.find((i) => i.u === u), g = ground(R).find((k) => k.it.u === u);
+  if (b) return { it: b, where: "bag" };
+  if (g) return { it: g.it, where: "ground" };
+  const e = [p.wpn, p.mel, p.arm].find((i) => i?.u === u);
+  return e ? { it: e, where: "eq" } : null;
+}
+
+function detailPanel() {
+  const f = detail ? findItem(detail) : null;
+  if (!f) return "";
+  const { it, where } = f, t = def(it.k).t;
+  const btns = [
+    where !== "eq" && (t === "wpn" || t === "arm") ? `<button data-a="eq">Équiper</button>` : "",
+    where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">Utiliser</button>` : "",
+    `<button data-a="close">Fermer</button>`,
+  ];
+  return `<div class="card detail"><b style="color:var(--r${def(it.k).r})">${nameOf(it)}</b>
+    <small>${desc(it)} · ${def(it.k).s} place${def(it.k).s > 1 ? "s" : ""} · ${valOf(it)} cr</small><div class="btns">${btns.join("")}</div></div>`;
+}
 
 function renderBag() {
   if (!R) return;
-  const r = R, p = r.p, val = r.bag.reduce((s, i) => s + valOf(i), 0), free = cap() - bagUsed(r.bag);
-  const near = ground(r), sel = near.find((k) => k.it.u === swapFor)?.it;
-  if (!sel) swapFor = null;
-  const gear = (t: string) => t === "wpn" || t === "arm";
-  const items = r.bag.map((i) => {
-    const d = def(i.k);
-    if (sel) {
-      const fits = free + d.s >= def(sel.k).s;
-      return row(i, `<div class="btns"><button data-a="swap" data-u="${i.u}" ${fits ? "" : "disabled"}>Poser</button></div>`, `${d.s} place${d.s > 1 ? "s" : ""} · ${valOf(i)} cr`);
-    }
-    const btns = `<div class="btns">${gear(d.t) ? `<button data-a="eq" data-u="${i.u}">Équiper</button>` : ""}${d.t === "med" || d.t === "stim" ? `<button data-a="use" data-u="${i.u}">Utiliser</button>` : ""}<button data-a="drop" data-u="${i.u}">Jeter</button></div>`;
-    return row(i, btns, `${desc(i)} · ${d.s} place${d.s > 1 ? "s" : ""} · ${valOf(i)} cr`);
-  });
-  const floor = near.map(({ it }) => {
-    const d = def(it.k), fits = d.s <= free;
-    const take = fits ? `<button data-a="take" data-u="${it.u}">Prendre</button>` : `<button data-a="pick" data-u="${it.u}" aria-pressed="${it === sel}">Échanger</button>`;
-    return row(it, `<div class="btns">${gear(d.t) ? `<button data-a="geq" data-u="${it.u}">Équiper</button>` : ""}${take}</div>`, `${desc(it)} · ${d.s} place${d.s > 1 ? "s" : ""} · ${valOf(it)} cr`);
-  });
+  const r = R, p = r.p, used = bagUsed(r.bag), val = r.bag.reduce((s, i) => s + valOf(i), 0);
+  const free = Array.from({ length: Math.max(0, cap() - used) }, () => `<div class="cell" aria-hidden="true"></div>`).join("");
+  const near = ground(r);
   $("bag").innerHTML = `<div class="wrap">
-    <div class="top"><h2>Sac ${bagUsed(r.bag)} / ${cap()}</h2><div class="val">${val} cr</div></div>
-    ${floor.length ? `<div class="card"><div class="lbl">Au sol</div>${floor.join("")}</div>` : ""}
-    ${sel ? `<p class="note swap"><span>Choisis ce que tu poses pour prendre <b>${nameOf(sel)}</b>.</span><button data-a="cancel">Annuler</button></p>` : ""}
-    <div class="card"><div class="lbl">Dans le sac</div>${items.length ? items.join("") : `<p class="empty">Sac vide. Arrête-toi près d'une caisse pour la fouiller.</p>`}</div>
-    <div class="card"><div class="lbl">Équipé</div>${p.wpn ? row(p.wpn, "") : ""}${row(p.mel, "")}${p.arm ? row(p.arm, "") : ""}
-      <div class="item"><div class="nm"><b>${Math.ceil(p.hp)} / ${p.max} PV</b><small>${p.meds} trousse(s) et ${p.keys} clé(s) emportée(s)</small></div></div></div>
-    <p class="note">Ce que tu jettes reste au sol et apparaît dans « Au sol » tant que tu es à côté.</p>
+    <div class="top"><h2>Sac ${used} / ${cap()}</h2><div class="val">${val} cr</div></div>
+    <div id="bagLive" class="live"></div>
+    ${detailPanel()}
+    <div class="card"><div class="lbl">Sac · touche pour poser</div><div class="grid${full ? " full" : ""}">${r.bag.map((i) => tile(i, "bag")).join("")}${free}</div></div>
+    <div class="card"><div class="lbl">Au sol · touche pour prendre</div>
+      ${near.length ? `<div class="grid">${near.map((k) => tile(k.it, "ground")).join("")}</div>` : `<p class="empty">Rien à tes pieds.</p>`}</div>
+    <div class="card"><div class="lbl">Équipé</div><div class="grid">${[p.wpn, p.mel, p.arm].filter((i): i is Item => !!i).map((i) => tile(i, "eq")).join("")}</div></div>
+    <p class="note">Appui long sur un objet : détails et équiper. Le raid continue pendant le tri : tu n'es pas repéré, mais ceux qui te chassent déjà arrivent.</p>
     <button class="go" data-a="back">Reprendre</button></div>`;
+  full = false;
+  tickBag();
+}
+
+/** Per-frame refresh of what changes without the player touching the bag: health and danger. */
+export function tickBag() {
+  const el = document.getElementById("bagLive");
+  if (!R || !el) return;
+  const p = R.p, hunted = R.enemies.some((e) => e.aggro && Math.hypot(e.x - p.x, e.y - p.y) < DANGER_R);
+  const txt = `${Math.ceil(Math.max(0, p.hp))} / ${p.max} PV` + (hunted ? " · ennemi en approche" : "");
+  if (el.textContent !== txt) {
+    el.textContent = txt;
+    el.classList.toggle("danger", hunted);
+  }
+}
+
+function tap(u: string) {
+  const r = R, f = findItem(u);
+  if (!r || !f) return;
+  if (f.where === "eq") {
+    detail = detail === u ? null : u;
+    return;
+  }
+  detail = null;
+  if (f.where === "bag") {
+    r.bag.splice(r.bag.indexOf(f.it), 1);
+    drop(r, f.it);
+  } else if (bagUsed(r.bag) + def(f.it.k).s <= cap()) {
+    r.pick.splice(r.pick.findIndex((k) => k.it === f.it), 1);
+    r.bag.push(f.it);
+  } else {
+    toast("Pas la place : pose d'abord un objet du sac");
+    full = true;
+  }
+}
+
+function act(a: string) {
+  const r = R, f = detail ? findItem(detail) : null;
+  if (!r || !f) return;
+  if (a === "use") useItem(f.it);
+  if (a === "eq") {
+    if (f.where === "bag") r.bag.splice(r.bag.indexOf(f.it), 1);
+    else r.pick.splice(r.pick.findIndex((k) => k.it === f.it), 1);
+    const old = equip(r, f.it);
+    // the replaced piece goes where the new one came from, or to the ground when the bag can't hold it
+    if (old && f.where === "bag" && bagUsed(r.bag) + def(old.k).s <= cap()) r.bag.push(old);
+    else if (old) drop(r, old);
+  }
+  detail = null;
 }
 
 export function initBag() {
-  $("bag").addEventListener("click", (e) => {
+  const el = $("bag");
+  let timer = 0, longFired = false;
+  el.addEventListener("pointerdown", (e) => {
+    const t = (e.target as HTMLElement).closest<HTMLElement>(".tile");
+    longFired = false;
+    clearTimeout(timer);
+    if (!t) return;
+    timer = window.setTimeout(() => {
+      longFired = true;
+      detail = t.dataset.u!;
+      renderBag();
+    }, LONG_PRESS);
+  });
+  const cancel = () => clearTimeout(timer);
+  el.addEventListener("pointerup", cancel);
+  el.addEventListener("pointercancel", cancel);
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
+  el.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest("button");
-    if (!b || !R) return;
-    const r = R, a = b.dataset.a, u = b.dataset.u;
-    if (a === "back") {
-      swapFor = null;
-      return closeBag();
-    }
-    if (a === "cancel") swapFor = null;
-    if (a === "pick") swapFor = swapFor === u ? null : u!;
-    const bi = r.bag.findIndex((x) => x.u === u), gi = r.pick.findIndex((k) => k.it.u === u);
-    const fromBag = () => r.bag.splice(bi, 1)[0], fromGround = () => r.pick.splice(gi, 1)[0].it;
-    if (bi >= 0) {
-      const it = r.bag[bi];
-      if (a === "drop") drop(r, fromBag());
-      if (a === "use") useItem(it);
-      if (a === "eq") {
-        const old = equip(r, fromBag());
-        if (old) r.bag.push(old);
-      }
-      if (a === "swap" && swapFor) {
-        const gj = r.pick.findIndex((k) => k.it.u === swapFor);
-        if (gj >= 0) {
-          drop(r, fromBag());
-          r.bag.push(r.pick.splice(gj, 1)[0].it);
-          swapFor = null;
-        }
-      }
-    }
-    if (gi >= 0) {
-      if (a === "take" && bagUsed(r.bag) + def(r.pick[gi].it.k).s <= cap()) r.bag.push(fromGround());
-      // equipping from the ground leaves the replaced piece on the ground
-      if (a === "geq") {
-        const old = equip(r, fromGround());
-        if (old) drop(r, old);
-      }
-    }
-    updHud(r);
+    if (!b || !R || longFired) return;
+    const a = b.dataset.a;
+    if (a === "back") return closeBag();
+    if (a === "close") detail = null;
+    else if (a) act(a);
+    else if (b.dataset.u) tap(b.dataset.u);
+    updHud(R);
     renderBag();
   });
 }

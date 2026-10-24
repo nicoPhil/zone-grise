@@ -244,8 +244,11 @@ const noise = (r: Raid, x: number, y: number, rad: number) => {
   for (const e of r.enemies) if (Math.hypot(e.x - x, e.y - y) < rad) e.aggro = true;
 };
 
+/** The raid has ended (death or extraction) during this frame; sorting the bag still counts as in the raid. */
+const over = () => mode !== "raid" && mode !== "bag";
+
 function hurt(r: Raid, d: number) {
-  if (mode !== "raid") return;
+  if (over()) return;
   const p = r.p;
   d *= r.zone.dmg;
   p.hp -= d * (1 - armorRed(p.arm));
@@ -428,7 +431,7 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
   e.cd -= dt;
   e.hit -= dt;
   const see = d < 600 && los(r.walls, e, p);
-  if (!e.aggro && d < k.see && see) e.aggro = true;
+  if (!e.aggro && d < k.see && see && mode !== "bag") e.aggro = true;
   if (e.aggro && d > 950) e.aggro = false;
   let vx = 0, vy = 0;
   if (!e.aggro) {
@@ -493,7 +496,9 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
 export function update(dt: number) {
   const r = R;
   if (!r) return;
-  const p = r.p, m = moveVec(), moving = m.x !== 0 || m.y !== 0;
+  // the raid keeps running while the bag is open: the player stands still, doesn't fight and isn't spotted
+  const sorting = mode === "bag";
+  const p = r.p, m = sorting ? { x: 0, y: 0 } : moveVec(), moving = m.x !== 0 || m.y !== 0;
   const spd = p.boost > 0 ? 236 : 175;
   p.x += m.x * spd * dt;
   p.y += m.y * spd * dt;
@@ -516,7 +521,7 @@ export function update(dt: number) {
 
   for (const c of r.crates) {
     if (c.open) continue;
-    c.prog = Math.hypot(c.x - p.x, c.y - p.y) < 48 && !moving ? c.prog + dt : 0;
+    c.prog = Math.hypot(c.x - p.x, c.y - p.y) < 48 && !moving && !sorting ? c.prog + dt : 0;
     if (c.prog >= CRATE_TIME) openCrate(r, c);
   }
 
@@ -524,14 +529,14 @@ export function update(dt: number) {
   if (v && !v.open) {
     const atLock = v.locks.some((l) => Math.hypot(lockCentre(l).x - p.x, lockCentre(l).y - p.y) < 64);
     if (atLock && !hasKey(r)) say(r, "Salle forte : il faut une clé");
-    v.prog = atLock && !moving && hasKey(r) ? v.prog + dt : 0;
+    v.prog = atLock && !moving && !sorting && hasKey(r) ? v.prog + dt : 0;
     if (v.prog >= UNLOCK_TIME) unlockVault(r, v);
   }
 
   // the blade always strikes what reaches it, even on the move; the gun fires only standing still, and only when fire is on
-  if (p.mcd <= 0) strike(r, wstat(p.mel));
+  if (!sorting && p.mcd <= 0) strike(r, wstat(p.mel));
   const wd = p.wpn && wstat(p.wpn);
-  if (wd && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
+  if (wd && !sorting && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null, bd = wd.range;
     for (const e of r.enemies) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
@@ -573,6 +578,7 @@ export function update(dt: number) {
 
   for (let i = r.pick.length - 1; i >= 0; i--) {
     const k = r.pick[i], d = Math.hypot(k.x - p.x, k.y - p.y);
+    if (sorting) break;
     if (k.nop) {
       if (d > 52) k.nop = false;
       continue;
@@ -594,7 +600,7 @@ export function update(dt: number) {
   }
   for (const e of r.enemies) {
     updateEnemy(r, e, dt);
-    if (mode !== "raid") return;
+    if (over()) return;
   }
 
   for (let i = r.bullets.length - 1; i >= 0; i--) {
@@ -624,7 +630,7 @@ export function update(dt: number) {
     if (Math.hypot(b.x - p.x, b.y - p.y) < 14) {
       r.ebul.splice(i, 1);
       hurt(r, b.dmg);
-      if (mode !== "raid") return;
+      if (over()) return;
     }
   }
 

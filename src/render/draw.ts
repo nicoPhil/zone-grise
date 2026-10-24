@@ -1,4 +1,4 @@
-import { def, nameOf, wstat } from "../items";
+import { def, nameOf, upgradeOver, wstat } from "../items";
 import { STICK_R, moveVec, stick } from "../input";
 import { EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
@@ -88,7 +88,7 @@ function groundLabels(r: Raid) {
   ctx.lineWidth = 3;
   ctx.strokeStyle = "rgba(0,0,0,.8)";
   for (const q of near) {
-    const t = nameOf(q.it), w = ctx.measureText(t).width + 6;
+    const t = (upgradeOver(q.it, p) ? "↑ " : "") + nameOf(q.it), w = ctx.measureText(t).width + 6;
     let y = q.y - 13;
     while (placed.some((l) => Math.abs(l.y - y) < 13 && Math.abs(l.x - q.x) < (l.w + w) / 2)) y -= 13;
     placed.push({ x: q.x, y, w });
