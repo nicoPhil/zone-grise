@@ -102,11 +102,17 @@ button.claim{background:var(--ok);border-color:var(--ok);color:var(--accent-ink)
 .tile .mv{position:absolute;right:2px;bottom:2px;width:26px;height:26px;padding:0;display:grid;place-items:center;border:0;color:var(--fg);background:rgba(0,0,0,.35)}
 .tile .mv .ic{width:16px;height:16px}
 .tile small{padding-right:24px}
-/* the detail popup sits over the bag, near the thumb; tapping anywhere else closes it */
+/* item tooltip pinned to the tapped item, placed by pin(); tapping anywhere else closes it */
 .scrim{position:fixed;inset:0;z-index:6}
-.detail{position:fixed;z-index:7;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 16px);max-width:528px;margin:0 auto;box-shadow:0 8px 30px rgba(0,0,0,.6)}
-.detail b{font-family:var(--f-display);font-size:16px}
-.detail small{color:var(--muted)}
+.detail{position:fixed;z-index:7;top:0;left:0;visibility:hidden;width:min(290px,calc(100vw - 24px));gap:4px;padding:12px;
+  background:#0f1012;border:1px solid var(--rc);box-shadow:0 0 0 1px #000,0 10px 30px rgba(0,0,0,.75)}
+.detail b{font-family:var(--f-display);font-size:17px;color:var(--rc);line-height:1.15;padding-right:30px}
+.detail .x{position:absolute;top:6px;right:6px;width:32px;height:32px;padding:0;display:grid;place-items:center;border:0;color:var(--muted)}
+.detail .x .ic{width:18px;height:18px}
+.detail small{color:var(--muted);font-size:12px}
+.detail .rar{font-family:var(--f-display);letter-spacing:.1em;text-transform:uppercase;font-size:10px;color:var(--rc)}
+.detail ul{margin:4px 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:14px}
+.detail .btns{margin-top:6px;flex-wrap:wrap}
 /* character sheet: slots laid out around the body like a paper doll */
 .doll{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:"trinket head back" "gun body blade" "hands feet .";gap:6px}
 .slot{min-height:58px;padding:6px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:2px;background:var(--panel);font-family:var(--f-body)}

@@ -6,7 +6,7 @@ import { clearStick } from "../input";
 import { $ } from "../util";
 import { toast, updHud } from "./hud";
 import { icon } from "./icons";
-import { itemInfo, popup } from "./popup";
+import { pin, popup } from "./popup";
 
 type Where = "bag" | "ground" | "eq";
 const DANGER_R = 500;
@@ -34,7 +34,7 @@ const perSlot = (it: Item) => Math.round(valOf(it) / def(it.k).s);
 function tile(it: Item, where: "bag" | "ground") {
   const d = def(it.k), up = R && upgradeOver(it, R.p.eq);
   const move = where === "bag" ? ["drop", "Poser"] : ["take", "Prendre"];
-  return `<div class="tile" role="button" tabindex="0" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-u="${it.u}" aria-pressed="${detail === it.u}">
+  return `<div class="tile" role="button" tabindex="0" data-pin="${it.u}" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-u="${it.u}" aria-pressed="${detail === it.u}">
     <b>${nameOf(it)}</b><small>${perSlot(it)} cr/pl</small>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}
     <button class="mv" data-a="${move[0]}" data-u="${it.u}" aria-label="${move[1]}">${icon(move[0] as "drop" | "take")}</button></div>`;
 }
@@ -52,7 +52,7 @@ function detailPanel() {
   const f = detail ? findItem(detail) : null;
   if (!f) return "";
   const { it, where } = f, t = def(it.k).t;
-  return popup(it, itemInfo(it), [
+  return popup(it, where === "eq" ? ["équipé"] : [], [
     where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
     where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
     where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
@@ -76,6 +76,7 @@ function renderBag() {
     <button class="go" data-a="back">Reprendre</button></div>`;
   full = false;
   tickBag();
+  pin($("bag"));
 }
 
 /** Per-frame refresh of what changes without the player touching the bag: health and danger. */
@@ -130,6 +131,7 @@ function act(a: string) {
 export function initBag() {
   const el = $("bag");
   el.addEventListener("contextmenu", (e) => e.preventDefault());
+  el.addEventListener("scroll", () => pin(el), { passive: true });
   el.addEventListener("click", (e) => {
     const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim"), card = t.closest<HTMLElement>(".tile");
     if (!R) return;
