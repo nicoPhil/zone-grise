@@ -38,7 +38,7 @@ export const fresh = (): Save => ({
   up: { bag: 0, meds: 0, hp: 0 },
   q: [],
   zone: 0,
-  zx: [0, 0, 0],
+  zx: [0, 0, 0, 0, 0],
 });
 
 export let S: Save = fresh();
@@ -75,7 +75,7 @@ export function parseSave(raw: string | null): Save {
     up: { ...fresh().up, ...s.up },
     q: Array.isArray(s.q) ? s.q : [],
     // extractions made before zones existed all happened in the first zone
-    zx: Array.isArray(s.zx) ? s.zx : [s.st.ext || 0, 0, 0],
+    zx: fresh().zx.map((z, i) => (Array.isArray(s.zx) ? s.zx[i] || 0 : i ? z : s.st?.ext || 0)),
     zone: typeof s.zone === "number" ? s.zone : 0,
   };
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mk } from "../src/items";
 import { fresh, parseSave, setSave, S } from "../src/state";
-import { UNLOCK_AFTER, ZONES, power, unlocked } from "../src/zones";
+import { UNLOCK_AFTER, ZONES, power, unlocked, zoneDepth } from "../src/zones";
 
 describe("zones", () => {
   beforeEach(() => setSave(fresh()));
@@ -14,11 +14,26 @@ describe("zones", () => {
 
   it("credit pre-zone extractions to the first zone", () => {
     const s = parseSave(JSON.stringify({ credits: 0, stash: [], lo: { w: null, a: null, meds: 0 }, st: { raids: 9, ext: 5, dead: 4, best: 0 } }));
-    expect(s.zx).toEqual([5, 0, 0]);
+    expect(s.zx).toEqual([5, 0, 0, 0, 0]);
     expect(unlocked(s, 1)).toBe(true);
   });
 
-  it("rate the free knife above the first zone's advice and a geared player above the last", () => {
+  it("track extractions for every zone, including saves from before the last zones existed", () => {
+    expect(fresh().zx).toHaveLength(ZONES.length);
+    const s = parseSave(JSON.stringify({ ...fresh(), zx: [3, 3, 1] }));
+    expect(s.zx).toEqual([3, 3, 1, 0, 0]);
+    expect(unlocked(s, 3)).toBe(false);
+  });
+
+  it("ask for more power and give deeper loot zone after zone", () => {
+    for (let i = 1; i < ZONES.length; i++) {
+      expect(ZONES[i].power).toBeGreaterThan(ZONES[i - 1].power);
+      expect(ZONES[i].hp).toBeGreaterThan(ZONES[i - 1].hp);
+      expect(zoneDepth(ZONES[i], 1)).toBeGreaterThan(zoneDepth(ZONES[i - 1], 1));
+    }
+  });
+
+  it("rate the free knife above the first zone's advice and a geared player above the Cœur", () => {
     expect(power()).toBeGreaterThanOrEqual(ZONES[0].power);
     expect(power()).toBeLessThan(ZONES[1].power);
     S.lo.eq.gun = { ...mk("ar"), lv: 2 };

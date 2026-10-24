@@ -1,4 +1,4 @@
-import { bagUsed, def, desc, nameOf, slotOf, upgradeOver, valOf, type Item, type Slot } from "../items";
+import { bagUsed, def, nameOf, slotOf, upgradeOver, valOf, type Item, type Slot } from "../items";
 import { R, drop, equip, ground, rcap, setSlot, useItem } from "../raid";
 import { sheet } from "./sheet";
 import { setMode } from "../state";
@@ -6,6 +6,7 @@ import { clearStick } from "../input";
 import { $ } from "../util";
 import { toast, updHud } from "./hud";
 import { icon } from "./icons";
+import { itemInfo, popup } from "./popup";
 
 type Where = "bag" | "ground" | "eq";
 const DANGER_R = 500;
@@ -51,14 +52,11 @@ function detailPanel() {
   const f = detail ? findItem(detail) : null;
   if (!f) return "";
   const { it, where } = f, t = def(it.k).t;
-  const btns = [
+  return popup(it, itemInfo(it), [
     where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
     where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
     where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
-    `<button data-a="close" aria-label="Fermer">${icon("close")}</button>`,
-  ];
-  return `<div class="scrim" data-a="close"></div><div class="card detail" role="dialog"><b style="color:var(--r${def(it.k).r})">${nameOf(it)}</b>
-    <small>${desc(it)} · ${def(it.k).s} place${def(it.k).s > 1 ? "s" : ""} · ${valOf(it)} cr</small><div class="btns">${btns.join("")}</div></div>`;
+  ]);
 }
 
 function renderBag() {

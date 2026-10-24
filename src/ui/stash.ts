@@ -7,6 +7,7 @@ import { $, fmtRate } from "../util";
 import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
 import { icon, type Icon } from "./icons";
+import { itemInfo, popup } from "./popup";
 import { row } from "./row";
 import { sheet } from "./sheet";
 
@@ -14,6 +15,8 @@ type Tab = "raid" | "stash" | "quest" | "shop" | "trade";
 const TAB_IC: Record<Tab, Icon> = { raid: "fire", stash: "stash", quest: "quest", shop: "shop", trade: "trade" };
 const TABS: Tab[] = ["raid", "stash", "quest", "shop", "trade"];
 let tab: Tab = "raid";
+/** Item whose detail popup is open, in the stash or worn. */
+let sel: string | null = null;
 try {
   const t = localStorage.getItem(KEY + "-tab");
   if (TABS.includes(t as Tab)) tab = t as Tab;
@@ -43,8 +46,8 @@ function needed() {
 
 function tabRaid() {
   const lo = S.lo, meds = count("med"), keys = count("vkey"), st = gearStats(lo.eq);
-  return `<div class="card"><div class="lbl">Personnage · touche un emplacement pour le vider</div>
-      ${sheet(lo.eq, { st, hp: maxHp() + st.hp, cap: cap() + st.cap })}
+  return `<div class="card"><div class="lbl">Personnage · touche un emplacement pour ses détails</div>
+      ${sheet(lo.eq, { st, hp: maxHp() + st.hp, cap: cap() + st.cap, sel })}
     </div>
     <div class="card"><div class="lbl">Ce que tu emportes</div>
       <div class="item"><div class="nm"><b>Trousses de soin : ${lo.meds} / ${medMax()}</b><small>${meds} en planque</small></div>
@@ -69,7 +72,7 @@ function tabStash() {
     const all = g.length > 1 ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>` : "";
     const btns = `<div class="btns">${eq}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${valOf(i)}</button>${all}</div>`;
     const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
-    return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
+    return row(i, btns, [desc(i), ...tags].join(" · "), g.length, `data-u="${i.u}" role="button" tabindex="0"`);
   });
   return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
@@ -129,6 +132,21 @@ function tabTrade() {
     <p class="note">Les objets de valeur ne s'achètent pas : il faut les trouver en raid.</p></div>`;
 }
 
+function stashPopup() {
+  const lo = S.lo, it = sel && S.stash.find((i) => i.u === sel);
+  if (it) {
+    const t = def(it.k).t, n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
+    return popup(it, itemInfo(it) + (n > 1 ? ` · ×${n} au coffre` : "") + (upgradeOver(it, lo.eq) ? ` · <span class="better">↑ mieux que l'équipé</span>` : ""), [
+      t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
+      `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${valOf(it)}</button>`,
+      n > 1 ? `<button data-a="sellall" data-g="${stackKey(it)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(it) * n}</button>` : "",
+    ]);
+  }
+  const slot = sel ? (Object.keys(lo.eq) as Slot[]).find((k) => lo.eq[k]?.u === sel) : undefined, worn = slot && lo.eq[slot];
+  if (!worn) return "";
+  return popup(worn, itemInfo(worn) + " · équipé", [`<button data-a="unequip" data-slot="${slot}">${icon("unequip")}Retirer</button>`]);
+}
+
 export function renderStash() {
   setMode("stash");
   norm();
@@ -149,14 +167,24 @@ export function renderStash() {
       <div style="text-align:right"><div class="lbl">Puissance · crédits</div><div class="cr"><span class="pw">${power()}</span> · ${S.credits} cr</div></div></div>
     <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${icon(TAB_IC[id])}${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
     ${body()}
+    ${stashPopup()}
     <p class="note">${S.st.raids} raids · ${S.st.ext} extractions · ${S.st.dead} morts · meilleur butin ${S.st.best} cr · graphismes Kenney (CC0)</p>
   </div>`;
 }
 
 export function initStash() {
   $("stash").addEventListener("click", (e) => {
-    const b = (e.target as HTMLElement).closest("button");
-    if (!b) return;
+    const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim");
+    if (!b) {
+      const line = t.closest<HTMLElement>(".item[data-u]");
+      if (line) {
+        sel = line.dataset.u!;
+        renderStash();
+      }
+      return;
+    }
+    const was = sel;
+    sel = null;
     if (b.dataset.tab) {
       tab = b.dataset.tab as Tab;
       try {
@@ -180,7 +208,8 @@ export function initStash() {
       return;
     }
     const slot = b.dataset.slot as Slot | undefined, worn = slot && lo.eq[slot];
-    if (slot && worn) {
+    if (worn && !a) sel = was === worn.u ? null : worn.u;
+    if (worn && a === "unequip") {
       S.stash.push(worn);
       lo.eq[slot] = null;
     }
