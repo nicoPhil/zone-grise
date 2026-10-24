@@ -1,4 +1,4 @@
-import { bagUsed } from "../items";
+import { bagUsed, wstat } from "../items";
 import { cap } from "../progression";
 import type { Raid } from "../raid";
 import { prefs } from "../input";
@@ -37,7 +37,7 @@ export function setRaidHud(on: boolean) {
 
 export function updFire() {
   const b = $("bFire");
-  b.textContent = prefs.fire ? "Attaque auto" : "Discret";
+  b.textContent = prefs.fire ? "Tir auto" : "Tir coupé";
   b.setAttribute("aria-pressed", String(prefs.fire));
 }
 
@@ -50,5 +50,7 @@ export function updHud(r: Raid) {
   $("timer").classList.toggle("warn", s <= 60);
   const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
   $("bagc").textContent = "Sac " + bagUsed(r.bag) + "/" + cap() + (keys ? ` · ${keys} clé${keys > 1 ? "s" : ""}` : "");
+  // the fire toggle only matters with a gun in hand
+  $("bFire").hidden = !!wstat(p.wpn).mel;
   $("bHeal").textContent = "Soin (" + (p.meds + r.bag.filter((i) => i.k === "med").length) + ")";
 }

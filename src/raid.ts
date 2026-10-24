@@ -505,8 +505,8 @@ export function update(dt: number) {
     if (v.prog >= UNLOCK_TIME) unlockVault(r, v);
   }
 
-  // melee strikes on the move; guns fire only while standing still. Both stay quiet when the player turns fire off.
-  if (prefs.fire && wd.mel && p.cd <= 0) strike(r, wd);
+  // melee always strikes, even on the move; guns fire only while standing still, and only when fire is on
+  if (wd.mel && p.cd <= 0) strike(r, wd);
   if (prefs.fire && !wd.mel && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null, bd = wd.range;
     for (const e of r.enemies) {

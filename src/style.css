@@ -44,7 +44,7 @@ h2{font-size:24px;letter-spacing:.04em}
 #bagc{font-size:14px;color:var(--muted)}
 #act{position:fixed;z-index:3;display:flex;gap:10px;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px)}
 #act button{background:rgba(20,22,25,.82);font-size:15px;padding:12px 16px}
-#bFire{min-width:112px}
+#bFire{min-width:96px}
 #bFire[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 #bFire[aria-pressed="false"]{color:var(--muted)}
 #toast{position:fixed;z-index:4;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 48px);max-width:calc(100% - 32px);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font-size:14px;pointer-events:none;opacity:0;transition:opacity .2s}

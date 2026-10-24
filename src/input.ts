@@ -11,7 +11,7 @@ interface Stick {
 }
 
 const FIRE_KEY = "zone-grise-fire";
-/** Per-device preference: auto-attack on or off (off = stealth). */
+/** Per-device preference: guns fire automatically, or hold fire (stealth). Melee is not affected. */
 export const prefs = { fire: true };
 try {
   prefs.fire = localStorage.getItem(FIRE_KEY) !== "off";
