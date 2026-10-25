@@ -1,4 +1,4 @@
-import { overlaps, pick, rnd, type Rect } from "../util";
+import { overlaps, pick, rnd, type Pt, type Rect } from "../util";
 import type { Building } from "../world/mapgen";
 import type { Tile } from "./assets";
 import type { Decor } from "./decor";
@@ -56,6 +56,18 @@ const RUGS: Tile[][] = [
 
 export type Fit = "house" | "industry" | "camp";
 
+/** One room being furnished: where pieces land, and the dice for this room. */
+interface Room {
+  out: Decor[];
+  under: Decor[];
+  rm: Rect;
+  doors: Rect[];
+  mess: number;
+  sides: number[];
+  small: boolean;
+  big: boolean;
+}
+
 /** Rooms by size: bathrooms and storerooms are small, living rooms large; `mess` knocks pieces askew and leaves some missing. */
 export function furnish(bld: Building[], fit: Fit, mess: number): Decor[] {
   // rugs lie under everything and don't stop furniture from standing on them
@@ -63,62 +75,92 @@ export function furnish(bld: Building[], fit: Fit, mess: number): Decor[] {
     under: Decor[] = [];
   for (const b of bld)
     for (const rm of b.rooms) {
-      const keep = (pc: Piece) => (Math.random() < mess * 0.4 ? null : pc);
-      const put = (pc: Piece | null, side: number) => pc && against(out, rm, b.doors, pc, side, mess);
       const sides = [0, 1, 2, 3].sort(() => Math.random() - 0.5),
-        area = rm.w * rm.h,
-        big = area > 230 * 230,
-        small = area < 170 * 170;
-      if (fit === "industry") {
-        if (small || Math.random() < 0.5) for (const s of [...sides, ...sides]) put(keep(pick(CRATES)), s);
-        else {
-          put(keep(pick(DESK)), sides[0]);
-          put(keep(pick(SHELF)), sides[1]);
-          put(keep(pick(DESK)), sides[2]);
-        }
-      } else if (fit === "camp") {
-        // field infirmary: cots along the walls, supplies in the corners
-        for (const s of sides.slice(0, small ? 1 : 3)) put(keep(pick(BED)), s);
-        put(keep(pick(CRATES)), sides[3]);
-      } else if (small) {
-        put(keep(Math.random() < 0.5 ? BATH[0] : pick(SMALL)), sides[0]);
-        put(keep(pick(SMALL)), sides[1]);
-      } else if (big) {
-        if (Math.random() < 0.7) rug(under, rm, pick(RUGS), mess);
-        put(keep(pick(SOFA)), sides[0]);
-        put(keep(pick(TV)), opposite(sides[0]));
-        put(keep(pick(ARMCHAIR)), sides[0]);
-        put(keep(pick(ARMCHAIR)), sides[1] === opposite(sides[0]) ? sides[2] : sides[1]);
-      } else if (Math.random() < 0.5) {
-        put(keep(pick(BED)), sides[0]);
-        put(keep(SMALL[0]), sides[0]);
-        put(keep(pick(SMALL)), sides[1]);
-      } else {
-        put(keep(pick(KITCHEN)), sides[0]);
-        put(keep(SHELF[0]), sides[1]);
-        table(out, rm, mess);
-      }
+        area = rm.w * rm.h;
+      const room: Room = { out, under, rm, doors: b.doors, mess, sides, small: area < 170 * 170, big: area > 230 * 230 };
+      FITS[fit](room);
       // a few plants, lamps and side tables wherever there is wall left
-      for (const s of sides) if (Math.random() < 0.6) put(keep(pick(SMALL)), s);
+      for (const s of sides) if (Math.random() < 0.6) put(room, pick(SMALL), s);
     }
   return [...under, ...out];
+}
+
+/** Some pieces go missing in a messy place. */
+function put(room: Room, pc: Piece, side: number) {
+  if (Math.random() < room.mess * 0.4) return;
+  against(room, pc, side);
+}
+
+const FITS: Record<Fit, (room: Room) => void> = {
+  industry: (room) => {
+    const { sides } = room;
+    if (room.small || Math.random() < 0.5) for (const s of [...sides, ...sides]) put(room, pick(CRATES), s);
+    else {
+      put(room, pick(DESK), sides[0]);
+      put(room, pick(SHELF), sides[1]);
+      put(room, pick(DESK), sides[2]);
+    }
+  },
+  // field infirmary: cots along the walls, supplies in the corners
+  camp: (room) => {
+    for (const s of room.sides.slice(0, room.small ? 1 : 3)) put(room, pick(BED), s);
+    put(room, pick(CRATES), room.sides[3]);
+  },
+  house: (room) => {
+    if (room.small) bathroom(room);
+    else if (room.big) livingRoom(room);
+    else if (Math.random() < 0.5) bedroom(room);
+    else kitchen(room);
+  },
+};
+
+function bathroom(room: Room) {
+  put(room, Math.random() < 0.5 ? BATH[0] : pick(SMALL), room.sides[0]);
+  put(room, pick(SMALL), room.sides[1]);
+}
+
+function livingRoom(room: Room) {
+  const { sides } = room;
+  if (Math.random() < 0.7) rug(room.under, room.rm, pick(RUGS), room.mess);
+  put(room, pick(SOFA), sides[0]);
+  put(room, pick(TV), opposite(sides[0]));
+  put(room, pick(ARMCHAIR), sides[0]);
+  put(room, pick(ARMCHAIR), sides[1] === opposite(sides[0]) ? sides[2] : sides[1]);
+}
+
+function bedroom(room: Room) {
+  put(room, pick(BED), room.sides[0]);
+  put(room, SMALL[0], room.sides[0]);
+  put(room, pick(SMALL), room.sides[1]);
+}
+
+function kitchen(room: Room) {
+  put(room, pick(KITCHEN), room.sides[0]);
+  put(room, SHELF[0], room.sides[1]);
+  table(room.out, room.rm, room.mess);
 }
 
 const opposite = (s: number) => [1, 0, 3, 2][s];
 
 /** Lay a piece flat against one wall of the room (0 top, 1 bottom, 2 left, 3 right), its back to the wall, clear of the doors. */
-function against(out: Decor[], rm: Rect, doors: Rect[], pc: Piece, side: number, mess: number) {
+function against(room: Room, pc: Piece, side: number) {
   const s = (pc.k ?? 1) * U,
     len = pc.t.length * s,
-    along = side < 2 ? rm.w : rm.h;
+    along = side < 2 ? room.rm.w : room.rm.h;
   if (len > along - 20) return;
-  for (let tries = 0; tries < 8; tries++)
-    if (place(out, rm, doors, pc, side, mess, s, len, rnd(10 + len / 2, along - 10 - len / 2))) return;
+  for (let tries = 0; tries < 8; tries++) if (place(room, pc, side, { s, len, off: rnd(10 + len / 2, along - 10 - len / 2) })) return;
 }
 
-function place(out: Decor[], rm: Rect, doors: Rect[], pc: Piece, side: number, mess: number, s: number, len: number, off: number) {
-  const cx = side < 2 ? rm.x + off : side === 2 ? rm.x + s / 2 + 2 : rm.x + rm.w - s / 2 - 2;
-  const cy = side >= 2 ? rm.y + off : side === 0 ? rm.y + s / 2 + 2 : rm.y + rm.h - s / 2 - 2;
+/** Centre of a piece of depth `s` set `off` along the wall `side`. */
+function anchor(rm: Rect, side: number, s: number, off: number): Pt {
+  if (side === 0) return { x: rm.x + off, y: rm.y + s / 2 + 2 };
+  if (side === 1) return { x: rm.x + off, y: rm.y + rm.h - s / 2 - 2 };
+  if (side === 2) return { x: rm.x + s / 2 + 2, y: rm.y + off };
+  return { x: rm.x + rm.w - s / 2 - 2, y: rm.y + off };
+}
+
+function place({ out, rm, doors, mess }: Room, pc: Piece, side: number, { s, len, off }: { s: number; len: number; off: number }) {
+  const { x: cx, y: cy } = anchor(rm, side, s, off);
   const box = side < 2 ? { x: cx - len / 2, y: cy - s / 2, w: len, h: s } : { x: cx - s / 2, y: cy - len / 2, w: s, h: len };
   if (doors.some((d) => overlaps(box, d, 14)) || out.some((o) => overlaps(box, { x: o.x - o.s / 2, y: o.y - o.s / 2, w: o.s, h: o.s }, -6)))
     return false;

@@ -1,10 +1,11 @@
 import { $ } from "../util";
+import { context2d } from "./context";
 
 export const cv = $("cv") as HTMLCanvasElement;
-export const ctx = cv.getContext("2d")!;
+export const ctx = context2d(cv);
 // offscreen darkness layer: filled, then the line-of-sight polygon is cut out of it
 export const shade = document.createElement("canvas");
-export const sg = shade.getContext("2d")!;
+export const sg = context2d(shade);
 export const view = { dpr: 1, vw: 0, vh: 0, zoom: 1 };
 
 const COLORS = ["ground", "fg", "accent", "ok", "bad", "enemy2", "r0", "r1", "r2", "r3"] as const;

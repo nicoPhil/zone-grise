@@ -2,6 +2,7 @@ import { pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "../world/geometry";
 import { H, W, depth, inBld, type Building } from "../world/mapgen";
 import { T, type Tile } from "./assets";
+import { context2d } from "./context";
 import type { Fit } from "./furniture";
 
 export interface Decal {
@@ -99,7 +100,10 @@ const ROCK: Tile[] = [
 export const THEMES: Theme[] = [
   // Faubourgs: gardens gone wild
   {
-    ground: (d) => (d > 0.56 ? PAVED() : d > 0.3 ? DIRT() : GRASS()),
+    ground: (d) => {
+      if (d > 0.56) return PAVED();
+      return d > 0.3 ? DIRT() : GRASS();
+    },
     props: [
       [BUSH, 70, 34, 56],
       [DEAD, 20, 34, 50],
@@ -111,7 +115,10 @@ export const THEMES: Theme[] = [
   },
   // Zone industrielle: concrete yards, barrels and oil
   {
-    ground: (d, q) => (d < 0.32 ? DIRT() : q > 0.4 ? SLAB() : ASPHALT),
+    ground: (d, q) => {
+      if (d < 0.32) return DIRT();
+      return q > 0.4 ? SLAB() : ASPHALT;
+    },
     props: [
       [BARREL, 60, 34, 42],
       [OIL, 30, 50, 80],
@@ -172,7 +179,7 @@ export function makeDecal(th: Theme): Decal {
   const c = document.createElement("canvas");
   c.width = W / 2;
   c.height = H / 2;
-  const g = c.getContext("2d")!;
+  const g = context2d(c);
   g.scale(0.5, 0.5);
   for (let i = 0; i < 150; i++) {
     const x = rnd(0, W),
@@ -226,7 +233,7 @@ export function makeDecor(walls: Rect[], bld: Building[], th: Theme): Decor[] {
   return out;
 }
 
-export function blood({ g }: Decal, x: number, y: number, n: number, big: boolean) {
+export function blood({ g }: Decal, { x, y }: Pt, n: number, big: boolean) {
   for (let i = 0; i < n; i++) {
     const a = rnd(0, 6.28),
       d = big ? rnd(0, 24) : rnd(4, 18),

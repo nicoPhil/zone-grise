@@ -1,5 +1,7 @@
 // sprites: Kenney "Topdown Shooter" (CC0), public/assets/KENNEY-LICENSE.txt
+import type { Pt } from "../util";
 import { ctx } from "./canvas";
+import { context2d } from "./context";
 
 export type Tile = [number, number];
 export const T = 64;
@@ -39,7 +41,7 @@ function crop(img: CanvasImageSource, [x, y, w, h]: readonly number[], fill?: st
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const g = c.getContext("2d")!;
+  const g = context2d(c);
   g.drawImage(img, x, y, w, h, 0, 0, w, h);
   if (fill) {
     g.globalCompositeOperation = "source-atop";
@@ -56,7 +58,11 @@ export const assetsReady: Promise<void> = Promise.all([loadImg("assets/character
   for (const [k, c] of Object.entries(TINTS)) frames[k as keyof typeof TINTS] = crop(frames.zomb, [0, 0, CHAR.zomb[2], CHAR.zomb[3]], c);
   frames.boss = crop(frames.boss, [0, 0, CHAR.boss[2], CHAR.boss[3]], "rgba(70,8,8,.4)");
   for (const k of Object.keys(frames) as CharKey[]) white[k] = crop(frames[k], [0, 0, frames[k].width, frames[k].height], "#fff");
-  const floors = [1, 2, 3].map((r) => ctx.createPattern(crop(ti, [14 * T, r * T, T, T]), "repeat")!);
+  const floors = [1, 2, 3].map((r) => {
+    const pat = ctx.createPattern(crop(ti, [14 * T, r * T, T, T]), "repeat");
+    if (!pat) throw new Error("floor pattern unavailable");
+    return pat;
+  });
   A = { ti, frames, white, floors };
 });
 
@@ -70,7 +76,11 @@ export function shadow(x: number, y: number, r: number) {
   ctx.fill();
 }
 
-export function sprite(key: CharKey, x: number, y: number, a: number, hit: boolean, s = 0.85) {
+export interface Pose extends Pt {
+  a: number;
+}
+
+export function sprite(key: CharKey, { x, y, a }: Pose, hit: boolean, s = 0.85) {
   const h = A.frames[key].height;
   shadow(x, y, 14 * s);
   ctx.save();
