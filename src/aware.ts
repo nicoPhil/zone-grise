@@ -67,5 +67,8 @@ export function track(e: Awareness, see: boolean, p: Pt, dt: number) {
   e.al -= dt;
   if (!e.aggro) e.sr -= dt;
   else if (see) alert(e, p.x, p.y);
-  else if ((e.lost += dt) > LOSE_TIME) [e.aggro, e.sr, e.sus] = [false, SEARCH_TIME, 0];
+  else {
+    e.lost += dt;
+    if (e.lost > LOSE_TIME) [e.aggro, e.sr, e.sus] = [false, SEARCH_TIME, 0];
+  }
 }

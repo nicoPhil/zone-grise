@@ -102,7 +102,10 @@ function visPoly(r: Raid, ox: number, oy: number): Ray[] {
 
 function polyPath(g: CanvasRenderingContext2D, poly: Pt[]) {
   g.beginPath();
-  poly.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)));
+  poly.forEach((q, i) => {
+    if (i) g.lineTo(q.x, q.y);
+    else g.moveTo(q.x, q.y);
+  });
   g.closePath();
 }
 

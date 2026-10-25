@@ -70,7 +70,7 @@ export function furnish(bld: Building[], fit: Fit, mess: number): Decor[] {
         big = area > 230 * 230,
         small = area < 170 * 170;
       if (fit === "industry") {
-        if (small || Math.random() < 0.5) [...sides, ...sides].forEach((s) => put(keep(pick(CRATES)), s));
+        if (small || Math.random() < 0.5) for (const s of [...sides, ...sides]) put(keep(pick(CRATES)), s);
         else {
           put(keep(pick(DESK)), sides[0]);
           put(keep(pick(SHELF)), sides[1]);

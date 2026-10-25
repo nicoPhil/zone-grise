@@ -30,10 +30,12 @@ function cut(a: number, b: number, doors: number[]): [number, number][] {
     );
   return s.filter(([u, v]) => v - u > 4);
 }
-const hWall = (walls: Rect[], a: number, b: number, y: number, doors: number[]) =>
-  cut(a, b, doors).forEach(([u, v]) => walls.push({ x: u, y, w: v - u, h: TH }));
-const vWall = (walls: Rect[], a: number, b: number, x: number, doors: number[]) =>
-  cut(a, b, doors).forEach(([u, v]) => walls.push({ x, y: u, w: TH, h: v - u }));
+const hWall = (walls: Rect[], a: number, b: number, y: number, doors: number[]) => {
+  for (const [u, v] of cut(a, b, doors)) walls.push({ x: u, y, w: v - u, h: TH });
+};
+const vWall = (walls: Rect[], a: number, b: number, x: number, doors: number[]) => {
+  for (const [u, v] of cut(a, b, doors)) walls.push({ x, y: u, w: TH, h: v - u });
+};
 
 // `doors` holds every gap already cut in this building: a new partition must leave each of them clear
 function splitRooms(walls: Rect[], r: Rect, lvl: number, out: Rect[], doors: Rect[]) {

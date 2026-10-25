@@ -267,7 +267,10 @@ function spawnByZone(r: Raid, x: number, y: number, lure?: Pt) {
             [has("alpha") ? 12 : 0, pack("runner", 3, "alpha")],
           ];
   let roll = Math.random() * table.reduce((s, [w]) => s + w, 0);
-  for (const [w, go] of table) if ((roll -= w) < 0) return go();
+  for (const [w, go] of table) {
+    roll -= w;
+    if (roll < 0) return go();
+  }
 }
 
 function randIn(walls: Rect[], rm: Rect, pad: number): Pt | null {
@@ -430,8 +433,14 @@ function applyMed(r: Raid, it: Item): boolean {
   const p = r.p,
     d = def(it.k);
   if (d.t !== "med") return false;
-  if (p.hp >= p.max) return (toast("PV déjà au maximum"), false);
-  if (p.regen > 0) return (toast("Soin déjà en cours"), false);
+  if (p.hp >= p.max) {
+    toast("PV déjà au maximum");
+    return false;
+  }
+  if (p.regen > 0) {
+    toast("Soin déjà en cours");
+    return false;
+  }
   p.regen = d.heal;
   p.regenRate = d.heal / d.dur;
   burst(r, p.x, p.y, C.ok, 10, 90);
@@ -781,7 +790,8 @@ export function update(dt: number) {
   const r = R;
   if (!r) return;
   if (r.dead > 0) {
-    if ((r.dead -= dt) <= 0) return endRaid(false, r.why);
+    r.dead -= dt;
+    if (r.dead <= 0) return endRaid(false, r.why);
     dt *= 0.25;
   }
   // the raid keeps running while the bag is open: the player stands still, doesn't fight and isn't spotted

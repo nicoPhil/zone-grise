@@ -41,5 +41,5 @@ export const icon = (n: Icon) =>
 
 /** Fill the static `<i data-ic="…">` placeholders of the page. */
 export function mountIcons() {
-  document.querySelectorAll<HTMLElement>("i[data-ic]").forEach((el) => (el.outerHTML = icon(el.dataset.ic as Icon)));
+  for (const el of document.querySelectorAll<HTMLElement>("i[data-ic]")) el.outerHTML = icon(el.dataset.ic as Icon);
 }
