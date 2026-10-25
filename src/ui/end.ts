@@ -38,7 +38,9 @@ function draw() {
   let html: string;
   const [p0, p1] = res.power;
   const pw = p0 === p1 ? "" : `<div class="lbl">Puissance ${p0} → <span style="color:var(--${p1 > p0 ? "ok" : "bad"})">${p1}</span></div>`;
-  const opened = res.opened ? `<div class="card unlock"><div class="lbl">Nouvelle zone</div><b>${res.opened} débloquée</b><small class="note">Choisis-la dans l'onglet Raid : plus dangereuse, meilleur loot.</small></div>` : "";
+  const opened = res.opened
+    ? `<div class="card unlock"><div class="lbl">Nouvelle zone</div><b>${res.opened} débloquée</b><small class="note">Choisis-la dans l'onglet Raid : plus dangereuse, meilleur loot.</small></div>`
+    : "";
   if (res.ok) {
     const quests = res.quests.length
       ? `<div class="card"><div class="lbl">Contrats remplis</div>${res.quests.map((q) => `<div class="item"><div class="nm"><b>${qInfo(q).txt}</b><small>${q.cr} cr à réclamer dans l'onglet Contrats</small></div></div>`).join("")}</div>`
@@ -53,7 +55,8 @@ function draw() {
       <div class="card">${lost || `<p class="empty">Tu n'avais rien à perdre. Le kit gratuit t'attend.</p>`}</div>`;
   }
   const it = sel ? [...res.items, ...extra].find((i) => i.u === sel) : null;
-  $("end").innerHTML = `<div class="wrap">${html}${it ? popup(it, [], []) : ""}<button class="go" data-a="home">Retour à la planque</button></div>`;
+  $("end").innerHTML =
+    `<div class="wrap">${html}${it ? popup(it, [], []) : ""}<button class="go" data-a="home">Retour à la planque</button></div>`;
   $("end").hidden = false;
   pin($("end"));
 }
@@ -61,7 +64,9 @@ function draw() {
 export function initEnd() {
   $("end").addEventListener("scroll", () => pin($("end")), { passive: true });
   $("end").addEventListener("click", (e) => {
-    const t = e.target as HTMLElement, a = t.closest<HTMLElement>("[data-a]")?.dataset.a, at = t.closest<HTMLElement>(".item[data-u]");
+    const t = e.target as HTMLElement,
+      a = t.closest<HTMLElement>("[data-a]")?.dataset.a,
+      at = t.closest<HTMLElement>(".item[data-u]");
     if (a === "close" || (!a && at)) {
       sel = a ? null : at!.dataset.u!;
       return draw();

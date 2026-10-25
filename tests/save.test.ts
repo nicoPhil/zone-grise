@@ -4,7 +4,12 @@ import { S, fresh, parseSave, setSave } from "../src/state";
 
 describe("parseSave", () => {
   it("upgrades a save written before upgrades and contracts existed", () => {
-    const old = { credits: 900, stash: [{ k: "hdd", u: "a" }], lo: { w: { k: "p9", u: "w" }, a: null, meds: 2 }, st: { raids: 4, ext: 2, dead: 2, best: 300 } };
+    const old = {
+      credits: 900,
+      stash: [{ k: "hdd", u: "a" }],
+      lo: { w: { k: "p9", u: "w" }, a: null, meds: 2 },
+      st: { raids: 4, ext: 2, dead: 2, best: 300 },
+    };
     const s = parseSave(JSON.stringify(old));
     expect(s.up).toEqual({ bag: 0, meds: 0, hp: 0 });
     expect(s.q).toEqual([]);
@@ -13,7 +18,16 @@ describe("parseSave", () => {
   });
 
   it("drops items whose key no longer exists", () => {
-    const s = parseSave(JSON.stringify({ ...fresh(), stash: [{ k: "hdd", u: "a" }, { k: "laser", u: "b" }], lo: { w: { k: "laser", u: "w" }, a: null, meds: 0 } }));
+    const s = parseSave(
+      JSON.stringify({
+        ...fresh(),
+        stash: [
+          { k: "hdd", u: "a" },
+          { k: "laser", u: "b" },
+        ],
+        lo: { w: { k: "laser", u: "w" }, a: null, meds: 0 },
+      }),
+    );
     expect(s.stash.map((i) => i.k)).toEqual(["hdd"]);
     expect(s.lo.eq.gun).toBeNull();
   });
@@ -25,7 +39,9 @@ describe("parseSave", () => {
   });
 
   it("moves the two-weapon loadout onto the character sheet", () => {
-    const s = parseSave(JSON.stringify({ ...fresh(), lo: { w: { k: "p9", u: "w" }, m: { k: "bat", u: "m" }, a: { k: "vest1", u: "a" }, meds: 1, keys: 0 } }));
+    const s = parseSave(
+      JSON.stringify({ ...fresh(), lo: { w: { k: "p9", u: "w" }, m: { k: "bat", u: "m" }, a: { k: "vest1", u: "a" }, meds: 1, keys: 0 } }),
+    );
     expect([s.lo.eq.gun?.k, s.lo.eq.blade?.k, s.lo.eq.body?.k, s.lo.eq.head]).toEqual(["p9", "bat", "vest1", null]);
     expect(s.lo.meds).toBe(1);
   });

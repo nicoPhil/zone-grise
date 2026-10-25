@@ -1,7 +1,22 @@
 import { def, nameOf, upgradeOver, wstat } from "../items";
 import { ALERT_POP, suspicious } from "../aware";
 import { STICK_R, moveVec, stick } from "../input";
-import { AIM_TIME, DEATH_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, sight, type Crate, type Kind, type Raid } from "../raid";
+import {
+  AIM_TIME,
+  DEATH_TIME,
+  EXTRACT_TIME,
+  CRATE_TIME,
+  KINDS,
+  UNLOCK_TIME,
+  VIOLET,
+  bladeOf,
+  hasKey,
+  lockCentre,
+  sight,
+  type Crate,
+  type Kind,
+  type Raid,
+} from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
 import { MELEE_ARC, los, rayLen } from "../world/geometry";
@@ -16,8 +31,16 @@ let VR = BASE_VR;
 const GOLD = "#f0c040";
 const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
 const LOOK: Record<Kind, [CharKey, number]> = {
-  walker: ["zomb", 0.85], runner: ["zombR", 0.68], gunner: ["sold", 0.85], smg: ["soldM", 0.85], boss: ["boss", 1.4],
-  bloat: ["bloat", 1.15], sniper: ["hitman", 0.85], shield: ["robot", 0.9], stalker: ["stalker", 0.75], alpha: ["alpha", 1],
+  walker: ["zomb", 0.85],
+  runner: ["zombR", 0.68],
+  gunner: ["sold", 0.85],
+  smg: ["soldM", 0.85],
+  boss: ["boss", 1.4],
+  bloat: ["bloat", 1.15],
+  sniper: ["hitman", 0.85],
+  shield: ["robot", 0.9],
+  stalker: ["stalker", 0.75],
+  alpha: ["alpha", 1],
 };
 const wpnPose = (k: string): CharKey =>
   k === "dmr" || k === "carbine" ? "pSil" : k === "smg" || k === "ar" || k === "sg" || k === "lmg" ? "pMach" : "pGun";
@@ -28,12 +51,28 @@ interface Ray extends Pt {
 
 /** Visibility polygon from (ox,oy): rays cast at every wall corner (±ε) within the view square. */
 function visPoly(r: Raid, ox: number, oy: number): Ray[] {
-  const x0 = ox - VR, x1 = ox + VR, y0 = oy - VR, y1 = oy + VR;
-  const segs: number[][] = [[x0, y0, x1, y0], [x1, y0, x1, y1], [x1, y1, x0, y1], [x0, y1, x0, y0]];
-  const pts: number[][] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const x0 = ox - VR,
+    x1 = ox + VR,
+    y0 = oy - VR,
+    y1 = oy + VR;
+  const segs: number[][] = [
+    [x0, y0, x1, y0],
+    [x1, y0, x1, y1],
+    [x1, y1, x0, y1],
+    [x0, y1, x0, y0],
+  ];
+  const pts: number[][] = [
+    [x0, y0],
+    [x1, y0],
+    [x1, y1],
+    [x0, y1],
+  ];
   for (const w of r.walls) {
     if (w.x > x1 || w.x + w.w < x0 || w.y > y1 || w.y + w.h < y0) continue;
-    const a = w.x, b = w.y, c = w.x + w.w, d = w.y + w.h;
+    const a = w.x,
+      b = w.y,
+      c = w.x + w.w,
+      d = w.y + w.h;
     segs.push([a, b, c, b], [c, b, c, d], [c, d, a, d], [a, d, a, b]);
     pts.push([a, b], [c, b], [c, d], [a, d]);
   }
@@ -41,12 +80,18 @@ function visPoly(r: Raid, ox: number, oy: number): Ray[] {
   for (const [px, py] of pts) {
     const a0 = Math.atan2(py - oy, px - ox);
     for (const a of [a0 - 0.0002, a0, a0 + 0.0002]) {
-      const dx = Math.cos(a), dy = Math.sin(a);
+      const dx = Math.cos(a),
+        dy = Math.sin(a);
       let best = Infinity;
       for (const s of segs) {
-        const sdx = s[2] - s[0], sdy = s[3] - s[1], den = dx * sdy - dy * sdx;
+        const sdx = s[2] - s[0],
+          sdy = s[3] - s[1],
+          den = dx * sdy - dy * sdx;
         if (Math.abs(den) < 1e-9) continue;
-        const qx = s[0] - ox, qy = s[1] - oy, t = (qx * sdy - qy * sdx) / den, u = (qx * dy - qy * dx) / den;
+        const qx = s[0] - ox,
+          qy = s[1] - oy,
+          t = (qx * sdy - qy * sdx) / den,
+          u = (qx * dy - qy * dx) / den;
         if (t > 0 && u >= 0 && u <= 1 && t < best) best = t;
       }
       if (best < Infinity) out.push({ a, x: ox + dx * best, y: oy + dy * best });
@@ -87,14 +132,16 @@ function drawCrate(c: Crate) {
 const LABEL_R = 130;
 /** Names of nearby loot in rarity colour, nudged up so close items don't print over each other. */
 function groundLabels(r: Raid) {
-  const p = r.p, placed: { x: number; y: number; w: number }[] = [];
+  const p = r.p,
+    placed: { x: number; y: number; w: number }[] = [];
   const near = r.pick.filter((q) => Math.hypot(q.x - p.x, q.y - p.y) < LABEL_R).sort((a, b) => a.y - b.y);
   ctx.font = "600 12px " + FONT;
   ctx.textAlign = "center";
   ctx.lineWidth = 3;
   ctx.strokeStyle = "rgba(0,0,0,.8)";
   for (const q of near) {
-    const t = (upgradeOver(q.it, p.eq) ? "↑ " : "") + nameOf(q.it), w = ctx.measureText(t).width + 6;
+    const t = (upgradeOver(q.it, p.eq) ? "↑ " : "") + nameOf(q.it),
+      w = ctx.measureText(t).width + 6;
     let y = q.y - 13;
     while (placed.some((l) => Math.abs(l.y - y) < 13 && Math.abs(l.x - q.x) < (l.w + w) / 2)) y -= 13;
     placed.push({ x: q.x, y, w });
@@ -108,8 +155,11 @@ function groundLabels(r: Raid) {
 
 /** Held blade, swept through an arc while a strike plays, with a pale trail. */
 function drawBlade(x: number, y: number, face: number, reach: number, swing: number) {
-  const t = swing > 0 ? 1 - swing / 0.18 : 0.5, a = face + (t - 0.5) * 2 * MELEE_ARC, len = 10 + reach * 0.35;
-  const hx = x + Math.cos(face) * 13 + Math.cos(face + 1.57) * 5, hy = y + Math.sin(face) * 13 + Math.sin(face + 1.57) * 5;
+  const t = swing > 0 ? 1 - swing / 0.18 : 0.5,
+    a = face + (t - 0.5) * 2 * MELEE_ARC,
+    len = 10 + reach * 0.35;
+  const hx = x + Math.cos(face) * 13 + Math.cos(face + 1.57) * 5,
+    hy = y + Math.sin(face) * 13 + Math.sin(face + 1.57) * 5;
   if (swing > 0) {
     ctx.strokeStyle = "rgba(235,240,245,.6)";
     ctx.lineWidth = 9;
@@ -143,25 +193,37 @@ export function draw(r: Raid | null) {
   ctx.fillRect(0, 0, cv.width, cv.height);
   if (!r) return;
   VR = BASE_VR * (1 + r.p.st.vis);
-  const p = r.p, sx = r.shake > 0 ? rnd(-4, 4) : 0, sy = r.shake > 0 ? rnd(-4, 4) : 0;
-  const cx = p.x - vw / 2 / zoom + sx, cy = p.y - vh / 2 / zoom + sy, k = dpr * zoom, ww = vw / zoom, wh = vh / zoom;
+  const p = r.p,
+    sx = r.shake > 0 ? rnd(-4, 4) : 0,
+    sy = r.shake > 0 ? rnd(-4, 4) : 0;
+  const cx = p.x - vw / 2 / zoom + sx,
+    cy = p.y - vh / 2 / zoom + sy,
+    k = dpr * zoom,
+    ww = vw / zoom,
+    wh = vh / zoom;
   const tt = performance.now() / 1000;
   const world = (g: CanvasRenderingContext2D) => g.setTransform(k, 0, 0, k, -cx * k, -cy * k);
-  const poly = visPoly(r, p.x, p.y), seen = (o: Pt) => Math.hypot(o.x - p.x, o.y - p.y) < VR && los(r.walls, p, o);
+  const poly = visPoly(r, p.x, p.y),
+    seen = (o: Pt) => Math.hypot(o.x - p.x, o.y - p.y) < VR && los(r.walls, p, o);
   const near = r.walls.filter((w) => w.x < cx + ww + 20 && w.x + w.w > cx - 20 && w.y < cy + wh + 20 && w.y + w.h > cy - 20);
   const inView = (x: number, y: number, m = 60) => x > cx - m && x < cx + ww + m && y > cy - m && y < cy + wh + m;
 
   // ground, floors, stains, decor
   world(ctx);
-  const i0 = clamp(Math.floor(cx / T), 0, GN - 1), i1 = clamp(Math.floor((cx + ww) / T), 0, GN - 1);
-  const j0 = clamp(Math.floor(cy / T), 0, GN - 1), j1 = clamp(Math.floor((cy + wh) / T), 0, GN - 1);
+  const i0 = clamp(Math.floor(cx / T), 0, GN - 1),
+    i1 = clamp(Math.floor((cx + ww) / T), 0, GN - 1);
+  const j0 = clamp(Math.floor(cy / T), 0, GN - 1),
+    j1 = clamp(Math.floor((cy + wh) / T), 0, GN - 1);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) tile(r.ground[j * GN + i], i * T, j * T, T + 0.6);
   for (const b of r.bld)
     if (b.x < cx + ww && b.x + b.w > cx && b.y < cy + wh && b.y + b.h > cy) {
       ctx.fillStyle = floorPattern(b.floor);
       ctx.fillRect(b.x, b.y, b.w, b.h);
     }
-  const sx0 = clamp(cx, 0, W), sy0 = clamp(cy, 0, H), sx1 = clamp(cx + ww, 0, W), sy1 = clamp(cy + wh, 0, H);
+  const sx0 = clamp(cx, 0, W),
+    sy0 = clamp(cy, 0, H),
+    sx1 = clamp(cx + ww, 0, W),
+    sy1 = clamp(cy + wh, 0, H);
   if (sx1 > sx0 && sy1 > sy0) ctx.drawImage(r.decal.c, sx0 / 2, sy0 / 2, (sx1 - sx0) / 2, (sy1 - sy0) / 2, sx0, sy0, sx1 - sx0, sy1 - sy0);
   for (const o of r.decor)
     if (inView(o.x, o.y)) {
@@ -203,7 +265,10 @@ export function draw(r: Raid | null) {
     ctx.beginPath();
     ctx.moveTo(e.x, e.y);
     for (let i = 0; i <= 14; i++) {
-      const a = e.fa - half + (2 * half * i) / 14, dx = Math.cos(a), dy = Math.sin(a), l = rayLen(r.walls, e.x, e.y, dx, dy, range);
+      const a = e.fa - half + (2 * half * i) / 14,
+        dx = Math.cos(a),
+        dy = Math.sin(a),
+        l = rayLen(r.walls, e.x, e.y, dx, dy, range);
       ctx.lineTo(e.x + dx * l, e.y + dy * l);
     }
     ctx.closePath();
@@ -211,7 +276,8 @@ export function draw(r: Raid | null) {
   }
   for (const e of r.enemies) {
     if (!seen(e)) continue;
-    const a = Math.atan2(p.y - e.y, p.x - e.x), [look, scale] = LOOK[e.kind];
+    const a = Math.atan2(p.y - e.y, p.x - e.x),
+      [look, scale] = LOOK[e.kind];
     // a stalker only shows when it charges, or as a shimmer up close
     const hidden = e.kind === "stalker" && e.ph !== 1 && e.hit <= 0;
     if (hidden && Math.hypot(e.x - p.x, e.y - p.y) > 150) continue;
@@ -298,7 +364,8 @@ export function draw(r: Raid | null) {
     ctx.fillRect(l.x, l.y, l.w, l.h);
     ctx.fillStyle = GOLD;
     const along = l.w > l.h;
-    for (let o = 6; o < (along ? l.w : l.h) - 2; o += 12) along ? ctx.fillRect(l.x + o, l.y + 2, 4, l.h - 4) : ctx.fillRect(l.x + 2, l.y + o, l.w - 4, 4);
+    for (let o = 6; o < (along ? l.w : l.h) - 2; o += 12)
+      along ? ctx.fillRect(l.x + o, l.y + 2, 4, l.h - 4) : ctx.fillRect(l.x + 2, l.y + o, l.w - 4, 4);
     const m = lockCentre(l);
     ctx.fillStyle = "#1a1408";
     ctx.fillRect(m.x - 7, m.y - 4, 14, 11);
@@ -316,7 +383,8 @@ export function draw(r: Raid | null) {
   for (const e of r.exits) glow(e.x, e.y, 130, C.ok, 0.32 + 0.1 * Math.sin(tt * 3));
   for (const c of r.crates) if (!c.open && c.d > 0.36) glow(c.x, c.y, 46, crateCol(c), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
   for (const q of r.pick) {
-    const rr = def(q.it.k).r, col = rarCol(rr);
+    const rr = def(q.it.k).r,
+      col = rarCol(rr);
     glow(q.x, q.y, 22, col, 0.45);
     // rare and epic loot sends a light beam up through the darkness
     if (rr >= 2 && inView(q.x, q.y, 400)) {
@@ -416,7 +484,8 @@ export function draw(r: Raid | null) {
   for (const c of r.crates) if (!c.open && c.prog > 0) ring(c.x, c.y, c.prog / CRATE_TIME, C.accent);
   if (r.vault && !r.vault.open)
     for (const l of r.vault.locks) {
-      const m = lockCentre(l), d = Math.hypot(m.x - p.x, m.y - p.y);
+      const m = lockCentre(l),
+        d = Math.hypot(m.x - p.x, m.y - p.y);
       if (r.vault.prog > 0 && d < 64) ring(m.x, m.y, r.vault.prog / UNLOCK_TIME, GOLD);
       if (d < 140) {
         ctx.fillStyle = GOLD;
@@ -435,7 +504,8 @@ export function draw(r: Raid | null) {
 
   // screen-space overlays: vignette (red when hurt), exit arrows, joystick
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const low = p.hp / p.max < 0.35, hurtA = Math.max(p.hit > 0 ? 0.5 : 0, low ? 0.25 + 0.15 * Math.sin(tt * 5) : 0);
+  const low = p.hp / p.max < 0.35,
+    hurtA = Math.max(p.hit > 0 ? 0.5 : 0, low ? 0.25 + 0.15 * Math.sin(tt * 5) : 0);
   const vg = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * 0.35, vw / 2, vh / 2, Math.max(vw, vh) * 0.75);
   vg.addColorStop(0, "rgba(0,0,0,0)");
   vg.addColorStop(1, hurtA ? `rgba(120,10,10,${hurtA.toFixed(2)})` : "rgba(0,0,0,.45)");
@@ -443,7 +513,9 @@ export function draw(r: Raid | null) {
   ctx.fillRect(0, 0, vw, vh);
   const boss = r.enemies.find((e) => e.kind === "boss" && e.aggro && seen(e));
   if (boss) {
-    const bw = Math.min(320, vw - 32), bx = (vw - bw) / 2, by = 100;
+    const bw = Math.min(320, vw - 32),
+      bx = (vw - bw) / 2,
+      by = 100;
     ctx.fillStyle = "rgba(0,0,0,.6)";
     ctx.fillRect(bx, by, bw, 8);
     ctx.fillStyle = C.bad;
@@ -453,12 +525,15 @@ export function draw(r: Raid | null) {
     ctx.textAlign = "center";
     ctx.fillText("LA BRUTE", vw / 2, by - 5);
   }
-  const top = boss ? 120 : 60, bot = vh - 90;
+  const top = boss ? 120 : 60,
+    bot = vh - 90;
   for (const e of r.exits) {
-    const ex = (e.x - cx) * zoom, ey = (e.y - cy) * zoom;
+    const ex = (e.x - cx) * zoom,
+      ey = (e.y - cy) * zoom;
     if (ex > 0 && ex < vw && ey > top && ey < bot) continue;
     const a = Math.atan2(ey - vh / 2, ex - vw / 2);
-    const hx = clamp(vw / 2 + Math.cos(a) * vw, 28, vw - 28), hy = clamp(vh / 2 + Math.sin(a) * vh, top + 20, bot);
+    const hx = clamp(vw / 2 + Math.cos(a) * vw, 28, vw - 28),
+      hy = clamp(vh / 2 + Math.sin(a) * vh, top + 20, bot);
     ctx.save();
     ctx.translate(hx, hy);
     ctx.rotate(a);
@@ -489,7 +564,8 @@ export function draw(r: Raid | null) {
     ctx.globalAlpha = 1;
   }
   if (r.dead > 0) {
-    const f = clamp(1 - r.dead / DEATH_TIME, 0, 1), dead = r.why.startsWith("Tu");
+    const f = clamp(1 - r.dead / DEATH_TIME, 0, 1),
+      dead = r.why.startsWith("Tu");
     ctx.fillStyle = `rgba(60,0,0,${(0.75 * f).toFixed(2)})`;
     ctx.fillRect(0, 0, vw, vh);
     ctx.globalAlpha = clamp(f * 2.5, 0, 1);

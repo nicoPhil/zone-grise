@@ -39,7 +39,14 @@ export interface Mods {
 export type WornSlot = "head" | "body" | "hands" | "feet" | "back" | "trinket";
 export type Slot = WornSlot | "gun" | "blade";
 export const SLOTS: Record<Slot, string> = {
-  head: "Tête", trinket: "Accessoire", back: "Dos", gun: "Arme à feu", body: "Torse", blade: "Arme blanche", hands: "Mains", feet: "Pieds",
+  head: "Tête",
+  trinket: "Accessoire",
+  back: "Dos",
+  gun: "Arme à feu",
+  body: "Torse",
+  blade: "Arme blanche",
+  hands: "Mains",
+  feet: "Pieds",
 };
 const gear = (n: string, slot: WornSlot, r: number, v: number, s: number, m: Mods) => ({ n, t: "gear", slot, r, v, s, ...m }) as const;
 
@@ -147,7 +154,16 @@ export const slotOf = (it: Item): Slot | null => {
 };
 
 export type Gear = Record<Slot, Item | null>;
-export const emptyGear = (): Gear => ({ head: null, body: null, hands: null, feet: null, back: null, trinket: null, gun: null, blade: null });
+export const emptyGear = (): Gear => ({
+  head: null,
+  body: null,
+  hands: null,
+  feet: null,
+  back: null,
+  trinket: null,
+  gun: null,
+  blade: null,
+});
 export const RED_CAP = 0.7;
 export function gearStats(g: Gear): Required<Mods> {
   const s: Required<Mods> = { red: 0, hp: 0, spd: 0, cap: 0, mel: 0, fire: 0, vis: 0, quiet: 0 };

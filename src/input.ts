@@ -36,7 +36,8 @@ export const clearStick = () => {
 };
 
 export function moveVec(): Pt {
-  let x = 0, y = 0;
+  let x = 0,
+    y = 0;
   if (stick) {
     x = (stick.x - stick.bx) / STICK_R;
     y = (stick.y - stick.by) / STICK_R;

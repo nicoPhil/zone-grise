@@ -2,7 +2,10 @@ import { FREE, KEYS, def, mk, type Item, type ItemDef } from "../items";
 import { clamp, overlaps, pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "./geometry";
 
-export const W = 2400, H = 2400, TH = 20, DOOR = 84;
+export const W = 2400,
+  H = 2400,
+  TH = 20,
+  DOOR = 84;
 
 export interface Building extends Rect {
   rooms: Rect[];
@@ -18,7 +21,13 @@ function cut(a: number, b: number, doors: number[]): [number, number][] {
   let s: [number, number][] = [[a, b]];
   for (const d of doors)
     s = s.flatMap(([u, v]): [number, number][] =>
-      d - DOOR / 2 > u && d + DOOR / 2 < v ? [[u, d - DOOR / 2], [d + DOOR / 2, v]] : [[u, v]]);
+      d - DOOR / 2 > u && d + DOOR / 2 < v
+        ? [
+            [u, d - DOOR / 2],
+            [d + DOOR / 2, v],
+          ]
+        : [[u, v]],
+    );
   return s.filter(([u, v]) => v - u > 4);
 }
 const hWall = (walls: Rect[], a: number, b: number, y: number, doors: number[]) =>
@@ -55,7 +64,10 @@ function splitRooms(walls: Rect[], r: Rect, lvl: number, out: Rect[], doors: Rec
 function genBuildings(walls: Rect[]): Building[] {
   const bs: Building[] = [];
   for (let t = 0; t < 600 && bs.length < 12; t++) {
-    const w = rnd(300, 560), h = rnd(260, 460), x = rnd(170, W - 170 - w), y = rnd(170, H - 170 - h);
+    const w = rnd(300, 560),
+      h = rnd(260, 460),
+      x = rnd(170, W - 170 - w),
+      y = rnd(170, H - 170 - h);
     if (Math.random() > 0.25 + depth(x + w / 2, y + h / 2)) continue;
     if (bs.some((b) => overlaps({ x, y, w, h }, b, 150))) continue;
     const sides = [0, 1, 2, 3].sort(() => Math.random() - 0.5).slice(0, Math.random() < 0.5 ? 1 : 2);
@@ -63,9 +75,11 @@ function genBuildings(walls: Rect[]): Building[] {
     const door = (side: number, a: number, b: number) => {
       if (!sides.includes(side)) return [];
       const c = rnd(a + 70, b - 70);
-      doors.push(side < 2
-        ? { x: c - DOOR / 2, y: side ? y + h - TH : y, w: DOOR, h: TH }
-        : { x: side === 2 ? x : x + w - TH, y: c - DOOR / 2, w: TH, h: DOOR });
+      doors.push(
+        side < 2
+          ? { x: c - DOOR / 2, y: side ? y + h - TH : y, w: DOOR, h: TH }
+          : { x: side === 2 ? x : x + w - TH, y: c - DOOR / 2, w: TH, h: DOOR },
+      );
       return [c];
     };
     hWall(walls, x, x + w, y, door(0, x, x + w));
@@ -81,12 +95,16 @@ function genBuildings(walls: Rect[]): Building[] {
 
 export function genMap(): { walls: Rect[]; bld: Building[] } {
   const walls: Rect[] = [
-    { x: -40, y: -40, w: W + 80, h: 40 }, { x: -40, y: H, w: W + 80, h: 40 },
-    { x: -40, y: 0, w: 40, h: H }, { x: W, y: 0, w: 40, h: H },
+    { x: -40, y: -40, w: W + 80, h: 40 },
+    { x: -40, y: H, w: W + 80, h: 40 },
+    { x: -40, y: 0, w: 40, h: H },
+    { x: W, y: 0, w: 40, h: H },
   ];
   const bld = genBuildings(walls);
   for (let i = 0; i < 22; i++) {
-    const x = rnd(100, W - 300), y = rnd(100, H - 300), k = Math.random();
+    const x = rnd(100, W - 300),
+      y = rnd(100, H - 300),
+      k = Math.random();
     const w = k < 0.45 ? rnd(120, 260) : k < 0.9 ? 24 : rnd(60, 120);
     const h = k < 0.45 ? 24 : k < 0.9 ? rnd(120, 260) : rnd(60, 120);
     if (!bld.some((b) => overlaps({ x, y, w, h }, b, 70))) walls.push({ x, y, w, h });
@@ -99,13 +117,16 @@ export const inBld = (bld: Building[], x: number, y: number, pad = 0) =>
 
 export function freePt(walls: Rect[], pad: number, ok: (x: number, y: number) => boolean = () => true): Pt {
   for (let i = 0; i < 800; i++) {
-    const x = rnd(80, W - 80), y = rnd(80, H - 80);
+    const x = rnd(80, W - 80),
+      y = rnd(80, H - 80);
     if (!inWall(walls, x, y, pad) && ok(x, y)) return { x, y };
   }
   return { x: W / 2, y: H / 2 };
 }
 
-export const EDGE = 260, ENTRY_EXIT_D = 1700, ENTRY_VAULT_D = 1300;
+export const EDGE = 260,
+  ENTRY_EXIT_D = 1700,
+  ENTRY_VAULT_D = 1300;
 
 /** The player enters at the map edge, away from the vault, with both exits across the map. */
 export function placeEntries(walls: Rect[], bld: Building[], vault: Pt | null): { sp: Pt; exits: Pt[] } {

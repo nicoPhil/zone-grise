@@ -19,7 +19,9 @@ export const hideHint = () => {
 };
 export function showHint(bladeOnly: boolean) {
   const h = $("hint");
-  h.textContent = bladeOnly ? "Glisse pour bouger · Tu frappes au contact" : "Glisse pour bouger · Arrête-toi pour tirer · Ta lame frappe au contact";
+  h.textContent = bladeOnly
+    ? "Glisse pour bouger · Tu frappes au contact"
+    : "Glisse pour bouger · Arrête-toi pour tirer · Ta lame frappe au contact";
   h.hidden = false;
   h.style.opacity = "1";
   setTimeout(hideHint, 5000);
@@ -43,7 +45,9 @@ export function updFire() {
 }
 
 export function updHud(r: Raid) {
-  const p = r.p, f = clamp(p.hp / p.max, 0, 1), s = Math.max(0, Math.ceil(r.t));
+  const p = r.p,
+    f = clamp(p.hp / p.max, 0, 1),
+    s = Math.max(0, Math.ceil(r.t));
   $("hpfill").style.width = f * 100 + "%";
   $("hpfill").style.background = f < 0.35 ? C.bad : C.ok;
   $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";

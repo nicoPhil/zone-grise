@@ -13,7 +13,9 @@ describe("zones", () => {
   });
 
   it("credit pre-zone extractions to the first zone", () => {
-    const s = parseSave(JSON.stringify({ credits: 0, stash: [], lo: { w: null, a: null, meds: 0 }, st: { raids: 9, ext: 5, dead: 4, best: 0 } }));
+    const s = parseSave(
+      JSON.stringify({ credits: 0, stash: [], lo: { w: null, a: null, meds: 0 }, st: { raids: 9, ext: 5, dead: 4, best: 0 } }),
+    );
     expect(s.zx).toEqual([5, 0, 0, 0, 0]);
     expect(unlocked(s, 1)).toBe(true);
   });

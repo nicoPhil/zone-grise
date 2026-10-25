@@ -1,4 +1,20 @@
-import { ITEMS, SHOP, def, desc, gearStats, mk, nameOf, price, slotOf, upgradeOver, valOf, wstat, type Item, type ItemKey, type Slot } from "../items";
+import {
+  ITEMS,
+  SHOP,
+  def,
+  desc,
+  gearStats,
+  mk,
+  nameOf,
+  price,
+  slotOf,
+  upgradeOver,
+  valOf,
+  wstat,
+  type Item,
+  type ItemKey,
+  type Slot,
+} from "../items";
 import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
@@ -28,7 +44,10 @@ const REROLL = 40;
 /** Copies of the same item at the same upgrade level share one stash line. */
 const stackKey = (i: Item) => i.k + ":" + (i.lv || 0);
 const costTxt = (c: Cost) =>
-  `${c.cr} cr` + costParts(c).map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`).join("");
+  `${c.cr} cr` +
+  costParts(c)
+    .map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`)
+    .join("");
 
 const weapons = () => [S.lo.eq.gun, S.lo.eq.blade].filter((w): w is Item => !!w);
 
@@ -45,7 +64,10 @@ function needed() {
 }
 
 function tabRaid() {
-  const lo = S.lo, meds = count("med"), keys = count("vkey"), st = gearStats(lo.eq);
+  const lo = S.lo,
+    meds = count("med"),
+    keys = count("vkey"),
+    st = gearStats(lo.eq);
   return `<div class="card"><div class="lbl">Personnage · touche un emplacement pour ses détails</div>
       ${sheet(lo.eq, { st, hp: maxHp() + st.hp, cap: cap() + st.cap, sel })}
     </div>
@@ -61,17 +83,27 @@ function tabRaid() {
 }
 
 function tabStash() {
-  const lo = S.lo, need = needed(), stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
+  const lo = S.lo,
+    need = needed(),
+    stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
   const stacks = new Map<string, Item[]>();
   const up = (i: Item) => (upgradeOver(i, lo.eq) ? 1 : 0);
   // upgrades over what is worn come first, then by value
-  for (const i of [...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a))) stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
+  for (const i of [...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a)))
+    stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
   const list = [...stacks.values()].map((g) => {
-    const i = g[0], t = def(i.k).t;
+    const i = g[0],
+      t = def(i.k).t;
     const eq = t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
-    const all = g.length > 1 ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>` : "";
+    const all =
+      g.length > 1
+        ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>`
+        : "";
     const btns = `<div class="btns">${eq}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${valOf(i)}</button>${all}</div>`;
-    const tags = [upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "", need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : ""].filter(Boolean);
+    const tags = [
+      upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "",
+      need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : "",
+    ].filter(Boolean);
     return row(i, btns, [desc(i), ...tags].join(" · "), g.length, pinned(i.u));
   });
   return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
@@ -108,7 +140,9 @@ function tabQuest() {
 function benchRow(w: Item, slot: "gun" | "blade") {
   const lv = w.lv || 0;
   if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`, "", 1, pinned(w.u));
-  const cur = wstat(w), nx = wstat({ ...w, lv: lv + 1 }), c = BENCH[lv];
+  const cur = wstat(w),
+    nx = wstat({ ...w, lv: lv + 1 }),
+    c = BENCH[lv];
   return `<div class="item" ${pinned(w.u)}><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
       <small>Dégâts ${cur.dmg} → ${nx.dmg} · cadence ${fmtRate(cur.rate)} → ${fmtRate(nx.rate)}</small><small>${costTxt(c)}</small></div>
       <div class="btns"><button data-a="bench" data-s="${slot}" ${canPay(c) ? "" : "disabled"}>Améliorer</button></div></div>`;
@@ -118,7 +152,9 @@ function tabShop() {
   const rows = [S.lo.eq.gun && benchRow(S.lo.eq.gun, "gun"), S.lo.eq.blade && benchRow(S.lo.eq.blade, "blade")].filter(Boolean);
   const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme dans l'onglet Raid pour l'améliorer.</p>`;
   const ups = (Object.keys(UP) as (keyof Upgrades)[]).map((k) => {
-    const u = UP[k], l = S.up[k], more = l < MAX_LV;
+    const u = UP[k],
+      l = S.up[k],
+      more = l < MAX_LV;
     return `<div class="item"><div class="nm"><b>${u.n} · ${u.lv[l]}</b><small>${more ? `Suivant : ${u.lv[l + 1]}` : "Niveau maximum"}</small>${more ? `<small>${costTxt(u.cost[l])}</small>` : ""}</div>
       <div class="btns">${more ? `<button data-a="up" data-k="${k}" ${canPay(u.cost[l]) ? "" : "disabled"}>Améliorer</button>` : `<span class="val">Max</span>`}</div></div>`;
   });
@@ -127,7 +163,8 @@ function tabShop() {
 }
 
 const SHOP_PIN = "shop:";
-const buyBtn = (k: ItemKey) => `<button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button>`;
+const buyBtn = (k: ItemKey) =>
+  `<button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button>`;
 
 function tabTrade() {
   const rows = SHOP.map((k) => row({ k, u: SHOP_PIN + k }, `<div class="btns">${buyBtn(k)}</div>`, "", 1, pinned(SHOP_PIN + k)));
@@ -140,16 +177,25 @@ function stashPopup() {
     const k = sel.slice(SHOP_PIN.length) as ItemKey;
     return popup({ k, u: sel }, [`${count(k)} au coffre`], [buyBtn(k)]);
   }
-  const lo = S.lo, it = sel && S.stash.find((i) => i.u === sel);
+  const lo = S.lo,
+    it = sel && S.stash.find((i) => i.u === sel);
   if (it) {
-    const t = def(it.k).t, n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
-    return popup(it, [n > 1 ? `×${n} au coffre` : "", upgradeOver(it, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : ""].filter(Boolean), [
-      t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
-      `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${valOf(it)}</button>`,
-      n > 1 ? `<button data-a="sellall" data-g="${stackKey(it)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(it) * n}</button>` : "",
-    ]);
+    const t = def(it.k).t,
+      n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
+    return popup(
+      it,
+      [n > 1 ? `×${n} au coffre` : "", upgradeOver(it, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : ""].filter(Boolean),
+      [
+        t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
+        `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${valOf(it)}</button>`,
+        n > 1
+          ? `<button data-a="sellall" data-g="${stackKey(it)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(it) * n}</button>`
+          : "",
+      ],
+    );
   }
-  const slot = sel ? (Object.keys(lo.eq) as Slot[]).find((k) => lo.eq[k]?.u === sel) : undefined, worn = slot && lo.eq[slot];
+  const slot = sel ? (Object.keys(lo.eq) as Slot[]).find((k) => lo.eq[k]?.u === sel) : undefined,
+    worn = slot && lo.eq[slot];
   if (!worn) return "";
   return popup(worn, ["équipé"], [`<button data-a="unequip" data-slot="${slot}">${icon("unequip")}Retirer</button>`]);
 }
@@ -183,7 +229,8 @@ export function renderStash() {
 export function initStash() {
   $("stash").addEventListener("scroll", () => pin($("stash")), { passive: true });
   $("stash").addEventListener("click", (e) => {
-    const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim");
+    const t = e.target as HTMLElement,
+      b = t.closest<HTMLElement>("button, .scrim");
     if (!b) {
       const line = t.closest<HTMLElement>(".item[data-u]");
       if (line) {
@@ -203,7 +250,8 @@ export function initStash() {
       }
       return renderStash();
     }
-    const a = b.dataset.a, lo = S.lo;
+    const a = b.dataset.a,
+      lo = S.lo;
     const take = (u?: string) => {
       const i = S.stash.findIndex((x) => x.u === u);
       return i < 0 ? null : S.stash.splice(i, 1)[0];
@@ -216,7 +264,8 @@ export function initStash() {
       assetsReady.then(startRaid);
       return;
     }
-    const slot = b.dataset.slot as Slot | undefined, worn = slot && lo.eq[slot];
+    const slot = b.dataset.slot as Slot | undefined,
+      worn = slot && lo.eq[slot];
     if (worn && !a) sel = was === worn.u ? null : worn.u;
     if (worn && a === "unequip") {
       S.stash.push(worn);
@@ -230,7 +279,8 @@ export function initStash() {
     if (a === "eq") {
       const it = take(b.dataset.u);
       if (it) {
-        const s = slotOf(it)!, old = lo.eq[s];
+        const s = slotOf(it)!,
+          old = lo.eq[s];
         if (old) S.stash.push(old);
         lo.eq[s] = it;
       }
@@ -257,7 +307,8 @@ export function initStash() {
       }
     }
     if (a === "up") {
-      const k = b.dataset.k as keyof Upgrades, l = S.up[k];
+      const k = b.dataset.k as keyof Upgrades,
+        l = S.up[k];
       if (l < MAX_LV && canPay(UP[k].cost[l])) {
         pay(UP[k].cost[l]);
         S.up[k]++;
@@ -274,7 +325,8 @@ export function initStash() {
       }
     }
     if (a === "claim") {
-      const i = S.q.findIndex((q) => q.u === b.dataset.q), q = S.q[i];
+      const i = S.q.findIndex((q) => q.u === b.dataset.q),
+        q = S.q[i];
       if (q && qInfo(q).done) {
         if (q.t === "bring" && q.k) pay({ cr: 0, it: { [q.k]: q.n } });
         S.credits += q.cr;

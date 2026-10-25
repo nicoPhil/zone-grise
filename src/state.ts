@@ -64,7 +64,8 @@ export function parseSave(raw: string | null): Save {
   const eq = emptyGear();
   const old = s.lo as Partial<Record<"w" | "m" | "a", Item>> & { eq?: Partial<Gear> };
   for (const it of [...Object.values(old.eq || {}), old.w, old.m, old.a]) {
-    const i = ok(it), slot: Slot | null = i && slotOf(i);
+    const i = ok(it),
+      slot: Slot | null = i && slotOf(i);
     if (i && slot && !eq[slot]) eq[slot] = i;
   }
   return {

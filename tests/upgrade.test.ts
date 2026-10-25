@@ -5,7 +5,14 @@ describe("gear", () => {
   const gear = { ...emptyGear(), gun: mk("p9"), body: mk("vest1") };
 
   it("puts every weapon and wearable in its own slot", () => {
-    expect([mk("p9"), mk("bat"), mk("vest1"), mk("helmet"), mk("exppack"), mk("med")].map(slotOf)).toEqual(["gun", "blade", "body", "head", "back", null]);
+    expect([mk("p9"), mk("bat"), mk("vest1"), mk("helmet"), mk("exppack"), mk("med")].map(slotOf)).toEqual([
+      "gun",
+      "blade",
+      "body",
+      "head",
+      "back",
+      null,
+    ]);
   });
 
   it("compares a piece with the one in the slot it would take", () => {
@@ -24,6 +31,9 @@ describe("gear", () => {
     expect(s.red).toBe(0.7);
     expect(s.cap).toBe(4);
     expect(s.vis).toBeCloseTo(0.15);
-    expect(gearStats({ ...emptyGear(), body: mk("armor"), head: mk("visor"), trinket: mk("vial"), feet: mk("boots"), hands: mk("knuckles") }).red).toBe(0.7);
+    expect(
+      gearStats({ ...emptyGear(), body: mk("armor"), head: mk("visor"), trinket: mk("vial"), feet: mk("boots"), hands: mk("knuckles") })
+        .red,
+    ).toBe(0.7);
   });
 });

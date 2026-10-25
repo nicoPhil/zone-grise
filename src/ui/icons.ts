@@ -11,7 +11,8 @@ const P = {
   key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M16 7l3 3M14 9l2 2"/>',
   head: '<path d="M4 16a8 8 0 0 1 16 0M2 16h20v3H2zM12 8v4"/>',
   body: '<path d="M8 3l4 4 4-4 4 3v15H4V6zM12 7v14"/>',
-  hands: '<path d="M7 21v-9V6.5a1.5 1.5 0 0 1 3 0V11V4.5a1.5 1.5 0 0 1 3 0V11V5.5a1.5 1.5 0 0 1 3 0V12V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7z"/>',
+  hands:
+    '<path d="M7 21v-9V6.5a1.5 1.5 0 0 1 3 0V11V4.5a1.5 1.5 0 0 1 3 0V11V5.5a1.5 1.5 0 0 1 3 0V12V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7z"/>',
   feet: '<path d="M7 3h6v9l5 2.5a3 3 0 0 1 2 2.8V20H7zM7 17h13"/>',
   trinket: '<path d="M6 3l6 8 6-8"/><circle cx="12" cy="16" r="4"/>',
   gun: '<path d="M2 7h19v4h-8l-1 3H9l-1 5H4l1.5-8H2z"/>',
@@ -22,7 +23,8 @@ const P = {
   equip: '<circle cx="9" cy="7" r="4"/><path d="M2 21a7 7 0 0 1 14 0M22 11h-6M19 8l-3 3 3 3"/>',
   unequip: '<circle cx="9" cy="7" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11h6M19 8l3 3-3 3"/>',
   sell: '<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
-  sellAll: '<path d="M9 5H3v6l8.3 8.3a2 2 0 0 0 2.8 0M13 2H8v5l8.3 8.3a2 2 0 0 0 2.8 0l2.3-2.3a2 2 0 0 0 0-2.8z"/><circle cx="11.5" cy="5.5" r="1"/>',
+  sellAll:
+    '<path d="M9 5H3v6l8.3 8.3a2 2 0 0 0 2.8 0M13 2H8v5l8.3 8.3a2 2 0 0 0 2.8 0l2.3-2.3a2 2 0 0 0 0-2.8z"/><circle cx="11.5" cy="5.5" r="1"/>',
   buy: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 2h3l2.7 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
   drop: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
   take: '<path d="M12 15V3M7 8l5-5 5 5M4 21h16"/>',

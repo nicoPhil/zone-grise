@@ -30,7 +30,8 @@ describe("enemy awareness", () => {
   });
 
   it("spots faster up close", () => {
-    const near = idle(), far = idle();
+    const near = idle(),
+      far = idle();
     stare(near, 40, 0.4);
     stare(far, 190, 0.4);
     expect(near.aggro).toBe(true);

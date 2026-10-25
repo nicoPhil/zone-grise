@@ -30,7 +30,8 @@ export function closeBag() {
 }
 
 function tile(it: Item, where: "bag" | "ground") {
-  const d = def(it.k), up = R && upgradeOver(it, R.p.eq);
+  const d = def(it.k),
+    up = R && upgradeOver(it, R.p.eq);
   const move = where === "bag" ? ["drop", "Poser"] : ["take", "Prendre"];
   return `<div class="tile" role="button" tabindex="0" data-pin="${it.u}" style="grid-column:span ${d.s};--rc:var(--r${d.r})" data-u="${it.u}" aria-pressed="${detail === it.u}">
     <b>${nameOf(it)}</b>${up ? `<i class="up" aria-label="mieux que ton équipement">↑</i>` : ""}
@@ -39,7 +40,9 @@ function tile(it: Item, where: "bag" | "ground") {
 
 function findItem(u: string): { it: Item; where: Where } | null {
   if (!R) return null;
-  const p = R.p, b = R.bag.find((i) => i.u === u), g = ground(R).find((k) => k.it.u === u);
+  const p = R.p,
+    b = R.bag.find((i) => i.u === u),
+    g = ground(R).find((k) => k.it.u === u);
   if (b) return { it: b, where: "bag" };
   if (g) return { it: g.it, where: "ground" };
   const e = Object.values(p.eq).find((i) => i?.u === u);
@@ -49,17 +52,25 @@ function findItem(u: string): { it: Item; where: Where } | null {
 function detailPanel() {
   const f = detail ? findItem(detail) : null;
   if (!f) return "";
-  const { it, where } = f, t = def(it.k).t;
-  return popup(it, where === "eq" ? ["équipé"] : [], [
-    where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
-    where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
-    where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
-  ], false);
+  const { it, where } = f,
+    t = def(it.k).t;
+  return popup(
+    it,
+    where === "eq" ? ["équipé"] : [],
+    [
+      where !== "eq" && (t === "wpn" || t === "gear") ? `<button data-a="eq">${icon("equip")}Équiper</button>` : "",
+      where === "eq" ? `<button data-a="unequip">${icon("unequip")}Retirer</button>` : "",
+      where === "bag" && (t === "med" || t === "stim") ? `<button data-a="use">${icon("use")}Utiliser</button>` : "",
+    ],
+    false,
+  );
 }
 
 function renderBag() {
   if (!R) return;
-  const r = R, p = r.p, used = bagUsed(r.bag);
+  const r = R,
+    p = r.p,
+    used = bagUsed(r.bag);
   const free = Array.from({ length: Math.max(0, rcap(r) - used) }, () => `<div class="cell" aria-hidden="true"></div>`).join("");
   const near = ground(r);
   $("bag").innerHTML = `<div class="dismiss" data-a="back" aria-hidden="true"></div><div class="wrap">
@@ -81,7 +92,8 @@ function renderBag() {
 export function tickBag() {
   const el = document.getElementById("bagLive");
   if (!R || !el) return;
-  const p = R.p, hunted = R.enemies.some((e) => e.aggro && Math.hypot(e.x - p.x, e.y - p.y) < DANGER_R);
+  const p = R.p,
+    hunted = R.enemies.some((e) => e.aggro && Math.hypot(e.x - p.x, e.y - p.y) < DANGER_R);
   const txt = `${Math.ceil(Math.max(0, p.hp))} / ${p.max} PV` + (hunted ? " · ennemi en approche" : "");
   if (el.textContent !== txt) {
     el.textContent = txt;
@@ -91,14 +103,18 @@ export function tickBag() {
 
 /** Bag → ground or ground → bag. */
 function move(u: string) {
-  const r = R, f = findItem(u);
+  const r = R,
+    f = findItem(u);
   if (!r || !f || f.where === "eq") return;
   detail = null;
   if (f.where === "bag") {
     r.bag.splice(r.bag.indexOf(f.it), 1);
     drop(r, f.it);
   } else if (bagUsed(r.bag) + def(f.it.k).s <= rcap(r)) {
-    r.pick.splice(r.pick.findIndex((k) => k.it === f.it), 1);
+    r.pick.splice(
+      r.pick.findIndex((k) => k.it === f.it),
+      1,
+    );
     r.bag.push(f.it);
   } else {
     toast("Pas la place : pose d'abord un objet du sac");
@@ -107,12 +123,17 @@ function move(u: string) {
 }
 
 function act(a: string) {
-  const r = R, f = detail ? findItem(detail) : null;
+  const r = R,
+    f = detail ? findItem(detail) : null;
   if (!r || !f) return;
   if (a === "use") useItem(f.it);
   if (a === "eq") {
     if (f.where === "bag") r.bag.splice(r.bag.indexOf(f.it), 1);
-    else r.pick.splice(r.pick.findIndex((k) => k.it === f.it), 1);
+    else
+      r.pick.splice(
+        r.pick.findIndex((k) => k.it === f.it),
+        1,
+      );
     const old = equip(r, f.it);
     // the replaced piece goes where the new one came from, or to the ground when the bag can't hold it
     if (old && f.where === "bag" && bagUsed(r.bag) + def(old.k).s <= rcap(r)) r.bag.push(old);
@@ -131,7 +152,9 @@ export function initBag() {
   el.addEventListener("contextmenu", (e) => e.preventDefault());
   el.addEventListener("scroll", () => pin(el), { passive: true });
   el.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim, .dismiss"), card = t.closest<HTMLElement>(".tile");
+    const t = e.target as HTMLElement,
+      b = t.closest<HTMLElement>("button, .scrim, .dismiss"),
+      card = t.closest<HTMLElement>(".tile");
     if (!R) return;
     const a = b?.dataset.a;
     if (a === "back") return closeBag();

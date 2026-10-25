@@ -16,9 +16,13 @@ export interface Awareness {
   sus: number;
 }
 
-export const LOSE_TIME = 3.5, SEARCH_TIME = 5, WAVE_SEARCH = 12, ALERT_POP = 0.5;
+export const LOSE_TIME = 3.5,
+  SEARCH_TIME = 5,
+  WAVE_SEARCH = 12,
+  ALERT_POP = 0.5;
 /** Half-angle of the view cone; within FEEL_R an enemy notices the player whichever way it faces. */
-export const CONE_HALF = 0.8, FEEL_R = 60;
+export const CONE_HALF = 0.8,
+  FEEL_R = 60;
 
 export const suspicious = (e: Awareness) => !e.aggro && (e.sus > 0 || e.sr > 0);
 
@@ -37,7 +41,9 @@ export function hear(e: Awareness, x: number, y: number, secs = SEARCH_TIME) {
 }
 
 export function inCone(face: number, e: Pt, p: Pt, range: number, half: number) {
-  const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy);
+  const dx = p.x - e.x,
+    dy = p.y - e.y,
+    d = Math.hypot(dx, dy);
   if (d < FEEL_R) return true;
   if (d > range) return false;
   const da = Math.atan2(dy, dx) - face;

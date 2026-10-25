@@ -49,17 +49,16 @@ function crop(img: CanvasImageSource, [x, y, w, h]: readonly number[], fill?: st
   return c;
 }
 
-export const assetsReady: Promise<void> = Promise.all([loadImg("assets/characters.png"), loadImg("assets/tiles.png")]).then(
-  ([ch, ti]) => {
-    const frames = {} as Record<CharKey, HTMLCanvasElement>, white = {} as Record<CharKey, HTMLCanvasElement>;
-    for (const k of Object.keys(CHAR) as (keyof typeof CHAR)[]) frames[k] = crop(ch, CHAR[k]);
-    for (const [k, c] of Object.entries(TINTS)) frames[k as keyof typeof TINTS] = crop(frames.zomb, [0, 0, CHAR.zomb[2], CHAR.zomb[3]], c);
-    frames.boss = crop(frames.boss, [0, 0, CHAR.boss[2], CHAR.boss[3]], "rgba(70,8,8,.4)");
-    for (const k of Object.keys(frames) as CharKey[]) white[k] = crop(frames[k], [0, 0, frames[k].width, frames[k].height], "#fff");
-    const floors = [1, 2, 3].map((r) => ctx.createPattern(crop(ti, [14 * T, r * T, T, T]), "repeat")!);
-    A = { ti, frames, white, floors };
-  },
-);
+export const assetsReady: Promise<void> = Promise.all([loadImg("assets/characters.png"), loadImg("assets/tiles.png")]).then(([ch, ti]) => {
+  const frames = {} as Record<CharKey, HTMLCanvasElement>,
+    white = {} as Record<CharKey, HTMLCanvasElement>;
+  for (const k of Object.keys(CHAR) as (keyof typeof CHAR)[]) frames[k] = crop(ch, CHAR[k]);
+  for (const [k, c] of Object.entries(TINTS)) frames[k as keyof typeof TINTS] = crop(frames.zomb, [0, 0, CHAR.zomb[2], CHAR.zomb[3]], c);
+  frames.boss = crop(frames.boss, [0, 0, CHAR.boss[2], CHAR.boss[3]], "rgba(70,8,8,.4)");
+  for (const k of Object.keys(frames) as CharKey[]) white[k] = crop(frames[k], [0, 0, frames[k].width, frames[k].height], "#fff");
+  const floors = [1, 2, 3].map((r) => ctx.createPattern(crop(ti, [14 * T, r * T, T, T]), "repeat")!);
+  A = { ti, frames, white, floors };
+});
 
 export const floorPattern = (i: number) => A.floors[i];
 export const tile = ([c, r]: Tile, x: number, y: number, s: number) => ctx.drawImage(A.ti, c * T, r * T, T, T, x, y, s, s);

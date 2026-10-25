@@ -54,7 +54,8 @@ describe("raid entry", () => {
   it("is on the map edge, far from the vault, with both exits across the map", () => {
     for (let m = 0; m < MAPS; m++) {
       const { walls, bld } = genMap();
-      const plan = pickVault(walls, bld), vault = plan && { x: plan.room.x + plan.room.w / 2, y: plan.room.y + plan.room.h / 2 };
+      const plan = pickVault(walls, bld),
+        vault = plan && { x: plan.room.x + plan.room.w / 2, y: plan.room.y + plan.room.h / 2 };
       const { sp, exits } = placeEntries(walls, bld, vault);
       expect(Math.min(sp.x, sp.y, W - sp.x, H - sp.y), `map ${m}`).toBeLessThan(EDGE);
       if (vault) expect(Math.hypot(sp.x - vault.x, sp.y - vault.y)).toBeGreaterThan(ENTRY_VAULT_D);

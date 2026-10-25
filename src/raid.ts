@@ -1,4 +1,21 @@
-import { FREE, KNIFE, RAR, bagUsed, def, emptyGear, gearStats, mk, slotOf, valOf, wstat, type Gear, type Item, type Mods, type Slot, type WeaponStats } from "./items";
+import {
+  FREE,
+  KNIFE,
+  RAR,
+  bagUsed,
+  def,
+  emptyGear,
+  gearStats,
+  mk,
+  slotOf,
+  valOf,
+  wstat,
+  type Gear,
+  type Item,
+  type Mods,
+  type Slot,
+  type WeaponStats,
+} from "./items";
 import { applyRaid, cap, maxHp, type RaidTally } from "./progression";
 import { C } from "./render/canvas";
 import { furnish } from "./render/furniture";
@@ -40,7 +57,10 @@ export const KINDS: Record<Kind, KindStats> = {
   alpha: { hp: 130, spd: 150, r: 15, melee: 16, hitCd: 0.7, see: 230 },
 };
 /** Bloater blast; sniper aim before the shot; how close the stalker creeps before charging; reach of the pack leader's howl. */
-export const BLAST_R = 95, AIM_TIME = 1.1, LUNGE_R = 260, PACK_R = 280;
+export const BLAST_R = 95,
+  AIM_TIME = 1.1,
+  LUNGE_R = 260,
+  PACK_R = 280;
 /** Damage multiplier on an enemy that hasn't spotted the player. */
 export const SNEAK = 2.5;
 
@@ -157,7 +177,12 @@ export interface Raid {
   why: string;
 }
 
-export const DEATH_TIME = 1.8, RAID_TIME = 240, CRATE_TIME = 0.8, EXTRACT_TIME = 3, UNLOCK_TIME = 1.2, VIOLET = 0.62;
+export const DEATH_TIME = 1.8,
+  RAID_TIME = 240,
+  CRATE_TIME = 0.8,
+  EXTRACT_TIME = 3,
+  UNLOCK_TIME = 1.2,
+  VIOLET = 0.62;
 export let R: Raid | null = null;
 export const clock = { last: performance.now() };
 
@@ -166,8 +191,31 @@ export const lockCentre = (l: Rect): Pt => ({ x: l.x + l.w / 2, y: l.y + l.h / 2
 
 /** A wave enemy is lured towards where the player was when it appeared. */
 function spawn(r: Raid, kind: Kind, x: number, y: number, lure?: Pt) {
-  const hp = Math.round(KINDS[kind].hp * r.zone.hp), fa = rnd(0, 6.28);
-  const e: Enemy = { kind, x, y, hp, max: hp, aggro: false, lx: x, ly: y, lost: 0, sr: 0, al: 0, sus: 0, wx: 0, wy: 0, fa, ta: fa, wt: 0, cd: rnd(0.5, 1.5), hit: 0, ph: 0, t: 0 };
+  const hp = Math.round(KINDS[kind].hp * r.zone.hp),
+    fa = rnd(0, 6.28);
+  const e: Enemy = {
+    kind,
+    x,
+    y,
+    hp,
+    max: hp,
+    aggro: false,
+    lx: x,
+    ly: y,
+    lost: 0,
+    sr: 0,
+    al: 0,
+    sus: 0,
+    wx: 0,
+    wy: 0,
+    fa,
+    ta: fa,
+    wt: 0,
+    cd: rnd(0.5, 1.5),
+    hit: 0,
+    ph: 0,
+    t: 0,
+  };
   if (lure) hear(e, lure.x, lure.y, WAVE_SEARCH);
   r.enemies.push(e);
 }
@@ -180,9 +228,11 @@ export const sight = (e: Enemy, p: Player) => ({
 
 /** Walkers at the edge, runner packs further in, gunners near the centre; harder zones shift the mix inwards and add their own kinds. */
 function spawnByZone(r: Raid, x: number, y: number, lure?: Pt) {
-  const d = zoneDepth(r.zone, depth(x, y)), has = (k: Kind) => r.zone.adds.includes(k);
+  const d = zoneDepth(r.zone, depth(x, y)),
+    has = (k: Kind) => r.zone.adds.includes(k);
   const near = () => {
-    const nx = x + rnd(-40, 40), ny = y + rnd(-40, 40);
+    const nx = x + rnd(-40, 40),
+      ny = y + rnd(-40, 40);
     return inWall(r.walls, nx, ny, 14) ? { x, y } : { x: nx, y: ny };
   };
   const one = (k: Kind) => () => spawn(r, k, x, y, lure);
@@ -195,9 +245,17 @@ function spawnByZone(r: Raid, x: number, y: number, lure?: Pt) {
   };
   const table: [number, () => void][] =
     d < 0.3
-      ? [[85, one("walker")], [has("bloat") ? 15 : 0, one("bloat")]]
+      ? [
+          [85, one("walker")],
+          [has("bloat") ? 15 : 0, one("bloat")],
+        ]
       : d < 0.6
-        ? [[40, pack("runner", Math.random() < 0.5 ? 2 : 3)], [45, one("walker")], [has("bloat") ? 15 : 0, one("bloat")], [has("alpha") ? 15 : 0, pack("runner", 3, "alpha")]]
+        ? [
+            [40, pack("runner", Math.random() < 0.5 ? 2 : 3)],
+            [45, one("walker")],
+            [has("bloat") ? 15 : 0, one("bloat")],
+            [has("alpha") ? 15 : 0, pack("runner", 3, "alpha")],
+          ]
         : [
             [30, pack("gunner", Math.random() < 0.5 ? 0 : 1, "gunner")],
             [25, one("walker")],
@@ -214,26 +272,73 @@ function spawnByZone(r: Raid, x: number, y: number, lure?: Pt) {
 
 function randIn(walls: Rect[], rm: Rect, pad: number): Pt | null {
   for (let t = 0; t < 60; t++) {
-    const x = rnd(rm.x + pad, rm.x + rm.w - pad), y = rnd(rm.y + pad, rm.y + rm.h - pad);
+    const x = rnd(rm.x + pad, rm.x + rm.w - pad),
+      y = rnd(rm.y + pad, rm.y + rm.h - pad);
     if (!inWall(walls, x, y, pad)) return { x, y };
   }
   return null;
 }
 
 export function startRaid() {
-  const zi = unlocked(S, S.zone) ? S.zone : 0, zone = ZONES[zi];
+  const zi = unlocked(S, S.zone) ? S.zone : 0,
+    zone = ZONES[zi];
   const { walls, bld } = genMap();
   const plan = zone.vault ? pickVault(walls, bld) : null;
   if (plan) walls.push(...plan.locks);
   const { sp, exits } = placeEntries(walls, bld, plan && { x: plan.room.x + plan.room.w / 2, y: plan.room.y + plan.room.h / 2 });
   const st = gearStats(S.lo.eq);
   const r: Raid = {
-    zi, zone, power0: power(),
-    walls, bld, nav: makeNav(walls), ground: makeGround(THEMES[zi]), decor: [...furnish(bld, THEMES[zi].fit, THEMES[zi].mess), ...makeDecor(walls, bld, THEMES[zi])], decal: makeDecal(THEMES[zi]),
-    p: { x: sp.x, y: sp.y, hp: maxHp() + st.hp, max: maxHp() + st.hp, cd: 0, mcd: 0, face: 0, eq: { ...S.lo.eq }, st, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
-    exits, vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
-    crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], fields: new Map(), nums: [], bag: [],
-    t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 }, dead: 0, why: "",
+    zi,
+    zone,
+    power0: power(),
+    walls,
+    bld,
+    nav: makeNav(walls),
+    ground: makeGround(THEMES[zi]),
+    decor: [...furnish(bld, THEMES[zi].fit, THEMES[zi].mess), ...makeDecor(walls, bld, THEMES[zi])],
+    decal: makeDecal(THEMES[zi]),
+    p: {
+      x: sp.x,
+      y: sp.y,
+      hp: maxHp() + st.hp,
+      max: maxHp() + st.hp,
+      cd: 0,
+      mcd: 0,
+      face: 0,
+      eq: { ...S.lo.eq },
+      st,
+      meds: S.lo.meds,
+      keys: S.lo.keys,
+      regen: 0,
+      regenRate: 0,
+      boost: 0,
+      swing: 0,
+      faceLock: 0,
+      hit: 0,
+      still: 0,
+    },
+    exits,
+    vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
+    crates: [],
+    enemies: [],
+    bullets: [],
+    ebul: [],
+    pick: [],
+    parts: [],
+    cas: [],
+    fields: new Map(),
+    nums: [],
+    bag: [],
+    t: RAID_TIME,
+    spawnT: zone.wave,
+    flowT: 0,
+    ext: 0,
+    toastT: 0,
+    shake: 0,
+    flash: 0,
+    tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
+    dead: 0,
+    why: "",
   };
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== plan?.room);
   const far = (c: Pt | null, m: number): c is Pt => !!c && Math.hypot(c.x - sp.x, c.y - sp.y) > m;
@@ -255,14 +360,17 @@ export function startRaid() {
     }
     // the vault's guards wait in its building, outside the locked room: the Brute in the Cœur, two gunners elsewhere
     const guardRooms = plan.b.rooms.filter((rm) => rm !== plan.room);
-    const guardAt = () => (guardRooms.length && randIn(walls, pick(guardRooms), 26)) || freePt(walls, 26, (x, y) => Math.hypot(x - plan.room.x, y - plan.room.y) < 400);
+    const guardAt = () =>
+      (guardRooms.length && randIn(walls, pick(guardRooms), 26)) ||
+      freePt(walls, 26, (x, y) => Math.hypot(x - plan.room.x, y - plan.room.y) < 400);
     if (zone.boss) {
       const g = guardAt();
       spawn(r, "boss", g.x, g.y);
-    } else for (let i = 0; i < 2; i++) {
-      const g = guardAt();
-      spawn(r, "gunner", g.x, g.y);
-    }
+    } else
+      for (let i = 0; i < 2; i++) {
+        const g = guardAt();
+        spawn(r, "gunner", g.x, g.y);
+      }
   }
   R = r;
   S.st.raids++;
@@ -277,7 +385,8 @@ export function startRaid() {
 
 function burst(r: Raid, x: number, y: number, col: string, n = 8, sp = 140, glow = false) {
   for (let i = 0; i < n; i++) {
-    const a = rnd(0, 6.28), s = rnd(30, sp);
+    const a = rnd(0, 6.28),
+      s = rnd(30, sp);
     r.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(0.2, 0.5), col, glow });
   }
 }
@@ -318,10 +427,11 @@ function say(r: Raid, msg: string) {
 
 /** Heals over time from one medical item; false when it can't be used right now. */
 function applyMed(r: Raid, it: Item): boolean {
-  const p = r.p, d = def(it.k);
+  const p = r.p,
+    d = def(it.k);
   if (d.t !== "med") return false;
-  if (p.hp >= p.max) return toast("PV déjà au maximum"), false;
-  if (p.regen > 0) return toast("Soin déjà en cours"), false;
+  if (p.hp >= p.max) return (toast("PV déjà au maximum"), false);
+  if (p.regen > 0) return (toast("Soin déjà en cours"), false);
   p.regen = d.heal;
   p.regenRate = d.heal / d.dur;
   burst(r, p.x, p.y, C.ok, 10, 90);
@@ -344,7 +454,9 @@ export function heal() {
 /** Loot lying within reach, best first: listed in the bag screen and labelled on the map. */
 export const GROUND_R = 70;
 export const ground = (r: Raid) =>
-  r.pick.filter((k) => Math.hypot(k.x - r.p.x, k.y - r.p.y) < GROUND_R).sort((a, b) => def(b.it.k).r - def(a.it.k).r || valOf(b.it) - valOf(a.it));
+  r.pick
+    .filter((k) => Math.hypot(k.x - r.p.x, k.y - r.p.y) < GROUND_R)
+    .sort((a, b) => def(b.it.k).r - def(a.it.k).r || valOf(b.it) - valOf(a.it));
 
 /** Drops an item at the player's feet; it is not picked up again until the player walks away. */
 export const drop = (r: Raid, it: Item) => r.pick.push({ x: r.p.x + rnd(-14, 14), y: r.p.y + rnd(-14, 14), it, nop: true });
@@ -355,7 +467,9 @@ export const bladeOf = (p: Player) => p.eq.blade || KNIFE;
 
 /** Puts a piece in its slot (or empties the slot with null) and returns what it replaced. */
 export function setSlot(r: Raid, slot: Slot, it: Item | null): Item | null {
-  const p = r.p, old = p.eq[slot], hp0 = p.max;
+  const p = r.p,
+    old = p.eq[slot],
+    hp0 = p.max;
   p.eq[slot] = it;
   p.st = gearStats(p.eq);
   p.max = maxHp() + p.st.hp;
@@ -381,7 +495,11 @@ export function useItem(it: Item) {
 
 function useKey(r: Raid) {
   if (r.p.keys > 0) r.p.keys--;
-  else r.bag.splice(r.bag.findIndex((i) => i.k === "vkey"), 1);
+  else
+    r.bag.splice(
+      r.bag.findIndex((i) => i.k === "vkey"),
+      1,
+    );
 }
 
 function unlockVault(r: Raid, v: Vault) {
@@ -418,7 +536,8 @@ function blast(r: Raid, x: number, y: number) {
   r.shake = Math.max(r.shake, 0.3);
   noise(r, x, y, 320);
   if (Math.hypot(p.x - x, p.y - y) < BLAST_R) hurt(r, 24);
-  for (const o of [...r.enemies]) if (r.enemies.includes(o) && Math.hypot(o.x - x, o.y - y) < BLAST_R) hitEnemy(r, o, 60, o.x, o.y, true, false);
+  for (const o of [...r.enemies])
+    if (r.enemies.includes(o) && Math.hypot(o.x - x, o.y - y) < BLAST_R) hitEnemy(r, o, 60, o.x, o.y, true, false);
 }
 
 function killed(r: Raid, e: Enemy) {
@@ -459,8 +578,10 @@ function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = fa
 
 /** Swings at the nearest enemy in reach and hits everyone inside the arc in front. */
 function strike(r: Raid, wd: WeaponStats) {
-  const p = r.p, reach = (e: Enemy) => wd.range + KINDS[e.kind].r;
-  let target: Enemy | null = null, bd = Infinity;
+  const p = r.p,
+    reach = (e: Enemy) => wd.range + KINDS[e.kind].r;
+  let target: Enemy | null = null,
+    bd = Infinity;
   for (const e of r.enemies) {
     const d = Math.hypot(e.x - p.x, e.y - p.y);
     if (d < reach(e) && d < bd && los(r.walls, p, e)) {
@@ -476,7 +597,8 @@ function strike(r: Raid, wd: WeaponStats) {
   p.swing = 0.18;
   for (const e of [...r.enemies]) {
     if (!inArc(p.x, p.y, a0, e.x, e.y, reach(e), MELEE_ARC)) continue;
-    const a = Math.atan2(e.y - p.y, e.x - p.x), kb = (wd.kb || 0) * (e.kind === "boss" ? 0.2 : 1);
+    const a = Math.atan2(e.y - p.y, e.x - p.x),
+      kb = (wd.kb || 0) * (e.kind === "boss" ? 0.2 : 1);
     e.x += Math.cos(a) * kb;
     e.y += Math.sin(a) * kb;
     collide(r.walls, e, KINDS[e.kind].r);
@@ -489,7 +611,9 @@ function strike(r: Raid, wd: WeaponStats) {
 
 /** Direction to walk to a searched spot, around walls; null once there. */
 function goTo(r: Raid, e: Enemy, x: number, y: number): Pt | null {
-  const dx = x - e.x, dy = y - e.y, d = Math.hypot(dx, dy);
+  const dx = x - e.x,
+    dy = y - e.y,
+    d = Math.hypot(dx, dy);
   if (d < 30) return null;
   if (los(r.walls, e, { x, y })) return { x: dx / d, y: dy / d };
   const c = cellOf(x, y);
@@ -516,28 +640,35 @@ function shoot(r: Raid, e: Enemy, a: number, n: number, spread: number, speed: n
 }
 
 function updateEnemy(r: Raid, e: Enemy, dt: number) {
-  const p = r.p, k = KINDS[e.kind];
-  const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+  const p = r.p,
+    k = KINDS[e.kind];
+  const dx = p.x - e.x,
+    dy = p.y - e.y,
+    d = Math.hypot(dx, dy) || 1;
   e.cd -= dt;
   e.hit -= dt;
-  const see = d < 600 && los(r.walls, e, p), { range, half } = sight(e, p);
+  const see = d < 600 && los(r.walls, e, p),
+    { range, half } = sight(e, p);
   const view = !e.aggro && see && mode !== "bag" && inCone(e.fa, e, p, range, half);
   watch(e, view, d, range, p, dt);
   track(e, see, p, dt);
-  let vx = 0, vy = 0;
+  let vx = 0,
+    vy = 0;
   if (e.aggro) e.fa = e.ta = Math.atan2(dy, dx);
   if (!e.aggro) {
     e.wt -= dt;
     // a suspicious enemy stops and stares while it makes up its mind
     if (view) e.ta = Math.atan2(dy, dx);
     else if (e.sr > 0) {
-      const g = goTo(r, e, e.lx, e.ly), v = Math.min(k.spd * 0.6, 110);
+      const g = goTo(r, e, e.lx, e.ly),
+        v = Math.min(k.spd * 0.6, 110);
       if (g) [vx, vy, e.ta] = [g.x * v, g.y * v, Math.atan2(g.y, g.x)];
       else if (e.wt <= 0) [e.ta, e.wt] = [rnd(0, 6.28), rnd(0.8, 1.5)];
     } else {
       if (e.wt <= 0) {
         // guards, snipers and stalkers hold their spot and only look around
-        const a = rnd(0, 6.28), still = e.kind === "boss" || e.kind === "stalker" || e.kind === "sniper" || Math.random() < 0.4;
+        const a = rnd(0, 6.28),
+          still = e.kind === "boss" || e.kind === "stalker" || e.kind === "sniper" || Math.random() < 0.4;
         [e.wx, e.wy, e.ta, e.wt] = still ? [0, 0, a, rnd(1.5, 3.5)] : [Math.cos(a), Math.sin(a), a, rnd(1.5, 4)];
       }
       [vx, vy] = [e.wx * 40, e.wy * 40];
@@ -577,7 +708,8 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
     if (e.ph === 0 && see && d < LUNGE_R) [e.ph, e.t] = [1, 0];
     else if (e.ph === 1 && e.t > 1.4) [e.ph, e.t] = [2, 0];
     else if (e.ph === 2 && e.t > 1.1) [e.ph, e.t] = [0, 0];
-    const g = chase(r, e, see, dx, dy, d), v = e.ph === 1 ? k.spd : e.ph === 2 ? 0 : 70;
+    const g = chase(r, e, see, dx, dy, d),
+      v = e.ph === 1 ? k.spd : e.ph === 2 ? 0 : 70;
     vx = g.x * v;
     vy = g.y * v;
     if (d < k.r + 16 && e.cd <= 0) {
@@ -622,16 +754,23 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
   e.y += vy * dt;
   for (const o of r.enemies) {
     if (o === e) continue;
-    const min = k.r + KINDS[o.kind].r, ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy);
+    const min = k.r + KINDS[o.kind].r,
+      ox = e.x - o.x,
+      oy = e.y - o.y,
+      od = Math.hypot(ox, oy);
     if (od > 0 && od < min) {
       e.x += ((ox / od) * (min - od)) / 2;
       e.y += ((oy / od) * (min - od)) / 2;
     }
   }
   // enemies stop at the player's edge instead of standing on top of the sprite
-  const px = e.x - p.x, py = e.y - p.y, pd = Math.hypot(px, py), touch = k.r + 11;
+  const px = e.x - p.x,
+    py = e.y - p.y,
+    pd = Math.hypot(px, py),
+    touch = k.r + 11;
   if (pd < touch) {
-    const ux = pd ? px / pd : Math.cos(e.wt), uy = pd ? py / pd : Math.sin(e.wt);
+    const ux = pd ? px / pd : Math.cos(e.wt),
+      uy = pd ? py / pd : Math.sin(e.wt);
     e.x = p.x + ux * touch;
     e.y = p.y + uy * touch;
   }
@@ -647,7 +786,9 @@ export function update(dt: number) {
   }
   // the raid keeps running while the bag is open: the player stands still, doesn't fight and isn't spotted
   const sorting = mode === "bag" || r.dead > 0;
-  const p = r.p, m = sorting ? { x: 0, y: 0 } : moveVec(), moving = m.x !== 0 || m.y !== 0;
+  const p = r.p,
+    m = sorting ? { x: 0, y: 0 } : moveVec(),
+    moving = m.x !== 0 || m.y !== 0;
   const spd = (p.boost > 0 ? 236 : 175) * (1 + p.st.spd);
   p.x += m.x * spd * dt;
   p.y += m.y * spd * dt;
@@ -690,9 +831,11 @@ export function update(dt: number) {
     const bw = wstat(bladeOf(p));
     strike(r, { ...bw, dmg: Math.round(bw.dmg * (1 + p.st.mel)) });
   }
-  const gw = p.eq.gun && wstat(p.eq.gun), wd = gw && { ...gw, rate: gw.rate * (1 + p.st.fire) };
+  const gw = p.eq.gun && wstat(p.eq.gun),
+    wd = gw && { ...gw, rate: gw.rate * (1 + p.st.fire) };
   if (wd && !sorting && !busy && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
-    let best: Enemy | null = null, bd = wd.range;
+    let best: Enemy | null = null,
+      bd = wd.range;
     for (const e of r.enemies) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
       if (d < bd && los(r.walls, p, e)) {
@@ -705,20 +848,30 @@ export function update(dt: number) {
       p.face = a0;
       p.cd = 1 / wd.rate;
       for (let i = 0; i < wd.pel; i++) {
-        const a = a0 + rnd(-wd.spr, wd.spr), sp = 680;
-        r.bullets.push({ x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: (wd.range / sp) * 1.1, dmg: wd.dmg });
+        const a = a0 + rnd(-wd.spr, wd.spr),
+          sp = 680;
+        r.bullets.push({
+          x: p.x + Math.cos(a) * 16,
+          y: p.y + Math.sin(a) * 16,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          life: (wd.range / sp) * 1.1,
+          dmg: wd.dmg,
+        });
       }
       burst(r, p.x + Math.cos(a0) * 18, p.y + Math.sin(a0) * 18, C.accent, 3, 60, true);
       noise(r, p.x, p.y, wd.noise);
       r.flash = 0.07;
-      const ea = a0 + 1.57 + rnd(-0.3, 0.3), es = rnd(90, 150);
+      const ea = a0 + 1.57 + rnd(-0.3, 0.3),
+        es = rnd(90, 150);
       r.cas.push({ x: p.x, y: p.y, vx: Math.cos(ea) * es, vy: Math.sin(ea) * es, r: rnd(0, 6.28), vr: rnd(-18, 18) });
     }
   }
   r.flash -= dt;
 
   for (let i = r.cas.length - 1; i >= 0; i--) {
-    const s = r.cas[i], f = Math.pow(0.015, dt);
+    const s = r.cas[i],
+      f = Math.pow(0.015, dt);
     s.x += s.vx * dt;
     s.y += s.vy * dt;
     s.r += s.vr * dt;
@@ -732,7 +885,8 @@ export function update(dt: number) {
   }
 
   for (let i = r.pick.length - 1; i >= 0; i--) {
-    const k = r.pick[i], d = Math.hypot(k.x - p.x, k.y - p.y);
+    const k = r.pick[i],
+      d = Math.hypot(k.x - p.x, k.y - p.y);
     if (sorting) break;
     if (k.nop) {
       if (d > 52) k.nop = false;
@@ -834,7 +988,8 @@ export function endRaid(ok: boolean, why = "") {
   clearStick();
   setRaidHud(false);
   if (ok) {
-    const gained = r.bag.filter((i) => i.k !== FREE), val = gained.reduce((s, i) => s + valOf(i), 0);
+    const gained = r.bag.filter((i) => i.k !== FREE),
+      val = gained.reduce((s, i) => s + valOf(i), 0);
     S.stash.push(...gained);
     S.lo.eq = { ...p.eq };
     S.lo.meds = p.meds;
