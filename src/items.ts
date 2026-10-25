@@ -1,3 +1,4 @@
+import type { Kind } from "./raid";
 import { fmtM, fmtRate, uid } from "./util";
 
 export interface WeaponStats {
@@ -20,6 +21,7 @@ interface Base {
 }
 export type ItemDef =
   | (Base & { t: "val" | "key" })
+  | (Base & { t: "part"; src: Kind })
   | (Base & { t: "med"; heal: number; dur: number })
   | (Base & { t: "stim"; dur: number })
   | (Base & WeaponStats & { t: "wpn" })
@@ -82,6 +84,16 @@ export const ITEMS = {
   med: { n: "Trousse de soin", t: "med", r: 1, v: 60, s: 1, heal: 40, dur: 2 },
   stim: { n: "Stimulant", t: "stim", r: 1, v: 90, s: 1, dur: 8 },
   vkey: { n: "Clé de salle forte", t: "key", r: 2, v: 150, s: 1 },
+  flesh: { n: "Échantillon de chair", t: "part", src: "walker", r: 0, v: 15, s: 1 },
+  gland: { n: "Glande d'adrénaline", t: "part", src: "runner", r: 0, v: 20, s: 1 },
+  gunparts: { n: "Pièces d'arme", t: "part", src: "gunner", r: 0, v: 25, s: 1 },
+  gas: { n: "Poche de gaz", t: "part", src: "bloat", r: 1, v: 45, s: 1 },
+  bolt: { n: "Mécanisme de culasse", t: "part", src: "smg", r: 1, v: 55, s: 1 },
+  plate: { n: "Plaque blindée", t: "part", src: "shield", r: 1, v: 60, s: 1 },
+  fang: { n: "Croc d'alpha", t: "part", src: "alpha", r: 2, v: 120, s: 1 },
+  skin: { n: "Peau caméléon", t: "part", src: "stalker", r: 2, v: 140, s: 1 },
+  scope: { n: "Optique", t: "part", src: "sniper", r: 2, v: 150, s: 1 },
+  heart: { n: "Cœur de Brute", t: "part", src: "boss", r: 3, v: 400, s: 1 },
   knife: melee("Couteau", 0, 0, 18, 2.5, 38, 6),
   pipe: melee("Tuyau de plomb", 0, 40, 20, 1.6, 38, 10),
   bat: melee("Batte cloutée", 1, 140, 22, 1.7, 44, 22),
@@ -136,6 +148,12 @@ export const SHOP: ItemKey[] = ["p9", "vest1", "med"];
 export const RAR = ["Commun", "Peu commun", "Rare", "Épique"];
 
 export const def = (k: ItemKey): ItemDef => ITEMS[k];
+/** The component an enemy kind drops. */
+export const partOf = (kind: Kind) =>
+  KEYS.find((k) => {
+    const d = def(k);
+    return d.t === "part" && d.src === kind;
+  }) as ItemKey;
 export const isItemKey = (k: unknown): k is ItemKey => typeof k === "string" && k in ITEMS;
 export const mk = (k: ItemKey): Item => ({ k, u: uid() });
 export const price = (k: ItemKey) => Math.round(def(k).v * 1.6);
@@ -223,5 +241,6 @@ export function desc(it: Item): string {
   if (d.t === "med") return `Rend ${d.heal} PV en ${d.dur} s`;
   if (d.t === "stim") return `+35 % de vitesse pendant ${d.dur} s`;
   if (d.t === "key") return "Ouvre une salle forte";
+  if (d.t === "part") return `Composant · ${RAR[d.r]} · contrats de chasse`;
   return RAR[d.r];
 }

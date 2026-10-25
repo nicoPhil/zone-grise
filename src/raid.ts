@@ -7,6 +7,7 @@ import {
   emptyGear,
   gearStats,
   mk,
+  partOf,
   slotOf,
   valOf,
   wstat,
@@ -29,7 +30,7 @@ import { closeBag } from "./ui/bag";
 import { renderEnd } from "./ui/end";
 import { clamp, pick, rnd, type Pt, type Rect } from "./util";
 import { MELEE_ARC, collide, frontHit, inArc, inWall, los, nearestInReach } from "./world/geometry";
-import { depth, freePt, genMap, placeEntries, rollItem, type Building } from "./world/mapgen";
+import { depth, freePt, genMap, inBld, placeEntries, rollItem, type Building } from "./world/mapgen";
 import { cellOf, flowDir, makeNav, updFlow, type Nav } from "./world/nav";
 import { pickVault } from "./world/vault";
 import { ZONES, UNLOCK_AFTER, power, unlocked, zoneDepth, type Zone } from "./zones";
@@ -83,6 +84,8 @@ export interface Enemy extends Pt, Awareness {
 }
 export interface Crate extends Pt {
   d: number;
+  /** 0 street debris, 1 crate, 2 military crate */
+  tier: 0 | 1 | 2;
   open: boolean;
   prog: number;
   vault?: boolean;
@@ -187,8 +190,9 @@ export const DEATH_TIME = 1.8,
   RAID_TIME = 240,
   CRATE_TIME = 0.8,
   EXTRACT_TIME = 3,
-  UNLOCK_TIME = 1.2,
-  VIOLET = 0.62;
+  UNLOCK_TIME = 1.2;
+/** Opening a military crate is long, and the hands are busy all along. */
+export const crateTime = (c: Crate) => (c.vault ? CRATE_TIME : [0.4, 0.8, 2.5][c.tier]);
 export let R: Raid | null = null;
 export const clock = { last: performance.now() };
 
@@ -353,10 +357,14 @@ export function startRaid() {
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== plan?.room);
   const far = (c: Pt | null, m: number): c is Pt => !!c && Math.hypot(c.x - sp.x, c.y - sp.y) > m;
   const inRoom = (pad: number) => (rooms.length ? randIn(walls, pick(rooms), pad) : null);
-  for (let i = 0; i < 18; i++) {
-    let c = Math.random() < 0.75 ? inRoom(30) : null;
-    if (!far(c, 200)) c = freePt(walls, 30, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 260);
-    r.crates.push({ x: c.x, y: c.y, d: zoneDepth(zone, depth(c.x, c.y)), open: false, prog: 0 });
+  // debris in the street, crates in the rooms, military crates more often towards the centre
+  for (let i = 0; i < 20; i++) {
+    const room = i < 13;
+    let c = room ? inRoom(30) : null;
+    if (!far(c, 200)) c = freePt(walls, 30, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 260 && (room || !inBld(bld, x, y, 10)));
+    const d = zoneDepth(zone, depth(c.x, c.y)),
+      tier = inBld(bld, c.x, c.y) ? indoorTier(d) : 0;
+    r.crates.push({ x: c.x, y: c.y, d, tier, open: false, prog: 0 });
   }
   for (let i = 0; i < zone.enemies; i++) {
     let c = Math.random() < 0.5 ? inRoom(24) : null;
@@ -366,7 +374,7 @@ export function startRaid() {
   if (plan) {
     for (let i = 0; i < 2; i++) {
       const c = randIn(walls, plan.room, 30);
-      if (c) r.crates.push({ ...c, d: 1, open: false, prog: 0, vault: true });
+      if (c) r.crates.push({ ...c, d: 1, tier: 2, open: false, prog: 0, vault: true });
     }
     // the vault's guards wait in its building, outside the locked room: the Brute in the Cœur, two gunners elsewhere
     const guardRooms = plan.b.rooms.filter((rm) => rm !== plan.room);
@@ -532,17 +540,29 @@ function unlockVault(r: Raid, v: Vault) {
   updHud(r);
 }
 
+const indoorTier = (d: number): Crate["tier"] => (Math.random() < 0.1 + 0.35 * Math.min(d, 1) ? 2 : 1);
+
+function crateLoot(c: Crate): Item[] {
+  const n = (base: number) => base + (Math.random() < 0.5 ? 1 : 0);
+  if (c.vault)
+    return Array.from({ length: 3 }, () => {
+      let it = rollItem(c.d, 2);
+      while (it.k === "med") it = rollItem(1, 2);
+      return it;
+    });
+  if (c.tier === 0) return [Math.random() < 0.3 ? mk(pick(["bandage", "bandage", "med"] as const)) : rollItem(c.d * 0.4)];
+  if (c.tier === 1) return Array.from({ length: n(1) }, () => rollItem(c.d));
+  return Array.from({ length: n(2) }, () => rollItem(c.d, 1, true));
+}
+
 function openCrate(r: Raid, c: Crate) {
   c.open = true;
-  if (c.d > VIOLET) r.tally.violet++;
-  const n = c.vault ? 3 : 1 + Math.floor(Math.random() * 2) + (c.d > 0.55 ? 1 : 0);
-  for (let i = 0; i < n; i++) {
-    let it = rollItem(c.d, c.vault ? 2 : 0);
-    while (c.vault && it.k === "med") it = rollItem(1, 2);
+  if (c.tier === 2 && !c.vault) r.tally.violet++;
+  for (const it of crateLoot(c)) {
     const a = rnd(0, 6.28);
     r.pick.push({ x: c.x + Math.cos(a) * 24, y: c.y + Math.sin(a) * 24, it });
   }
-  if (!c.vault && Math.random() < 0.07 + 0.05 * c.d) r.pick.push({ x: c.x, y: c.y + 26, it: mk("vkey") });
+  if (c.tier > 0 && !c.vault && Math.random() < 0.07 + 0.05 * c.d) r.pick.push({ x: c.x, y: c.y + 26, it: mk("vkey") });
   burst(r, c.x, c.y, c.vault ? "#f0c040" : C.accent, 10, 80);
 }
 
@@ -567,6 +587,10 @@ function killed(r: Raid, e: Enemy) {
     const a = rnd(0, 6.28);
     r.pick.push({ x: e.x + Math.cos(a) * 20, y: e.y + Math.sin(a) * 20, it });
   };
+  // enemies only carry their own component: the real loot is in the crates
+  const elite = ["smg", "sniper", "shield", "alpha", "stalker", "boss"].includes(e.kind);
+  const chance = e.kind === "boss" ? 1 : 0.5 + (elite ? 0.25 : 0);
+  if (Math.random() < chance) drop(mk(partOf(e.kind)));
   if (e.kind === "boss") {
     r.tally.boss++;
     drop(mk("vkey"));
@@ -576,9 +600,7 @@ function killed(r: Raid, e: Enemy) {
     return;
   }
   if (e.kind === "bloat") return blast(r, e.x, e.y);
-  const elite = e.kind === "smg" || e.kind === "sniper" || e.kind === "shield" || e.kind === "alpha";
   if ((e.kind === "gunner" || elite) && Math.random() < 0.2) drop(mk("vkey"));
-  if (Math.random() < (elite ? 0.75 : 0.45)) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y)) + (elite ? 0.1 : 0)));
 }
 
 function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = false, by: "gun" | "blade" | "blast" = "gun") {
@@ -840,7 +862,7 @@ export function update(dt: number) {
   for (const c of r.crates) {
     if (c.open) continue;
     c.prog = c === near && !moving && !sorting ? c.prog + dt : 0;
-    if (c.prog >= CRATE_TIME) openCrate(r, c);
+    if (c.prog >= crateTime(c)) openCrate(r, c);
   }
 
   const v = r.vault;

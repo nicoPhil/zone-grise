@@ -18,11 +18,14 @@ describe("melee", () => {
 });
 
 describe("loot", () => {
-  it("never drops the free kit and can drop every other item kind", () => {
+  it("crates never drop the free kit nor enemy components, and can drop every other item kind", () => {
     const seen = new Set<string>();
     for (let i = 0; i < 20000; i++) seen.add(rollItem(Math.random()).k);
     expect(seen.has(FREE)).toBe(false);
-    for (const k of KEYS) if (k !== FREE && k !== "vkey" && k !== "key") expect(seen.has(k), k).toBe(true);
+    for (const k of KEYS) {
+      if (def(k).t === "part") expect(seen.has(k), k).toBe(false);
+      else if (k !== FREE && k !== "vkey" && k !== "key") expect(seen.has(k), k).toBe(true);
+    }
     expect(KEYS.filter((k) => def(k).t === "wpn" && wstat({ k, u: "" }).mel).length).toBeGreaterThanOrEqual(5);
   });
 });

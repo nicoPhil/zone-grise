@@ -5,10 +5,9 @@ import {
   AIM_TIME,
   DEATH_TIME,
   EXTRACT_TIME,
-  CRATE_TIME,
+  crateTime,
   KINDS,
   UNLOCK_TIME,
-  VIOLET,
   bladeOf,
   hasKey,
   lockCentre,
@@ -29,7 +28,8 @@ const BASE_VR = 560;
 /** view radius this frame: a headlamp or visor pushes it out */
 let VR = BASE_VR;
 const GOLD = "#f0c040";
-const crateCol = (c: Crate) => (c.vault ? GOLD : c.d > VIOLET ? C.r3 : c.d > 0.36 ? C.r2 : C.r0);
+/** Tier colours: brown debris, grey crate, khaki military crate, gold vault. */
+const crateCol = (c: Crate) => (c.vault ? GOLD : ["#8a6a3e", "#b8b8b0", "#3f6a2a"][c.tier]);
 const LOOK: Record<Kind, [CharKey, number]> = {
   walker: ["zomb", 0.85],
   runner: ["zombR", 0.68],
@@ -120,15 +120,25 @@ function glow(x: number, y: number, r: number, col: string, a: number) {
 }
 
 function drawCrate(c: Crate) {
+  const h = c.tier === 0 && !c.vault ? 12 : 17;
   ctx.fillStyle = "rgba(0,0,0,.4)";
-  ctx.fillRect(c.x - 13, c.y - 11, 32, 32);
-  tile([20, 4], c.x - 17, c.y - 17, 34);
+  ctx.fillRect(c.x - h + 4, c.y - h + 6, 2 * h - 2, 2 * h - 2);
+  tile([20, 4], c.x - h, c.y - h, 2 * h);
+  ctx.globalAlpha = c.tier === 2 && !c.vault ? 0.6 : 0.4;
+  ctx.fillStyle = crateCol(c);
+  ctx.fillRect(c.x - h, c.y - h, 2 * h, 2 * h);
+  ctx.globalAlpha = 1;
   if (c.open) {
     ctx.fillStyle = "rgba(10,8,6,.62)";
-    ctx.fillRect(c.x - 17, c.y - 17, 34, 34);
-  } else {
-    ctx.fillStyle = crateCol(c);
-    ctx.fillRect(c.x - 17, c.y - 19, 34, 4);
+    ctx.fillRect(c.x - h, c.y - h, 2 * h, 2 * h);
+    return;
+  }
+  ctx.fillStyle = crateCol(c);
+  ctx.fillRect(c.x - h, c.y - h - 2, 2 * h, 4);
+  // hazard stripes on a military crate
+  if (c.tier === 2 && !c.vault) {
+    ctx.fillStyle = "#1c1c14";
+    for (let x = -h; x < h; x += 8) ctx.fillRect(c.x + x, c.y - h - 2, 4, 4);
   }
 }
 
@@ -384,7 +394,7 @@ export function draw(r: Raid | null) {
   ctx.globalCompositeOperation = "lighter";
   for (const l of locks) glow(lockCentre(l).x, lockCentre(l).y, 70, GOLD, 0.25 + 0.08 * Math.sin(tt * 2.5));
   for (const e of r.exits) glow(e.x, e.y, 130, C.ok, 0.32 + 0.1 * Math.sin(tt * 3));
-  for (const c of r.crates) if (!c.open && c.d > 0.36) glow(c.x, c.y, 46, crateCol(c), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
+  for (const c of r.crates) if (!c.open && (c.tier === 2 || c.vault)) glow(c.x, c.y, 46, crateCol(c), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
   for (const q of r.pick) {
     const rr = def(q.it.k).r,
       col = rarCol(rr);
@@ -484,7 +494,7 @@ export function draw(r: Raid | null) {
   }
   ctx.globalAlpha = 1;
   groundLabels(r);
-  for (const c of r.crates) if (!c.open && c.prog > 0) ring(c.x, c.y, c.prog / CRATE_TIME, C.accent);
+  for (const c of r.crates) if (!c.open && c.prog > 0) ring(c.x, c.y, c.prog / crateTime(c), C.accent);
   if (r.vault && !r.vault.open)
     for (const l of r.vault.locks) {
       const m = lockCentre(l),

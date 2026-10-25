@@ -140,11 +140,19 @@ export function placeEntries(walls: Rect[], bld: Building[], vault: Pt | null): 
   return { sp, exits: [e1, e2] };
 }
 
-export function rollItem(d: number, minR = 0): Item {
+function lootTypes(kit: boolean): ItemDef["t"][] {
+  const tr = Math.random(),
+    [val, med, wpn] = kit ? [0.3, 0.4, 0.7] : [0.64, 0.78, 0.88];
+  if (tr < val) return ["val"];
+  if (tr < med) return ["med", "stim"];
+  return tr < wpn ? ["wpn"] : ["gear"];
+}
+
+/** Crate loot of depth d; a military crate (kit) leans towards weapons and worn gear. */
+export function rollItem(d: number, minR = 0, kit = false): Item {
   const x = Math.random();
   const r = Math.max(minR, x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0);
-  const tr = Math.random();
-  const types: ItemDef["t"][] = tr < 0.64 ? ["val"] : tr < 0.78 ? ["med", "stim"] : tr < 0.88 ? ["wpn"] : ["gear"];
+  const types = lootTypes(kit);
   const ofType = KEYS.filter((k) => types.includes(def(k).t) && k !== FREE);
   for (let k = r; k >= 0; k--) {
     const c = ofType.filter((id) => def(id).r === k);

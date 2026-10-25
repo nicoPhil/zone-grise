@@ -1,6 +1,8 @@
 import { ITEMS, KEYS, def, type ItemKey } from "./items";
+import type { Kind } from "./raid";
 import { S, type Quest, type Upgrades } from "./state";
 import { pick, uid } from "./util";
+import { ZONES, unlocked } from "./zones";
 
 export interface Cost {
   cr: number;
@@ -84,6 +86,19 @@ const BRING: ItemKey[] = [
   "jewels",
 ];
 
+/** Components of the enemies the player can meet in the zones open to them. */
+export function huntable(): ItemKey[] {
+  const kinds = new Set<Kind>();
+  ZONES.forEach((z, i) => {
+    if (!unlocked(S, i)) return;
+    for (const k of ["walker", "runner", "gunner", ...z.adds, ...(z.boss ? ["boss"] : [])] as Kind[]) kinds.add(k);
+  });
+  return KEYS.filter((k) => {
+    const d = def(k);
+    return d.t === "part" && kinds.has(d.src);
+  });
+}
+
 export interface RaidTally {
   kills: number;
   violet: number;
@@ -95,7 +110,7 @@ export interface RaidTally {
 export function newQuest(): Quest {
   const lvl = Math.min(3, Math.floor(S.st.ext / 3));
   const taken = new Set(S.q.map((q) => q.t + (q.k || "")));
-  const types = ["bring", "bring", "kills", "violet", "haul", "vault", ...(lvl >= 1 ? (["boss"] as const) : [])] as const;
+  const types = ["bring", "hunt", "hunt", "kills", "violet", "haul", "vault", ...(lvl >= 1 ? (["boss"] as const) : [])] as const;
   for (let t = 0; t < 40; t++) {
     const ty = pick(types);
     let q: Omit<Quest, "u" | "have">;
@@ -103,6 +118,11 @@ export function newQuest(): Quest {
       const k = pick(BRING.filter((k) => def(k).r <= Math.min(2, lvl + 1)));
       const n = def(k).r >= 2 ? 1 : 2 + Math.floor(Math.random() * 2);
       q = { t: ty, k, n, cr: Math.round((def(k).v * n * 1.7) / 10) * 10 };
+    } else if (ty === "hunt") {
+      // a hunt pays well over the component's resale, to make it worth picking that fight
+      const k = pick(huntable()),
+        n = [3, 2, 1, 1][def(k).r];
+      q = { t: "bring", k, n, cr: Math.round((def(k).v * n * 3) / 10) * 10 };
     } else if (ty === "kills") {
       const n = [4, 6, 8, 10][lvl];
       q = { t: ty, n, cr: n * 45 };
@@ -127,7 +147,7 @@ export function newQuest(): Quest {
 
 const TALLY: Partial<Record<Quest["t"], [keyof RaidTally, (n: number) => string]>> = {
   kills: ["kills", (n) => `Éliminer ${n} ennemis et s'extraire`],
-  violet: ["violet", (n) => `Fouiller ${n} caisse${n > 1 ? "s" : ""} violette${n > 1 ? "s" : ""} et s'extraire`],
+  violet: ["violet", (n) => `Fouiller ${n} caisse${n > 1 ? "s" : ""} militaire${n > 1 ? "s" : ""} et s'extraire`],
   vault: ["vaults", () => "Ouvrir une salle forte et s'extraire"],
   boss: ["boss", () => "Abattre la Brute et s'extraire"],
 };

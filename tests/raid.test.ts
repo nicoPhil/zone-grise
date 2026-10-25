@@ -16,7 +16,8 @@ vi.mock("../src/ui/bag", () => ({ closeBag: () => {} }));
 vi.mock("../src/ui/end", () => ({ renderEnd: vi.fn() }));
 
 import { moveVec } from "../src/input";
-import { mk } from "../src/items";
+import { def, mk, type ItemKey } from "../src/items";
+import { huntable } from "../src/progression";
 import { DEATH_TIME, EXTRACT_TIME, KINDS, R, type Raid, heal, startRaid, update } from "../src/raid";
 import { S, fresh, mode, setMode, setSave } from "../src/state";
 import { toast } from "../src/ui/hud";
@@ -141,5 +142,56 @@ describe("raid", () => {
     run(30);
     expect(r.p.hp).toBeGreaterThan(10);
     expect(r.p.hp).toBeLessThanOrEqual(r.p.max);
+  });
+
+  it.each([
+    { tier: 0, secs: 0.4 },
+    { tier: 2, secs: 2.5 },
+  ] as const)("a tier $tier crate opens after $secs s standing on it", ({ tier, secs }) => {
+    const r = quietRaid();
+    const c = { x: r.p.x, y: r.p.y, d: 0.3, tier, open: false, prog: 0 };
+    r.crates = [c];
+    run(secs - 0.1);
+    expect(c.open).toBe(false);
+    run(0.2);
+    expect(c.open).toBe(true);
+  });
+
+  it("a military crate holds two or three rare-or-better pieces, never components", () => {
+    const r = quietRaid();
+    r.crates = [{ x: r.p.x, y: r.p.y, d: 0.3, tier: 2, open: false, prog: 0 }];
+    run(2.6);
+    const loot = [...r.bag, ...r.pick.map((q) => q.it)].map((it) => it.k).filter((k) => k !== "vkey");
+    expect(loot.length).toBeGreaterThanOrEqual(2);
+    expect(loot.length).toBeLessThanOrEqual(3);
+    for (const k of loot) expect(def(k).r >= 1 && def(k).t !== "part", k).toBe(true);
+  });
+
+  it("a killed walker drops only its component, about half the time", () => {
+    startRaid();
+    const r = R as Raid;
+    const w = r.enemies[0];
+    r.spawnT = Infinity;
+    r.enemies = Array.from({ length: 60 }, (_, i) => ({
+      ...w,
+      kind: "walker" as const,
+      x: 100 + (i % 10) * 60,
+      y: 100 + Math.floor(i / 10) * 60,
+      hp: 1,
+    }));
+    r.bullets = r.enemies.map((e) => ({ x: e.x, y: e.y, vx: 0, vy: 0, life: 1, dmg: 99 }));
+    update(DT);
+    const drops = r.pick.map((q) => q.it.k);
+    expect(new Set(drops)).toEqual(new Set<ItemKey>(["flesh"]));
+    expect(drops.length).toBeGreaterThan(15);
+    expect(drops.length).toBeLessThan(45);
+  });
+});
+
+describe("hunt contracts", () => {
+  it("only ask for components of enemies met in the zones already open", () => {
+    expect(huntable().sort()).toEqual(["flesh", "gland", "gunparts"]);
+    S.zx[0] = UNLOCK_AFTER;
+    expect(huntable()).toContain("gas");
   });
 });
