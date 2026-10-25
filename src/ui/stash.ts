@@ -1,5 +1,5 @@
 import { ITEMS, desc, gearStats, mk, slotOf, wearable, upgradeOver, type Item, type Slot } from "../items";
-import { freeKit, needs, recycleOf, recycled, restock, saleOf } from "../economy";
+import { casesOf, freeKit, needs, recycleOf, recycled, restock, saleOf, sellValuables, stashOver, stashRoom } from "../economy";
 import { KEY_MAX, cap, count, maxHp, medMax, norm, pay, qInfo } from "../progression";
 import { startRaid } from "../raid";
 import { report } from "../report";
@@ -46,8 +46,13 @@ function tabRaid() {
       <p class="note">Si tu meurs, tu perds tout ton équipement, ce qui est ici et tout ce qu'il y a dans ton sac.</p>
     </div>
     ${zonePicker()}
-    <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>`;
+    ${goBtn()}`;
 }
+
+const goBtn = () =>
+  stashOver()
+    ? `<button class="go" disabled>Coffre plein : ${casesOf(S.stash)}/${stashRoom()} cases</button><p class="note warn">Fais de la place dans le coffre (vendre, recycler) pour repartir.</p>`
+    : `<button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>`;
 
 const recycleBtn = (i: Item) =>
   recycleOf(i.k) ? `<button data-a="recycle" data-u="${i.u}" aria-label="Recycler">${icon("recycle")}</button>` : "";
@@ -78,8 +83,11 @@ function tabStash() {
     ].filter(Boolean);
     return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
   });
-  return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
+  const used = casesOf(S.stash);
+  return `<div class="card"><div class="top"><div class="lbl">Coffre · <span class="${used > stashRoom() ? "pw-low" : ""}">${used}/${stashRoom()} cases</span></div><div class="val">${stashVal} cr</div></div>
+      <button class="sellval" data-a="sellval">${icon("sellAll")}Vendre les objets de valeur</button>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
+      <p class="note">Une pièce d'équipement prend une case, les autres objets s'empilent par 10. La Réserve de l'atelier agrandit le coffre. « Vendre les objets de valeur » garde ce que réclament un contrat ou la prochaine étape de l'atelier (marqués « utile »).</p>
       <p class="note">${icon("equip")} équiper · ${icon("recycle")} recycler en matériaux · ${icon("sell")} vendre un · ${icon("sellAll")} tout vendre (prix en cr)</p>
     </div>`;
 }
@@ -269,6 +277,10 @@ const ACTIONS: Record<string, ((b: HTMLElement) => void) | undefined> = {
   claim,
   reroll,
   share,
+  sellval: () => {
+    const cr = sellValuables();
+    toast(cr ? `Objets de valeur vendus : +${cr} cr` : "Aucun objet de valeur à vendre");
+  },
   reset: () => {
     if (!confirm("Tout effacer ? Objets, crédits, améliorations et statistiques : tu repars comme un nouveau joueur.")) return;
     resetSave();
@@ -326,6 +338,7 @@ function onStashClick(t: HTMLElement) {
   if (b.dataset.tab) return pickTab(b.dataset.tab as Tab);
   const a = b.dataset.a;
   if (a === "raid") {
+    if (stashOver()) return renderStash();
     assetsReady.then(startRaid);
     return;
   }

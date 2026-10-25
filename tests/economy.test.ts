@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CASES,
   RECIPES,
   STATIONS,
   STOCK,
   benchBlock,
   benchCost,
   build,
+  casesOf,
   craft,
+  fits,
   freeKit,
   improve,
   needs,
@@ -14,6 +17,8 @@ import {
   recycled,
   restock,
   saleOf,
+  sellValuables,
+  stashOver,
 } from "../src/economy";
 import { def, mk } from "../src/items";
 import { newQuest } from "../src/progression";
@@ -121,5 +126,30 @@ describe("contracts", () => {
     const near = newQuest().cr;
     S.zone = 4;
     expect(newQuest().cr).toBe(Math.round((near * 1.6) / 10) * 10);
+  });
+});
+
+describe("stash cases", () => {
+  it("give each worn-slot piece a case and stack other identical items by ten", () => {
+    const scrap = Array.from({ length: 23 }, () => mk("scrap"));
+    expect(casesOf([...scrap, mk("p9"), mk("p9"), { ...mk("vest2"), q: 1 }, mk("gold")])).toBe(3 + 3 + 1);
+  });
+
+  it("stop buying once full, and grow with the store", () => {
+    S.stash = Array.from({ length: CASES[0] }, () => mk("p9"));
+    expect([stashOver(), fits(mk("gold"))]).toEqual([false, false]);
+    S.stash.push(mk("p9"));
+    expect(stashOver()).toBe(true);
+    S.sta.store = 1;
+    expect([stashOver(), fits(mk("gold"))]).toEqual([false, true]);
+  });
+
+  it("sell in one go the valuables no contract nor next workshop step asks for", () => {
+    S.stash = [mk("gold"), mk("gold"), mk("scrap"), mk("p9"), mk("watch")];
+    S.q = [{ u: "q", t: "bring", k: "watch", n: 1, have: 0, cr: 100 }];
+    const cr = sellValuables();
+    expect(S.stash.map((i) => i.k)).toEqual(["scrap", "p9", "watch"]);
+    expect(cr).toBe(2 * saleOf(mk("gold")));
+    expect(S.credits).toBe(fresh().credits + cr);
   });
 });

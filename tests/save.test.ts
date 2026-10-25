@@ -20,7 +20,7 @@ describe("parseSave", () => {
   it("gives a save from before the stations none built and an empty merchant stock", () => {
     const { sta, stock, ...old } = fresh();
     const s = parseSave(JSON.stringify(old));
-    expect(s.sta).toEqual({ bench: 0, pocket: 0, trade: 0 });
+    expect(s.sta).toEqual({ bench: 0, pocket: 0, trade: 0, store: 0 });
     expect(s.stock).toEqual({ raid: -1, items: [] });
     expect(sta && stock).toBeTruthy();
   });

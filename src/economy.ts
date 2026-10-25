@@ -65,7 +65,41 @@ export const STATIONS: Record<keyof Stations, Station> = {
     lv: ["arrivages communs", "arrivages jusqu'à peu commun", "arrivages jusqu'à rare", "arrivages jusqu'à épique"],
     cost: [c(2400, { flesh: 6, cigs: 2 }), c(9600, { bolt: 4, watch: 2 }), c(24000, { scope: 3, jewels: 2 })],
   },
+  store: {
+    n: "Réserve",
+    lv: ["coffre de 10 cases", "coffre de 50 cases", "coffre de 80 cases", "coffre de 120 cases"],
+    cost: [c(1500, { scrap: 6, tape: 4 }), c(6000, { wires: 6, bolts: 6 }), c(15000, { milbat: 2, plate: 2 })],
+  },
 };
+
+/** Stash cases at each store level; a worn-slot piece takes a case, other identical items stack by STACK. */
+export const CASES = [10, 50, 80, 120];
+export const STACK = 10;
+
+/** Cases these items take in the stash. */
+export function casesOf(items: Item[]): number {
+  const piles = new Map<string, number>();
+  let pieces = 0;
+  for (const it of items)
+    if (slotOf(it) || it.q !== undefined) pieces++;
+    else piles.set(it.k, (piles.get(it.k) || 0) + 1);
+  return pieces + [...piles.values()].reduce((s, n) => s + Math.ceil(n / STACK), 0);
+}
+
+export const stashRoom = () => CASES[S.sta.store];
+export const stashOver = () => casesOf(S.stash) > stashRoom();
+/** Whether one more item still fits in the stash. */
+export const fits = (it: Item) => casesOf([...S.stash, it]) <= stashRoom();
+
+/** Sells every valuable no contract, next upgrade, next station level or open recipe asks for; returns the credits made. */
+export function sellValuables(): number {
+  const need = needs();
+  const sold = S.stash.filter((i) => def(i.k).t === "val" && !need.has(i.k));
+  const cr = sold.reduce((s, i) => s + saleOf(i), 0);
+  S.stash = S.stash.filter((i) => !sold.includes(i));
+  S.credits += cr;
+  return cr;
+}
 
 export interface Recipe {
   out: ItemKey;

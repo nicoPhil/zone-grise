@@ -16,11 +16,12 @@ export interface Upgrades {
   meds: number;
   hp: number;
 }
-/** Hideout stations: the bench caps bench levels and unlocks recipes, the pocket keeps bag places at death, the trade post raises the merchant's stock. */
+/** Hideout stations: the bench caps bench levels and unlocks recipes, the pocket keeps bag places at death, the trade post raises the merchant's stock, the store enlarges the stash. */
 export interface Stations {
   bench: number;
   pocket: number;
   trade: number;
+  store: number;
 }
 /** One raid as the share report shows it. */
 export interface RaidLog {
@@ -81,7 +82,7 @@ export const fresh = (): Save => ({
   lo: { eq: emptyGear(), meds: 0, keys: 0 },
   st: { raids: 0, ext: 0, dead: 0, best: 0 },
   up: { bag: 0, meds: 0, hp: 0 },
-  sta: { bench: 0, pocket: 0, trade: 0 },
+  sta: { bench: 0, pocket: 0, trade: 0, store: 0 },
   stock: { raid: -1, items: [] },
   q: [],
   zone: 0,

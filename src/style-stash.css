@@ -199,3 +199,13 @@ button.claim {
 .card.locked {
   opacity: 0.55;
 }
+.note.warn {
+  color: var(--bad);
+}
+.sellval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  font-size: 13px;
+}
