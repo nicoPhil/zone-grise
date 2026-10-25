@@ -31,16 +31,16 @@ describe("merchant", () => {
 
   it("draws new pieces once per raid played, no rarer than the trade post allows", () => {
     restock();
-    const first = S.stock.k;
+    const first = S.stock.items;
     expect(first).toHaveLength(STOCK);
-    expect(first.every((k) => def(k).r === 0)).toBe(true);
+    expect(first.every((i) => def(i.k).r === 0 && i.q !== undefined)).toBe(true);
     restock();
-    expect(S.stock.k).toBe(first);
+    expect(S.stock.items).toBe(first);
     S.sta.trade = 2;
     for (let i = 0; i < 30; i++) {
       S.st.raids++;
       restock();
-      expect(S.stock.k.every((k) => def(k).r <= 2)).toBe(true);
+      expect(S.stock.items.every((i) => def(i.k).r <= 2)).toBe(true);
     }
   });
 
@@ -98,6 +98,7 @@ describe("hideout stations", () => {
     S.sta.bench = rc.bench;
     expect(craft(rc)).toBe(true);
     expect(S.stash.map((i) => i.k)).toEqual([rc.out]);
+    expect(S.stash[0].q).toBeDefined();
   });
 
   it("flag the items the next station level asks for", () => {

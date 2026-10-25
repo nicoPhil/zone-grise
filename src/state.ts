@@ -31,7 +31,7 @@ export interface Save {
   up: Upgrades;
   sta: Stations;
   /** the merchant's rotating pieces, drawn again once per raid played */
-  stock: { raid: number; k: ItemKey[] };
+  stock: { raid: number; items: Item[] };
   q: Quest[];
   /** selected zone, and extractions made in each zone */
   zone: number;
@@ -48,7 +48,7 @@ export const fresh = (): Save => ({
   st: { raids: 0, ext: 0, dead: 0, best: 0 },
   up: { bag: 0, meds: 0, hp: 0 },
   sta: { bench: 0, pocket: 0, trade: 0 },
-  stock: { raid: -1, k: [] },
+  stock: { raid: -1, items: [] },
   q: [],
   zone: 0,
   zx: [0, 0, 0, 0, 0],
@@ -73,7 +73,7 @@ const openedBefore = (zx: number[]) => zx.reduce((o, n, i) => (i === o && n >= O
 const zoneExtractions = (s: Partial<Save>) => fresh().zx.map((z, i) => (Array.isArray(s.zx) ? s.zx[i] || 0 : preZoneExtractions(i, z, s)));
 
 const stockOf = (s: Partial<Save>): Save["stock"] =>
-  s.stock && Array.isArray(s.stock.k) ? { raid: s.stock.raid, k: s.stock.k.filter(isItemKey) } : fresh().stock;
+  s.stock && Array.isArray(s.stock.items) ? { raid: s.stock.raid, items: s.stock.items.filter((i) => isItemKey(i?.k)) } : fresh().stock;
 
 // saves written before the progression update have no `up` / `q`; unknown item keys are dropped
 export function parseSave(raw: string | null): Save {

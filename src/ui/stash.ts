@@ -2,6 +2,7 @@ import { ITEMS, desc, gearStats, mk, slotOf, wearable, upgradeOver, type Item, t
 import { freeKit, needs, recycleOf, recycled, restock, saleOf } from "../economy";
 import { KEY_MAX, cap, count, maxHp, medMax, norm, pay, qInfo } from "../progression";
 import { startRaid } from "../raid";
+import { roll } from "../rolls";
 import { assetsReady } from "../render/assets";
 import { KEY, S, resetSave, save, setMode } from "../state";
 import { $ } from "../util";
@@ -130,7 +131,7 @@ function itemPopup(it: Item) {
 /** The card of a merchant offer or a recipe, when one is open. */
 function offerPopup(pin: string) {
   const m = marketPick(pin);
-  if (m) return popup({ k: m.k, u: pin }, [`${count(m.k)} au coffre`], [m.btn]);
+  if (m) return popup(m.it, [`${count(m.it.k)} au coffre`], [m.btn]);
   const rc = recipeOf(pin);
   return rc ? popup({ k: rc.out, u: pin }, [`fabrication : établi niv. ${rc.bench}`], []) : "";
 }
@@ -209,7 +210,7 @@ function claim(b: HTMLElement) {
   if (!q || !qInfo(q).done) return;
   if (q.t === "bring" && q.k) pay({ cr: 0, it: { [q.k]: q.n } });
   S.credits += q.cr;
-  if (q.rew) S.stash.push(mk(q.rew));
+  if (q.rew) S.stash.push(roll(mk(q.rew)));
   S.q.splice(i, 1);
   toast("Contrat payé : +" + q.cr + " cr" + (q.rew ? " + " + ITEMS[q.rew].n : ""));
 }

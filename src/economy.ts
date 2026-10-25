@@ -1,6 +1,7 @@
 import { FREE, KEYS, def, mk, price, slotOf, upgradeOver, valOf, wearable, type Item, type ItemKey } from "./items";
 import { BENCH, MAX_LV, UP, canPay, pay, type Cost } from "./progression";
 import { S, type Stations, type Upgrades } from "./state";
+import { roll } from "./rolls";
 import { pick } from "./util";
 
 // figures tuned with the economy simulation (sim/, variant "game"): the hideout takes ~95 raids to finish
@@ -112,7 +113,7 @@ export const STOCK = 4;
 export function restock() {
   if (S.stock.raid === S.st.raids) return;
   const pool = KEYS.filter((k) => wearable(k) && k !== FREE && def(k).r <= S.sta.trade);
-  S.stock = { raid: S.st.raids, k: Array.from({ length: STOCK }, () => pick(pool)) };
+  S.stock = { raid: S.st.raids, items: Array.from({ length: STOCK }, () => roll(mk(pick(pool)))) };
 }
 
 /** What the secure pocket saves from a lost bag: the most valuable items that fit its places. */
@@ -168,7 +169,7 @@ export function build(k: keyof Stations): boolean {
 export function craft(rc: Recipe): boolean {
   if (rc.bench > S.sta.bench || !canPay(rc.cost)) return false;
   pay(rc.cost);
-  S.stash.push(mk(rc.out));
+  S.stash.push(roll(mk(rc.out)));
   return true;
 }
 

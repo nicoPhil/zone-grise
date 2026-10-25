@@ -159,7 +159,14 @@ export interface Item {
   k: ItemKey;
   u: string;
   lv?: number;
+  /** rolled quality, 0.9 to 1.1, on the base stats; absent on unrolled items */
+  q?: number;
+  /** rolled bonuses on top of the base ones */
+  fx?: Mods;
 }
+
+const qOf = (it: Item) => it.q ?? 1;
+const fxCount = (it: Item) => Object.keys(it.fx || {}).length;
 
 export const KEYS = Object.keys(ITEMS) as ItemKey[];
 /** handed out when the player has no weapon; never dropped, never kept */
@@ -177,8 +184,10 @@ export const partOf = (kind: Kind) =>
 export const isItemKey = (k: unknown): k is ItemKey => typeof k === "string" && k in ITEMS;
 export const mk = (k: ItemKey): Item => ({ k, u: uid() });
 export const price = (k: ItemKey) => Math.round(def(k).v * 1.6);
+/** What the merchant asks for this very piece, its roll included. */
+export const priceOf = (it: Item) => Math.round(valOf(it) * 1.6);
 export const bagUsed = (b: Item[]) => b.reduce((s, i) => s + def(i.k).s, 0);
-export const valOf = (it: Item) => Math.round(def(it.k).v * (1 + 0.3 * (it.lv || 0)));
+export const valOf = (it: Item) => Math.round(def(it.k).v * (1 + 0.3 * (it.lv || 0)) * qOf(it) * (1 + 0.1 * fxCount(it)));
 export const nameOf = (it: Item) => def(it.k).n + (it.lv ? " +" + it.lv : "");
 export const isBlade = (it: Item) => {
   const d = def(it.k);
@@ -210,12 +219,27 @@ export const emptyGear = (): Gear => ({
   shield: null,
 });
 export const RED_CAP = 0.7;
+const MOD_KEYS: (keyof Mods)[] = ["red", "hp", "spd", "cap", "mel", "fire", "vis", "quiet"];
+/** Whole-number bonuses: HP and bag places. */
+const WHOLE = new Set<keyof Mods>(["hp", "cap"]);
+
+/** The bonuses a piece gives: a worn piece's own, scaled by its rolled quality, plus whatever bonuses it rolled. */
+export function modsOf(it: Item): Mods {
+  const d = def(it.k),
+    m: Mods = {};
+  for (const k of MOD_KEYS) {
+    const v = (d.t === "gear" ? (d[k] || 0) * qOf(it) : 0) + (it.fx?.[k] || 0);
+    if (v) m[k] = WHOLE.has(k) ? Math.round(v) : +v.toFixed(3);
+  }
+  return m;
+}
+
 export function gearStats(g: Gear): Required<Mods> {
   const s: Required<Mods> = { red: 0, hp: 0, spd: 0, cap: 0, mel: 0, fire: 0, vis: 0, quiet: 0 };
   for (const it of Object.values(g)) {
-    const d = it && def(it.k);
-    if (d?.t !== "gear") continue;
-    for (const k of Object.keys(s) as (keyof Mods)[]) s[k] += d[k] || 0;
+    if (!it) continue;
+    const m = modsOf(it);
+    for (const k of MOD_KEYS) s[k] += m[k] || 0;
   }
   s.red = Math.min(RED_CAP, +s.red.toFixed(2));
   return s;
@@ -225,14 +249,14 @@ export function gearStats(g: Gear): Required<Mods> {
 export function shieldOf(it: Item | null): ShieldStats | null {
   const d = it && def(it.k);
   if (d?.t !== "shield") return null;
-  return { pts: Math.round(d.pts * (1 + 0.15 * (it?.lv || 0))), delay: d.delay, rate: d.rate };
+  return { pts: Math.round(d.pts * (1 + 0.15 * (it?.lv || 0)) * (it ? qOf(it) : 1)), delay: d.delay, rate: d.rate };
 }
 
 export function wstat(it: Item): WeaponStats {
   const d = def(it.k);
   if (d.t !== "wpn") throw new Error(`${it.k} is not a weapon`);
   const lv = it.lv || 0;
-  return { ...d, dmg: Math.round(d.dmg * (1 + 0.15 * lv)), rate: +(d.rate * (1 + 0.1 * lv)).toFixed(1) };
+  return { ...d, dmg: Math.round(d.dmg * (1 + 0.15 * lv) * qOf(it)), rate: +(d.rate * (1 + 0.1 * lv)).toFixed(1) };
 }
 
 export const dps = (it: Item) => {
@@ -264,19 +288,24 @@ export function modLines(m: Mods): string[] {
   return out;
 }
 
+/** The rolled bonuses of a weapon or shield, after its own line. */
+const extra = (it: Item, line: string) => [line, ...modLines(it.fx || {})].join(" · ");
+
 export function desc(it: Item): string {
   const d = def(it.k);
-  if (d.t === "wpn") {
-    const w = wstat(it);
-    if (w.mel) return `${w.dmg} dég · ${fmtRate(w.rate)} coups/s · corps à corps, silencieux`;
-    return `${w.pel > 1 ? w.pel + "×" : ""}${w.dmg} dég · ${fmtRate(w.rate)} tirs/s · portée ${fmtM(w.range)}`;
-  }
-  if (d.t === "gear") return `${SLOTS[d.slot]} · ${modLines(d).join(" · ")}`;
+  if (d.t === "wpn") return extra(it, weaponLine(it));
+  if (d.t === "gear") return `${SLOTS[d.slot]} · ${modLines(modsOf(it)).join(" · ")}`;
   const sh = shieldOf(it);
-  if (sh) return `${sh.pts} pts de bouclier · recharge ${sh.rate}/s après ${fmtRate(sh.delay)} s sans dégâts`;
+  if (sh) return extra(it, `${sh.pts} pts de bouclier · recharge ${sh.rate}/s après ${fmtRate(sh.delay)} s sans dégâts`);
   if (d.t === "med") return `Rend ${d.heal} PV en ${d.dur} s`;
   if (d.t === "stim") return `+35 % de vitesse pendant ${d.dur} s`;
   if (d.t === "key") return "Ouvre une salle forte";
   if (d.t === "part") return `Composant · ${RAR[d.r]} · contrats de chasse`;
   return RAR[d.r];
+}
+
+function weaponLine(it: Item): string {
+  const w = wstat(it);
+  if (w.mel) return `${w.dmg} dég · ${fmtRate(w.rate)} coups/s · corps à corps, silencieux`;
+  return `${w.pel > 1 ? w.pel + "×" : ""}${w.dmg} dég · ${fmtRate(w.rate)} tirs/s · portée ${fmtM(w.range)}`;
 }

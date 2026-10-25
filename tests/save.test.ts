@@ -21,8 +21,13 @@ describe("parseSave", () => {
     const { sta, stock, ...old } = fresh();
     const s = parseSave(JSON.stringify(old));
     expect(s.sta).toEqual({ bench: 0, pocket: 0, trade: 0 });
-    expect(s.stock).toEqual({ raid: -1, k: [] });
+    expect(s.stock).toEqual({ raid: -1, items: [] });
     expect(sta && stock).toBeTruthy();
+  });
+
+  it("keeps the merchant's stock and each piece's roll", () => {
+    const stock = { raid: 4, items: [{ k: "vest2", u: "s", q: 0.95, fx: { spd: 0.04 } }] };
+    expect(parseSave(JSON.stringify({ ...fresh(), stock })).stock).toEqual(stock);
   });
 
   it("drops items whose key no longer exists", () => {

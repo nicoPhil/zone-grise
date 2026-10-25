@@ -1,5 +1,6 @@
 import { RAR, def, desc, nameOf, valOf, type Item } from "../items";
 import { icon } from "./icons";
+import { starTag } from "./row";
 
 /** Diablo-style tooltip card pinned to the tapped item (`data-pin`); tapping outside closes it. */
 export function popup(it: Item, extra: string[], btns: string[], priced = true) {
@@ -9,7 +10,7 @@ export function popup(it: Item, extra: string[], btns: string[], priced = true) 
     .split(" · ")
     .filter((l) => l !== r);
   return `<div class="scrim" data-a="close"></div><div class="card detail" role="dialog" data-for="${it.u}" style="--rc:var(--r${d.r})">
-    <button class="x" data-a="close" aria-label="Fermer">${icon("close")}</button><b>${nameOf(it)}</b><small class="rar">${r}</small>
+    <button class="x" data-a="close" aria-label="Fermer">${icon("close")}</button><b>${nameOf(it)}${starTag(it)}</b><small class="rar">${r}</small>
     <ul>${stats.map((l) => `<li>${l}</li>`).join("")}</ul>
     <small>${[`${d.s} place${d.s > 1 ? "s" : ""}`, priced ? `${valOf(it)} cr` : "", ...extra].filter(Boolean).join(" · ")}</small>
     ${btns.some(Boolean) ? `<div class="btns">${btns.join("")}</div>` : ""}</div>`;

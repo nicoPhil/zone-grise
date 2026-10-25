@@ -1,5 +1,6 @@
 import { FREE, KEYS, def, mk, type Item, type ItemDef } from "../items";
 import { clamp, overlaps, pick, rnd, type Pt, type Rect } from "../util";
+import { roll } from "../rolls";
 import { inWall } from "./geometry";
 
 export const W = 6000,
@@ -192,7 +193,7 @@ export function rollItem(d: number, { minR = 0, kit = false, shield = 0 } = {}):
   const ofType = KEYS.filter((k) => types.includes(def(k).t) && k !== FREE);
   for (let k = r; k >= 0; k--) {
     const c = ofType.filter((id) => def(id).r === k);
-    if (c.length) return mk(pick(c));
+    if (c.length) return roll(mk(pick(c)));
   }
-  return mk(pick(ofType));
+  return roll(mk(pick(ofType)));
 }
