@@ -1,4 +1,4 @@
-import { depth } from "./mapgen";
+import { DEPTH_R, depth } from "./mapgen";
 
 export const RINGS = [
   { n: "Périphérie", msg: "calme, loot modeste" },
@@ -12,6 +12,9 @@ export const CORE = RINGS.length - 1;
 const FROM = [0.42, 0.72];
 /** Depth to go past a ring line before it counts as crossed, so walking along it doesn't flicker. */
 const SLACK = 0.02;
+
+/** Distance from the centre of each ring line, outermost first. */
+export const RING_R = FROM.map((f) => (1 - f) * DEPTH_R);
 
 const ringOf = (d: number) => FROM.filter((f) => d >= f).length;
 

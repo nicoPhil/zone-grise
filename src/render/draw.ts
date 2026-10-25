@@ -5,6 +5,7 @@ import { frame } from "./frame";
 import { darkness, drawLock, lights, shots, walls } from "./light";
 import { markers } from "./marks";
 import { overlay } from "./overlay";
+import { ringLines } from "./rings";
 import { groundItems, groundTiles, stains } from "./world";
 
 export function draw(r: Raid | null) {
@@ -28,6 +29,7 @@ export function draw(r: Raid | null) {
   shots(f);
   ctx.globalCompositeOperation = "source-over";
   ctx.lineCap = "butt";
+  ringLines(f);
   markers(f);
   overlay(f);
 }

@@ -16,8 +16,10 @@ export interface Building extends Rect {
   floor: number;
 }
 
+/** Distance from the centre where depth reaches 0. */
+export const DEPTH_R = W * 0.62;
 /** 0 at the map edge, 1 at the centre: drives loot rarity and building density. */
-export const depth = (x: number, y: number) => clamp(1 - Math.hypot(x - W / 2, y - H / 2) / (W * 0.62), 0, 1);
+export const depth = (x: number, y: number) => clamp(1 - Math.hypot(x - W / 2, y - H / 2) / DEPTH_R, 0, 1);
 
 function cut(a: number, b: number, doors: number[]): [number, number][] {
   let s: [number, number][] = [[a, b]];
