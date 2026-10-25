@@ -45,6 +45,16 @@ export interface Mods {
   fire?: number;
   vis?: number;
   quiet?: number;
+  /** shorter crate search */
+  search?: number;
+  /** shorter extraction call */
+  call?: number;
+  /** quieter running steps */
+  step?: number;
+  /** shield recharge starts sooner after a hit */
+  recharge?: number;
+  /** chance for an enemy projectile to miss */
+  dodge?: number;
 }
 export type WornSlot = "head" | "body" | "hands" | "feet" | "back" | "trinket";
 export type Slot = WornSlot | "gun" | "blade" | "shield";
@@ -219,7 +229,24 @@ export const emptyGear = (): Gear => ({
   shield: null,
 });
 export const RED_CAP = 0.7;
-const MOD_KEYS: (keyof Mods)[] = ["red", "hp", "spd", "cap", "mel", "fire", "vis", "quiet"];
+/** Ceilings on bonuses added up across worn pieces. */
+const CAPS: Partial<Record<keyof Mods, number>> = { red: RED_CAP, search: 0.5, call: 0.5, step: 0.8, recharge: 0.6, dodge: 0.3 };
+const MOD_KEYS: (keyof Mods)[] = ["red", "hp", "spd", "cap", "mel", "fire", "vis", "quiet", "search", "call", "step", "recharge", "dodge"];
+export const noMods = (): Required<Mods> => ({
+  red: 0,
+  hp: 0,
+  spd: 0,
+  cap: 0,
+  mel: 0,
+  fire: 0,
+  vis: 0,
+  quiet: 0,
+  search: 0,
+  call: 0,
+  step: 0,
+  recharge: 0,
+  dodge: 0,
+});
 /** Whole-number bonuses: HP and bag places. */
 const WHOLE = new Set<keyof Mods>(["hp", "cap"]);
 
@@ -235,13 +262,14 @@ export function modsOf(it: Item): Mods {
 }
 
 export function gearStats(g: Gear): Required<Mods> {
-  const s: Required<Mods> = { red: 0, hp: 0, spd: 0, cap: 0, mel: 0, fire: 0, vis: 0, quiet: 0 };
+  const s = noMods();
   for (const it of Object.values(g)) {
     if (!it) continue;
     const m = modsOf(it);
     for (const k of MOD_KEYS) s[k] += m[k] || 0;
   }
-  s.red = Math.min(RED_CAP, +s.red.toFixed(2));
+  for (const [k, c] of Object.entries(CAPS) as [keyof Mods, number][]) s[k] = Math.min(c, +s[k].toFixed(3));
+  s.red = +s.red.toFixed(2);
   return s;
 }
 
@@ -285,6 +313,11 @@ export function modLines(m: Mods): string[] {
   if (m.fire) out.push(`+${pct(m.fire)} de cadence de tir`);
   if (m.vis) out.push(`+${pct(m.vis)} de vision`);
   if (m.quiet) out.push(`−${pct(m.quiet)} de distance de repérage`);
+  if (m.search) out.push(`−${pct(m.search)} de temps de fouille`);
+  if (m.call) out.push(`−${pct(m.call)} sur l'appel d'extraction`);
+  if (m.step) out.push(`−${pct(m.step)} de bruit en courant`);
+  if (m.recharge) out.push(`bouclier relancé ${pct(m.recharge)} plus tôt`);
+  if (m.dodge) out.push(`${pct(m.dodge)} d'esquive des projectiles`);
   return out;
 }
 

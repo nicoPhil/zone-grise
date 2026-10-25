@@ -26,10 +26,11 @@ export function absorb(sh: Shield | null, d: number): number {
   return took;
 }
 
-export function recharge(sh: Shield | null, dt: number) {
+/** `sooner` is the share of the wait a worn bonus cuts. */
+export function recharge(sh: Shield | null, dt: number, sooner = 0) {
   if (!sh) return;
   sh.calm += dt;
   sh.flash -= dt;
   sh.broke -= dt;
-  if (sh.calm >= sh.delay) sh.left = Math.min(sh.pts, sh.left + sh.rate * dt);
+  if (sh.calm >= sh.delay * (1 - sooner)) sh.left = Math.min(sh.pts, sh.left + sh.rate * dt);
 }

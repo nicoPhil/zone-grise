@@ -8,9 +8,10 @@ const PING = 3,
   PING_R = 600;
 
 function startCall(r: Raid, e: Pt) {
-  r.call = { x: e.x, y: e.y, left: CALL_TIME, ping: 0 };
+  const total = Math.round(CALL_TIME * (1 - r.p.st.call));
+  r.call = { x: e.x, y: e.y, left: total, total, ping: 0 };
   reinforce(r, e);
-  toast(`Extraction appelée : tiens ${CALL_TIME} s près de la sortie`);
+  toast(`Extraction appelée : tiens ${total} s près de la sortie`);
 }
 
 /** Reaching an exit calls the extraction; it counts down while the player holds out near it, and its flare draws enemies. True once extracted. */

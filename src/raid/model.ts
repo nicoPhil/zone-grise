@@ -71,6 +71,8 @@ export interface Bullet extends Pt {
   vy: number;
   life: number;
   dmg: number;
+  /** an enemy shot the player dodged: it flies on through */
+  dodged?: boolean;
 }
 export interface Pickup extends Pt {
   it: Item;
@@ -150,7 +152,8 @@ export interface Raid {
   spawnT: number;
   flowT: number;
   /** the extraction called at an exit, if any: seconds left and time to the next flare */
-  call: (Pt & { left: number; ping: number }) | null;
+  /** the extraction call: `left` of `total` seconds to hold out */
+  call: (Pt & { left: number; total: number; ping: number }) | null;
   /** index in RINGS of the ring the player is in */
   ring: number;
   toastT: number;

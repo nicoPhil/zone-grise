@@ -20,6 +20,22 @@ describe("rolled pieces", () => {
     expect(whole.every(Number.isInteger)).toBe(true);
   });
 
+  it("roll only the bonuses of their slot", () => {
+    for (let t = 0; t < 100; t++) {
+      for (const m of Object.keys(roll(mk("boots")).fx || {})) expect(["spd", "step", "dodge"]).toContain(m);
+      for (const m of Object.keys(roll(mk("gen3")).fx || {})) expect(["recharge", "hp", "red"]).toContain(m);
+    }
+  });
+
+  it("cap bonuses added up across pieces", () => {
+    const g = {
+      ...emptyGear(),
+      hands: { ...mk("workgloves"), q: 1, fx: { search: 0.4 } },
+      back: { ...mk("satchel"), q: 1, fx: { search: 0.4 } },
+    };
+    expect(gearStats(g).search).toBe(0.5);
+  });
+
   it("leave everything that can't be worn as it is", () => {
     const gold = mk("gold");
     expect(roll(gold)).toBe(gold);

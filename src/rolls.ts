@@ -1,4 +1,4 @@
-import { FREE, def, wearable, type Item, type Mods } from "./items";
+import { FREE, def, slotOf, type Item, type Mods, type Slot } from "./items";
 import { rnd } from "./util";
 
 /** Range of each bonus a piece can roll, for a common piece; rarer pieces roll up to 1.2× more. */
@@ -11,8 +11,24 @@ const FX: Record<keyof Mods, [number, number]> = {
   fire: [0.04, 0.1],
   vis: [0.05, 0.15],
   quiet: [0.05, 0.12],
+  search: [0.08, 0.18],
+  call: [0.08, 0.15],
+  step: [0.15, 0.3],
+  recharge: [0.1, 0.25],
+  dodge: [0.03, 0.07],
 };
-const KEYS = Object.keys(FX) as (keyof Mods)[];
+/** The bonuses each slot can roll, so a pair of boots rolls footwork, not fire rate. */
+const POOL: Record<Slot, (keyof Mods)[]> = {
+  head: ["red", "hp", "vis", "quiet"],
+  body: ["red", "hp", "dodge", "quiet"],
+  hands: ["mel", "fire", "search"],
+  feet: ["spd", "step", "dodge"],
+  back: ["cap", "call", "search"],
+  trinket: ["vis", "quiet", "hp", "search", "call"],
+  gun: ["fire", "vis"],
+  blade: ["mel", "spd"],
+  shield: ["recharge", "hp", "red"],
+};
 /** Bonuses rolled by rarity: none on a common piece, two on an epic one. */
 const COUNT = [0, 1, 1, 2];
 const Q_MIN = 0.9,
@@ -28,9 +44,10 @@ function bonus(k: keyof Mods, g: number): number {
 
 /** Gives a weapon, a worn piece or a shield its rolled quality and bonuses; other items come back as they are. */
 export function roll(it: Item): Item {
-  if (!wearable(it.k) || it.k === FREE) return it;
+  const slot = slotOf(it);
+  if (!slot || it.k === FREE) return it;
   const g = grade(it);
-  const keys = [...KEYS].sort(() => Math.random() - 0.5).slice(0, COUNT[def(it.k).r]);
+  const keys = [...POOL[slot]].sort(() => Math.random() - 0.5).slice(0, COUNT[def(it.k).r]);
   return {
     ...it,
     q: +rnd(Q_MIN, Q_MAX).toFixed(3),

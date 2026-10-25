@@ -143,7 +143,7 @@ function searchCrates(r: Raid, idle: boolean, dt: number) {
   const near = nearestInReach(r.crates, r.p, 48);
   for (const c of r.crates) {
     if (c.open) continue;
-    c.prog = c === near && idle ? c.prog + dt : 0;
+    c.prog = c === near && idle ? c.prog + dt / (1 - r.p.st.search) : 0;
     if (c.prog >= crateTime(c)) openCrate(r, c);
   }
   return near;

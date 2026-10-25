@@ -1,6 +1,6 @@
 import { ALERT_POP, suspicious } from "../aware";
 import { def, nameOf, upgradeOver } from "../items";
-import { CALL_TIME, CALL_ZONE, EXIT_R, UNLOCK_TIME, crateTime, hasKey, lockCentre, type Raid } from "../raid";
+import { CALL_ZONE, EXIT_R, UNLOCK_TIME, crateTime, hasKey, lockCentre, type Raid } from "../raid";
 import { clamp } from "../util";
 import { C, FONT, ctx, rarCol } from "./canvas";
 import { GOLD, ring, type Frame } from "./frame";
@@ -110,7 +110,7 @@ function callZone(c: NonNullable<Raid["call"]>) {
   ctx.globalAlpha = 1;
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(c.x, c.y, CALL_ZONE, -1.57, -1.57 + 6.28 * (1 - c.left / CALL_TIME));
+  ctx.arc(c.x, c.y, CALL_ZONE, -1.57, -1.57 + 6.28 * (1 - c.left / c.total));
   ctx.stroke();
   ctx.fillStyle = C.ok;
   ctx.textAlign = "center";

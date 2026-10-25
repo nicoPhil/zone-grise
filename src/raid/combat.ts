@@ -190,7 +190,12 @@ export function moveEnemyBullets(r: Raid, dt: number): boolean {
       r.ebul.splice(i, 1);
       continue;
     }
-    if (Math.hypot(b.x - p.x, b.y - p.y) < 14) {
+    if (!b.dodged && Math.hypot(b.x - p.x, b.y - p.y) < 14) {
+      if (Math.random() < p.st.dodge) {
+        b.dodged = true;
+        burst(r, p, "#dfe8f0", { n: 4, sp: 90 });
+        continue;
+      }
       r.ebul.splice(i, 1);
       hurt(r, b.dmg);
       if (over()) return false;

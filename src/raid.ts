@@ -50,13 +50,13 @@ function movePlayer(r: Raid, m: Pt, dt: number) {
   p.step -= dt;
   if (Math.hypot(m.x, m.y) > RUN && p.step <= 0) {
     p.step = STEP_TIME;
-    noise(r, p, STEP_NOISE * (1 - p.st.quiet));
+    noise(r, p, STEP_NOISE * (1 - p.st.quiet) * (1 - p.st.step));
     burst(r, { x: p.x, y: p.y + 8 }, "#b9ad94", { n: 4, sp: 45 });
   }
   p.cd -= dt;
   p.mcd -= dt;
   p.hit -= dt;
-  recharge(p.sh, dt);
+  recharge(p.sh, dt, p.st.recharge);
   r.shake -= dt;
   r.toastT -= dt;
   if (p.regen > 0) {

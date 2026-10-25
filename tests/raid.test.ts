@@ -70,6 +70,17 @@ describe("extraction call", () => {
     expect([S.st.ext, S.zx[0]]).toEqual([1, 1]);
   });
 
+  it("is shorter with a bonus that cuts the call", () => {
+    S.lo.eq.back = { ...mk("satchel"), q: 1, fx: { call: 0.4 } };
+    const r = quietRaid();
+    Object.assign(r.p, r.exits[0]);
+    update(DT);
+    r.enemies = [];
+    expect(r.call?.total).toBe(9);
+    run(9.1);
+    expect(ended()).toMatchObject({ ok: true });
+  });
+
   it("pauses the call while the player is away from the exit", () => {
     const r = quietRaid();
     Object.assign(r.p, r.exits[0]);
@@ -208,6 +219,32 @@ describe("raid shield", () => {
     expect(r.p.max - r.p.hp).toBeCloseTo(8);
   });
 
+  it("lets a dodge bonus send a shot through without harm", () => {
+    S.lo.eq.feet = { ...mk("sneakers"), q: 1, fx: { dodge: 0.3 } };
+    const r = quietRaid();
+    const roll = vi.spyOn(Math, "random");
+    try {
+      roll.mockReturnValue(0.1);
+      shot(r, 30);
+      expect(r.p.hp).toBe(r.p.max);
+      expect(r.ebul).toHaveLength(1);
+      r.ebul = [];
+      roll.mockReturnValue(0.5);
+      shot(r, 30);
+      expect(r.p.hp).toBeLessThan(r.p.max);
+    } finally {
+      roll.mockRestore();
+    }
+  });
+
+  it("refills sooner with a recharge bonus", () => {
+    S.lo.eq.trinket = { ...mk("medal"), q: 1, fx: { recharge: 0.5 } };
+    const { r, sh } = shielded();
+    shot(r, 20);
+    run(sh.delay * 0.5 + 0.2);
+    expect(sh.left).toBeGreaterThan(0);
+  });
+
   it("refills only once the player has gone unhit for its delay", () => {
     const { r, sh } = shielded();
     shot(r, 20);
@@ -281,9 +318,11 @@ describe("raid combat", () => {
   });
 
   it.each([
-    { gait: "running", push: 0.9, heard: true },
-    { gait: "walking", push: 0.4, heard: false },
-  ])("$gait past the back of an unaware enemy, it hears: $heard", ({ push, heard }) => {
+    { gait: "running", push: 0.9, heard: true, step: 0 },
+    { gait: "walking", push: 0.4, heard: false, step: 0 },
+    { gait: "running with quiet steps", push: 0.9, heard: false, step: 0.8 },
+  ])("$gait past the back of an unaware enemy, it hears: $heard", ({ push, heard, step }) => {
+    S.lo.eq.feet = { ...mk("sneakers"), q: 1, fx: { step } };
     const r = begin();
     const w = r.enemies[0];
     Object.assign(r, { enemies: [w], spawnT: Infinity, walls: [] });
@@ -316,6 +355,15 @@ describe("raid loot", () => {
     run(secs - 0.1);
     expect(c.open).toBe(false);
     run(0.2);
+    expect(c.open).toBe(true);
+  });
+
+  it("opens crates faster with a search bonus", () => {
+    S.lo.eq.hands = { ...mk("workgloves"), q: 1, fx: { search: 0.5 } };
+    const r = quietRaid();
+    const c = { x: r.p.x, y: r.p.y, d: 0.3, tier: 2 as const, open: false, prog: 0 };
+    r.crates = [c];
+    run(1.3);
     expect(c.open).toBe(true);
   });
 
