@@ -97,6 +97,25 @@ describe("raid end", () => {
   });
 });
 
+describe("raid clock", () => {
+  it("warns once at one minute and once at 30 s left", () => {
+    const r = quietRaid();
+    r.t = 61;
+    run(32);
+    expect(vi.mocked(toast).mock.calls.map(([m]) => m.split(" :")[0])).toEqual(["1 min", "30 s"]);
+  });
+
+  it("brings reinforcements in 700 to 1400 px from the player", () => {
+    const r = quietRaid();
+    r.spawnT = DT / 2;
+    update(DT);
+    const d = r.enemies.map((e) => Math.hypot(e.x - r.p.x, e.y - r.p.y));
+    expect(d).toHaveLength(2);
+    for (const x of d) expect(x).toBeGreaterThan(700);
+    for (const x of d) expect(x).toBeLessThan(1400);
+  });
+});
+
 describe("raid combat", () => {
   it("takes melee damage scaled by the zone from an enemy in contact", () => {
     S.zx[0] = UNLOCK_AFTER;

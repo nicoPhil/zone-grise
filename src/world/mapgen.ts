@@ -2,10 +2,12 @@ import { FREE, KEYS, def, mk, type Item, type ItemDef } from "../items";
 import { clamp, overlaps, pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "./geometry";
 
-export const W = 2400,
-  H = 2400,
+export const W = 6000,
+  H = 6000,
   TH = 20,
   DOOR = 84;
+/** Map area over the first 2400 px map's, to scale props and stains. */
+export const AREA = (W * H) / 2400 ** 2;
 
 export interface Building extends Rect {
   rooms: Rect[];
@@ -45,7 +47,7 @@ interface Split {
 }
 
 function splitRooms(s: Split, r: Rect, lvl: number) {
-  if (lvl >= 2 || Math.max(r.w, r.h) < 280) return void s.out.push(r);
+  if (lvl >= 3 || Math.max(r.w, r.h) < 280) return void s.out.push(r);
   for (let t = 0; t < 20; t++) {
     if (r.w >= r.h) {
       const sx = r.x + r.w * rnd(0.38, 0.62) - TH / 2;
@@ -69,15 +71,23 @@ function splitRooms(s: Split, r: Rect, lvl: number) {
   s.out.push(r);
 }
 
+/** A building's footprint: sparse at the edge, bigger towards the centre; null when rolled out. */
+function footprint(): Rect | null {
+  const cx = rnd(400, W - 400),
+    cy = rnd(400, H - 400),
+    d = depth(cx, cy);
+  if (Math.random() > 0.25 + d) return null;
+  const w = rnd(450, 560 + 280 * d),
+    h = rnd(390, 470 + 220 * d);
+  return { x: clamp(cx - w / 2, 170, W - 170 - w), y: clamp(cy - h / 2, 170, H - 170 - h), w, h };
+}
+
 function genBuildings(walls: Rect[]): Building[] {
   const bs: Building[] = [];
-  for (let t = 0; t < 600 && bs.length < 12; t++) {
-    const w = rnd(300, 560),
-      h = rnd(260, 460),
-      x = rnd(170, W - 170 - w),
-      y = rnd(170, H - 170 - h);
-    if (Math.random() > 0.25 + depth(x + w / 2, y + h / 2)) continue;
-    if (bs.some((b) => overlaps({ x, y, w, h }, b, 150))) continue;
+  for (let t = 0; t < 4000 && bs.length < 48; t++) {
+    const f = footprint();
+    if (!f || bs.some((b) => overlaps(f, b, 150))) continue;
+    const { x, y, w, h } = f;
     const sides = [0, 1, 2, 3].sort(() => Math.random() - 0.5).slice(0, Math.random() < 0.5 ? 1 : 2);
     const doors: Rect[] = [];
     const door = (side: number, a: number, b: number) => {
@@ -116,7 +126,7 @@ export function genMap(): { walls: Rect[]; bld: Building[] } {
     { x: W, y: 0, w: 40, h: H },
   ];
   const bld = genBuildings(walls);
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < 22 * AREA; i++) {
     const x = rnd(100, W - 300),
       y = rnd(100, H - 300),
       k = Math.random();
@@ -139,8 +149,9 @@ export function freePt(walls: Rect[], pad: number, ok: (x: number, y: number) =>
 }
 
 export const EDGE = 260,
-  ENTRY_EXIT_D = 1700,
-  ENTRY_VAULT_D = 1300;
+  ENTRY_EXIT_D = 0.7 * W,
+  ENTRY_VAULT_D = 0.54 * W,
+  EXITS_APART = 0.42 * W;
 
 /** The player enters at the map edge, away from the vault, with both exits across the map. */
 export function placeEntries(walls: Rect[], bld: Building[], vault: Pt | null): { sp: Pt; exits: Pt[] } {
@@ -148,7 +159,7 @@ export function placeEntries(walls: Rect[], bld: Building[], vault: Pt | null): 
   const away = (o: Pt, m: number) => (x: number, y: number) => Math.hypot(x - o.x, y - o.y) > m;
   const sp = freePt(walls, 30, (x, y) => edge(x, y) && (!vault || away(vault, ENTRY_VAULT_D)(x, y)));
   const e1 = freePt(walls, 70, (x, y) => edge(x, y) && away(sp, ENTRY_EXIT_D)(x, y));
-  const e2 = freePt(walls, 70, (x, y) => edge(x, y) && away(sp, ENTRY_EXIT_D)(x, y) && away(e1, 1000)(x, y));
+  const e2 = freePt(walls, 70, (x, y) => edge(x, y) && away(sp, ENTRY_EXIT_D)(x, y) && away(e1, EXITS_APART)(x, y));
   return { sp, exits: [e1, e2] };
 }
 

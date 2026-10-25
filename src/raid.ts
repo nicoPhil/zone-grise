@@ -3,7 +3,7 @@ import { clearStick, moveVec } from "./input";
 import { applyRaid } from "./progression";
 import { stampCasing } from "./render/decor";
 import { S, mode, save, setMode } from "./state";
-import { setRaidHud, updHud } from "./ui/hud";
+import { setRaidHud, toast, updHud } from "./ui/hud";
 import { renderEnd } from "./ui/end";
 import type { Pt } from "./util";
 import { collide } from "./world/geometry";
@@ -14,7 +14,7 @@ import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
 import { R, burst, die, noise, over } from "./raid/core";
 import { spawnByZone, updateEnemy } from "./raid/enemies";
 import { pickUp, search } from "./raid/loot";
-import { EXTRACT_TIME, RUN, STEP_NOISE, STEP_TIME, type Raid } from "./raid/model";
+import { EXTRACT_TIME, RAID_TIME, RUN, STEP_NOISE, STEP_TIME, type Raid } from "./raid/model";
 
 export * from "./raid/model";
 export { R, clock } from "./raid/core";
@@ -110,6 +110,15 @@ function moveEnemies(r: Raid, dt: number): boolean {
   return true;
 }
 
+const ALERTS: [number, string][] = [
+  [60, "1 min : la zone va être verrouillée, rejoins une sortie"],
+  [30, "30 s : sors maintenant"],
+];
+
+function timeAlerts(r: Raid, dt: number) {
+  for (const [at, msg] of ALERTS) if (r.t > at && r.t - dt <= at) toast(msg);
+}
+
 /** Extraction, the raid timer and enemy waves; false once the raid is over. */
 function raidClocks(r: Raid, moving: boolean, dt: number): boolean {
   const p = r.p;
@@ -120,6 +129,7 @@ function raidClocks(r: Raid, moving: boolean, dt: number): boolean {
       return false;
     }
   } else r.ext = 0;
+  timeAlerts(r, dt);
   r.t -= dt;
   if (r.t <= 0) {
     die(r, "Temps écoulé : la zone a été verrouillée.");
@@ -129,8 +139,8 @@ function raidClocks(r: Raid, moving: boolean, dt: number): boolean {
   if (r.spawnT > 0) return true;
   r.spawnT = r.zone.wave;
   for (let i = 0; i < 2; i++) {
-    const c = freePt(r.walls, 24, (x, y) => Math.hypot(x - p.x, y - p.y) > 600);
-    spawnByZone(r, c, r.t < 150 ? { x: p.x, y: p.y } : undefined);
+    const c = freePt(r.walls, 24, (x, y) => Math.abs(Math.hypot(x - p.x, y - p.y) - 1050) < 350);
+    spawnByZone(r, c, r.t < RAID_TIME - 90 ? { x: p.x, y: p.y } : undefined);
   }
   return true;
 }

@@ -1,6 +1,6 @@
 import { pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "../world/geometry";
-import { H, W, depth, inBld, type Building } from "../world/mapgen";
+import { AREA, H, W, depth, inBld, type Building } from "../world/mapgen";
 import { T, type Tile } from "./assets";
 import { context2d } from "./context";
 import type { Fit } from "./furniture";
@@ -184,7 +184,7 @@ export function makeDecal(th: Theme): Decal {
   c.height = H * DECAL;
   const g = context2d(c);
   g.scale(DECAL, DECAL);
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 150 * AREA; i++) {
     const x = rnd(0, W),
       y = rnd(0, H),
       r = rnd(30, 150),
@@ -228,7 +228,7 @@ export function makeDecor(walls: Rect[], bld: Building[], th: Theme): Decor[] {
       if (!inWall(walls, x, y, 6)) out.push({ x, y, t: pick(DEBRIS), r: rnd(0, 6.28), s: rnd(30, 44) });
     }
   for (const [tiles, n, s0, s1] of th.props)
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n * AREA; i++) {
       const x = rnd(40, W - 40),
         y = rnd(40, H - 40);
       if (!inWall(walls, x, y, s1 / 3) && !inBld(bld, x, y, 10)) out.push({ x, y, t: pick(tiles), r: rnd(0, 6.28), s: rnd(s0, s1) });

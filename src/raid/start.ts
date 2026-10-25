@@ -89,14 +89,17 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
   };
 }
 
-/** Debris in the street, crates in the rooms, military crates more often towards the centre; enemies away from the entry. */
+const CRATES = 80,
+  ROOM_CRATES = 52;
+
+/** Debris in the street, crates in the rooms, military crates more often towards the centre; enemies away from the entry, thicker at the centre. */
 function populate(r: Raid, sp: Pt, skip: Rect | undefined) {
   const { walls, bld, zone } = r;
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== skip);
   const far = (c: Pt | null, m: number): c is Pt => !!c && Math.hypot(c.x - sp.x, c.y - sp.y) > m;
   const inRoom = (pad: number) => (rooms.length ? randIn(walls, pick(rooms), pad) : null);
-  for (let i = 0; i < 20; i++) {
-    const room = i < 13;
+  for (let i = 0; i < CRATES; i++) {
+    const room = i < ROOM_CRATES;
     let c = room ? inRoom(30) : null;
     if (!far(c, 200)) c = freePt(walls, 30, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 260 && (room || !inBld(bld, x, y, 10)));
     const d = zoneDepth(zone, depth(c.x, c.y)),
@@ -105,7 +108,7 @@ function populate(r: Raid, sp: Pt, skip: Rect | undefined) {
   }
   for (let i = 0; i < zone.enemies; i++) {
     let c = Math.random() < 0.5 ? inRoom(24) : null;
-    if (!far(c, 480)) c = freePt(walls, 24, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 480);
+    if (!far(c, 600)) c = freePt(walls, 24, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 600 && Math.random() < 0.3 + depth(x, y));
     spawnByZone(r, c);
   }
 }
