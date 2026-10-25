@@ -20,7 +20,7 @@ import { pad } from "./stubs/input";
 
 const THINK = 0.25,
   STUCK_WINDOW = 3,
-  GIVE_UP = 30;
+  GIVE_UP = 15;
 const STILL: Pt = { x: 0, y: 0 };
 
 /** What the bot did, beyond what the raid itself counts. */
@@ -30,7 +30,7 @@ export interface Notes {
   leftAt: number;
   /** where it pushed the stick for STUCK_WINDOW seconds without getting anywhere */
   stuck: Pt[];
-  /** goals dropped after GIVE_UP seconds */
+  /** goals dropped after GIVE_UP seconds on top of the walk there */
   gaveUp: number;
 }
 
@@ -41,6 +41,7 @@ export class Bot {
   private reach = new Reach();
   private goal: Goal | null = null;
   private since = 0;
+  private budget = 0;
   private think = 0;
   private skip = new Set<object>();
   private watch = { x: 0, y: 0, t: 0, pushed: 0 };
@@ -61,14 +62,14 @@ export class Bot {
   }
 
   private set(g: Goal | null) {
-    if (g?.ref !== this.goal?.ref) this.since = 0;
+    if (g && g.ref !== this.goal?.ref) [this.since, this.budget] = [0, GIVE_UP + Math.max(0, this.reach.to(g.at)) / 120];
     this.goal = g;
   }
 
   private valid(r: Raid): boolean {
     const g = this.goal;
     if (!g) return false;
-    if (this.since > GIVE_UP && g.kind !== "exit" && g.kind !== "hold") {
+    if (this.since > this.budget && g.kind !== "exit" && g.kind !== "hold") {
       this.notes.gaveUp++;
       this.skip.add(g.ref);
       return false;
@@ -93,7 +94,10 @@ export class Bot {
   private loot(r: Raid, reach: Reach): Goal | null {
     const s = this.style;
     return (
-      pickGoal(r, reach, this.skip) || lockGoal(r, s) || (s.hunts && huntGoal(r, s, reach, this.skip)) || crateGoal(r, s, reach, this.skip)
+      pickGoal(r, reach, this.skip) ||
+      lockGoal(r, s, reach, this.skip) ||
+      (s.hunts && huntGoal(r, s, reach, this.skip)) ||
+      crateGoal(r, s, reach, this.skip)
     );
   }
 
@@ -117,7 +121,7 @@ export class Bot {
     if (this.standsToFight(r)) return STILL;
     const d = Math.hypot(g.at.x - p.x, g.at.y - p.y);
     if (g.kind === "crate" && d < 30) return STILL;
-    if (g.kind === "lock" && d < 50) return STILL;
+    if (g.kind === "lock" && d < 12) return STILL;
     if (g.kind === "hold" && d < CALL_ZONE * 0.4) return STILL;
     if (g.kind === "enemy" && d < 260 && los(r.walls, p, g.at)) return STILL;
     if (g.kind === "pick" && d < 40 && !makeRoom(r, (g.ref as Raid["pick"][number]).it)) this.skip.add(g.ref);

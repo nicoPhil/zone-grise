@@ -1,6 +1,7 @@
 import { bagUsed, def, valOf, type Item } from "../../src/items";
-import { CALL_TIME, drop, hasKey, lockCentre, rcap, type Raid } from "../../src/raid";
-import type { Pt } from "../../src/util";
+import { CALL_TIME, drop, hasKey, lockCentre, rcap, type Raid, type Vault } from "../../src/raid";
+import type { Pt, Rect } from "../../src/util";
+import { cellOf } from "../../src/world/nav";
 import { ringOf } from "../../src/world/rings";
 import type { Reach } from "./path";
 
@@ -113,11 +114,29 @@ export function crateGoal(r: Raid, s: Style, reach: Reach, skip: Set<object>): G
   return best;
 }
 
-export function lockGoal(r: Raid, s: Style): Goal | null {
+const inRect = (rc: Rect, x: number, y: number) => x > rc.x && x < rc.x + rc.w && y > rc.y && y < rc.y + rc.h;
+
+/** The closest free spot outside the vault room, within reach of a lock: the lock itself is a wall. */
+function doorSpot(r: Raid, v: Vault, reach: Reach): Pt | null {
+  let best: Pt | null = null,
+    bd = Infinity;
+  for (const l of v.locks) {
+    const c = lockCentre(l);
+    for (let y = c.y - 55; y <= c.y + 55; y += 10)
+      for (let x = c.x - 55; x <= c.x + 55; x += 10) {
+        const d = reach.to({ x, y });
+        if (d < 0 || d >= bd || inRect(v.room, x, y) || r.nav.blocked[cellOf(x, y)] || Math.hypot(x - c.x, y - c.y) > 55) continue;
+        [best, bd] = [{ x, y }, d];
+      }
+  }
+  return best;
+}
+
+export function lockGoal(r: Raid, s: Style, reach: Reach, skip: Set<object>): Goal | null {
   const v = r.vault;
-  if (!v || v.open || !hasKey(r)) return null;
-  const at = lockCentre(v.locks[0]);
-  return ringOf(at.x, at.y) <= s.ring ? { kind: "lock", at, ref: v } : null;
+  if (!v || v.open || !hasKey(r) || skip.has(v)) return null;
+  const at = doorSpot(r, v, reach);
+  return at && ringOf(at.x, at.y) <= s.ring ? { kind: "lock", at, ref: v } : null;
 }
 
 export function huntGoal(r: Raid, s: Style, reach: Reach, skip: Set<object>): Goal | null {
