@@ -128,3 +128,59 @@ button.claim {
   font-size: 28px;
   font-variant-numeric: tabular-nums;
 }
+.subtabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+.subtabs button {
+  border: 0;
+  background: none;
+  padding: 6px 2px;
+  font-size: 13px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.subtabs button[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.chip {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  font-variant-numeric: tabular-nums;
+}
+.chip.ok {
+  color: var(--ok);
+}
+.chip.ko {
+  color: var(--bad);
+}
+.pips {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  margin-left: 4px;
+}
+.nm small.next {
+  color: var(--fg);
+}
+.card.locked {
+  opacity: 0.55;
+}

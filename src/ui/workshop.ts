@@ -1,16 +1,23 @@
-import { ITEMS, def, mk, nameOf, shieldOf, upgradeOver, wstat, type Item } from "../items";
+import { ITEMS, def, desc, mk, nameOf, shieldOf, upgradeOver, wstat, type Item } from "../items";
 import { RECIPES, STATIONS, benchBlock, benchCost, build, craft, improve, type Recipe } from "../economy";
 import { MAX_LV, UP, canPay, costParts, pay, type Cost } from "../progression";
 import { S, type Stations, type Upgrades } from "../state";
 import { fmtRate } from "../util";
 import { toast } from "./hud";
-import { pinned, row } from "./row";
+import { icon, type Icon } from "./icons";
+import { pinned, row, starTag } from "./row";
 
-export const costTxt = (c: Cost) =>
-  `${c.cr} cr` +
-  costParts(c)
-    .map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`)
-    .join("");
+/** A cost as chips, one per credit sum or item, green when the stash covers it. */
+export const chips = (c: Cost) =>
+  `<span class="chips"><span class="chip ${S.credits >= c.cr ? "ok" : "ko"}">${c.cr} cr</span>${costParts(c)
+    .map((p) => `<span class="chip ${p.have >= p.n ? "ok" : "ko"}">${ITEMS[p.k].n} ${p.have}/${p.n}</span>`)
+    .join("")}</span>`;
+
+const pips = (l: number, max: number) =>
+  `<span class="pips" aria-label="niveau ${l} sur ${max}">${"●".repeat(l)}${"○".repeat(max - l)}</span>`;
+
+const btn = (label: string, data: string, c: Cost) => `<button ${data} ${canPay(c) ? "" : "disabled"}>${label}</button>`;
+const MAX = `<span class="val">Max</span>`;
 
 type Benched = "gun" | "blade" | "shield";
 const BENCHED: Benched[] = ["gun", "blade", "shield"];
@@ -28,74 +35,120 @@ function gain(w: Item, nx: Item) {
 }
 
 function benchRow(w: Item, slot: Benched) {
-  const lv = w.lv || 0,
+  const lv = w.lv || 0;
+  if (lv >= MAX_LV) return row(w, MAX);
+  const c = benchCost(w),
     block = benchBlock(w);
-  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
-  const c = benchCost(w);
-  const btn = block
-    ? `<span class="val">${block}</span>`
-    : `<button data-a="bench" data-s="${slot}" ${canPay(c) ? "" : "disabled"}>Améliorer</button>`;
-  return `<div class="item" ${pinned(w.u)}><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
-      <small>${gain(w, { ...w, lv: lv + 1 })}</small><small>${costTxt(c)}</small></div>
-      <div class="btns">${btn}</div></div>`;
+  const act = block ? `<span class="val">${block}</span>` : btn("Améliorer", `data-a="bench" data-s="${slot}"`, c);
+  return `<div class="item" ${pinned(w.u)}><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)}${starTag(w)} ${pips(lv, MAX_LV)}</b>
+      <small class="next">→ +${lv + 1} : ${gain(w, { ...w, lv: lv + 1 })}</small>${chips(c)}</div>
+      <div class="btns">${act}</div></div>`;
 }
 
 function stationRow(k: keyof Stations) {
   const st = STATIONS[k],
     l = S.sta[k],
     c = st.cost[l];
-  const next = c ? `<small>Niveau ${l + 1} : ${st.lv[l + 1]}</small><small>${costTxt(c)}</small>` : "<small>Niveau maximum</small>";
-  const btn = c
-    ? `<button data-a="station" data-k="${k}" ${canPay(c) ? "" : "disabled"}>Construire</button>`
-    : `<span class="val">Max</span>`;
-  return `<div class="item"><div class="nm"><b>${st.n} · niv. ${l}</b><small>${st.lv[l]}</small>${next}</div><div class="btns">${btn}</div></div>`;
+  const next = c ? `<small class="next">→ ${st.lv[l + 1]}</small>${chips(c)}` : "";
+  return `<div class="item"><div class="nm"><b>${st.n} ${pips(l, st.cost.length)}</b><small>${st.lv[l]}</small>${next}</div>
+    <div class="btns">${c ? btn("Construire", `data-a="station" data-k="${k}"`, c) : MAX}</div></div>`;
 }
 
 function upRow(k: keyof Upgrades) {
   const u = UP[k],
     l = S.up[k],
-    more = l < MAX_LV;
-  return `<div class="item"><div class="nm"><b>${u.n} · ${u.lv[l]}</b><small>${more ? `Suivant : ${u.lv[l + 1]}` : "Niveau maximum"}</small>${more ? `<small>${costTxt(u.cost[l])}</small>` : ""}</div>
-      <div class="btns">${more ? `<button data-a="up" data-k="${k}" ${canPay(u.cost[l]) ? "" : "disabled"}>Améliorer</button>` : `<span class="val">Max</span>`}</div></div>`;
+    c = l < MAX_LV ? u.cost[l] : null;
+  const next = c ? `<small class="next">→ ${u.lv[l + 1]}</small>${chips(c)}` : "";
+  return `<div class="item"><div class="nm"><b>${u.n} ${pips(l, MAX_LV)}</b><small>${u.lv[l]}</small>${next}</div>
+    <div class="btns">${c ? btn("Améliorer", `data-a="up" data-k="${k}"`, c) : MAX}</div></div>`;
 }
 
 const RECIPE_PIN = "recipe:";
 
-function recipeRow(rc: Recipe, i: number) {
-  const it = { k: rc.out, u: RECIPE_PIN + i },
-    open = rc.bench <= S.sta.bench;
-  const btn = open
-    ? `<button data-a="craft" data-i="${i}" ${canPay(rc.cost) ? "" : "disabled"}>Fabriquer</button>`
-    : `<span class="val">Établi niv. ${rc.bench}</span>`;
-  const better = upgradeOver(mk(rc.out), S.lo.eq) ? ` · <span class="better">↑ mieux que l'équipé</span>` : "";
-  return row(it, `<div class="btns">${btn}</div>`, costTxt(rc.cost) + better);
+function recipeRow(rc: Recipe) {
+  const i = RECIPES.indexOf(rc),
+    out = mk(rc.out);
+  const better = upgradeOver(out, S.lo.eq) ? ` · <span class="better">↑ mieux que l'équipé</span>` : "";
+  const act = rc.bench <= S.sta.bench ? btn("Fabriquer", `data-a="craft" data-i="${i}"`, rc.cost) : "";
+  return `<div class="item" ${pinned(RECIPE_PIN + i)}><div class="nm"><b style="color:var(--r${def(rc.out).r})">${ITEMS[rc.out].n}</b>
+      <small>${desc(out)}${better}</small>${chips(rc.cost)}</div><div class="btns">${act}</div></div>`;
+}
+
+const benchable = () => BENCHED.map((s) => S.lo.eq[s]).filter((w): w is Item => !!w && !benchBlock(w));
+const affordable = (c: Cost | undefined) => !!c && canPay(c);
+
+type Sub = "base" | "bench" | "craft";
+const SUBS: { id: Sub; n: string; ic: Icon; ready: () => boolean; body: () => string }[] = [
+  {
+    id: "base",
+    n: "Planque",
+    ic: "home",
+    ready: () =>
+      UPS().some((k) => S.up[k] < MAX_LV && canPay(UP[k].cost[S.up[k]])) || STA.some((k) => affordable(STATIONS[k].cost[S.sta[k]])),
+    body: () => `<div class="card"><div class="lbl">Stations</div>${STA.map(stationRow).join("")}</div>
+      <div class="card"><div class="lbl">Améliorations</div>${UPS().map(upRow).join("")}</div>`,
+  },
+  {
+    id: "bench",
+    n: "Établi",
+    ic: "hammer",
+    ready: () => benchable().some((w) => canPay(benchCost(w))),
+    body: () => {
+      const rows = BENCHED.flatMap((s) => (S.lo.eq[s] ? [benchRow(S.lo.eq[s] as Item, s)] : []));
+      return `<div class="card"><div class="lbl">Équipement porté</div>${rows.join("") || `<p class="empty">Équipe une arme ou un bouclier dans l'onglet Raid pour l'améliorer.</p>`}
+        <p class="note">Le niveau de l'Établi (onglet Planque) plafonne les améliorations : niv. ${S.sta.bench}.</p></div>`;
+    },
+  },
+  {
+    id: "craft",
+    n: "Fabrication",
+    ic: "craft",
+    ready: () => RECIPES.some((rc) => rc.bench <= S.sta.bench && upgradeOver(mk(rc.out), S.lo.eq) && canPay(rc.cost)),
+    body: () =>
+      [1, 2, 3]
+        .map((lv) => {
+          const lock = lv > S.sta.bench ? " · à construire" : "";
+          return `<div class="card${lock ? " locked" : ""}"><div class="lbl">Établi niv. ${lv}${lock}</div>${RECIPES.filter(
+            (rc) => rc.bench === lv,
+          )
+            .map(recipeRow)
+            .join("")}</div>`;
+        })
+        .join("") + `<p class="note">Les composants viennent des ennemis : chaque zone en apporte de nouveaux.</p>`,
+  },
+];
+
+let sub: Sub = "base";
+try {
+  const t = localStorage.getItem("zone-grise-workshop");
+  if (SUBS.some((x) => x.id === t)) sub = t as Sub;
+} catch {
+  // storage blocked: open on the hideout
 }
 
 export function tabWorkshop() {
-  const rows = BENCHED.flatMap((s) => {
-    const it = S.lo.eq[s];
-    return it ? [benchRow(it, s)] : [];
-  });
-  const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme ou un bouclier dans l'onglet Raid pour l'améliorer.</p>`;
-  return `<div class="card"><div class="lbl">Stations</div>${STA.map(stationRow).join("")}</div>
-    <div class="card"><div class="lbl">Améliorations de la planque</div>${UPS().map(upRow).join("")}</div>
-    <div class="card"><div class="lbl">Établi · armes équipées</div>${bench}</div>
-    <div class="card"><div class="lbl">Établi · fabrication</div>${RECIPES.map(recipeRow).join("")}
-      <p class="note">Les composants viennent des ennemis : chaque zone en apporte de nouveaux.</p></div>`;
+  const nav = SUBS.map(
+    (x) =>
+      `<button role="tab" data-a="wsub" data-sub="${x.id}" aria-selected="${sub === x.id}">${icon(x.ic)}${x.n}${x.ready() ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`,
+  );
+  return `<div class="subtabs" role="tablist">${nav.join("")}</div>${(SUBS.find((x) => x.id === sub) ?? SUBS[0]).body()}`;
 }
 
 /** The recipe whose card is open, for the stash popup. */
 export const recipeOf = (pin: string) => (pin.startsWith(RECIPE_PIN) ? RECIPES[Number(pin.slice(RECIPE_PIN.length))] : undefined);
 
 /** Something in the workshop can be bought right now: the tab gets a dot. */
-export function workshopReady(): boolean {
-  const benchable = BENCHED.map((s) => S.lo.eq[s]).filter((w): w is Item => !!w && !benchBlock(w));
-  return (
-    UPS().some((k) => S.up[k] < MAX_LV && canPay(UP[k].cost[S.up[k]])) ||
-    STA.some((k) => STATIONS[k].cost[S.sta[k]] && canPay(STATIONS[k].cost[S.sta[k]])) ||
-    benchable.some((w) => canPay(benchCost(w))) ||
-    RECIPES.some((rc) => rc.bench <= S.sta.bench && upgradeOver(mk(rc.out), S.lo.eq) && canPay(rc.cost))
-  );
+export const workshopReady = () => SUBS.some((x) => x.ready());
+
+function pickSub(b: HTMLElement) {
+  const t = SUBS.find((x) => x.id === b.dataset.sub);
+  if (!t) return;
+  sub = t.id;
+  try {
+    localStorage.setItem("zone-grise-workshop", sub);
+  } catch {
+    // the open sub-tab is a convenience only
+  }
 }
 
 function upgrade(b: HTMLElement) {
@@ -122,4 +175,4 @@ function craftOne(b: HTMLElement) {
   if (rc && craft(rc)) toast(ITEMS[rc.out].n + " fabriqué : il est au coffre");
 }
 
-export const WORKSHOP_ACTIONS = { up: upgrade, bench, station, craft: craftOne };
+export const WORKSHOP_ACTIONS = { up: upgrade, bench, station, craft: craftOne, wsub: pickSub };
