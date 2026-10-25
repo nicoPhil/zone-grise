@@ -16,6 +16,7 @@ import { clock, setRaid } from "./core";
 import { spawn, spawnByZone } from "./enemies";
 import { indoorTier } from "./loot";
 import { RAID_TIME, type Player, type Raid } from "./model";
+import { wornShield } from "./shield";
 
 type VaultPlan = NonNullable<ReturnType<typeof pickVault>>;
 
@@ -50,6 +51,7 @@ function newPlayer(sp: Pt): Player {
     hit: 0,
     still: 0,
     step: 0,
+    sh: wornShield(S.lo.eq.shield, true),
   };
 }
 

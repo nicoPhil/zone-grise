@@ -10,6 +10,7 @@ import {
   slotOf,
   upgradeOver,
   valOf,
+  shieldOf,
   wstat,
   type Item,
   type ItemKey,
@@ -47,7 +48,10 @@ const costTxt = (c: Cost) =>
     .map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`)
     .join("");
 
-const weapons = () => [S.lo.eq.gun, S.lo.eq.blade].filter((w): w is Item => !!w);
+type Benched = "gun" | "blade" | "shield";
+const BENCHED: Benched[] = ["gun", "blade", "shield"];
+/** Worn pieces the bench can improve: weapons and the shield. */
+const benchable = () => BENCHED.map((s) => S.lo.eq[s]).filter((w): w is Item => !!w);
 
 /** Items a contract or the next upgrade still asks for, so the player doesn't sell them by mistake. */
 function needed() {
@@ -57,7 +61,7 @@ function needed() {
   };
   for (const q of S.q) if (q.t === "bring" && q.k) n.set(q.k, "contrat");
   for (const k of Object.keys(UP) as (keyof Upgrades)[]) if (S.up[k] < MAX_LV) add(UP[k].cost[S.up[k]], "atelier");
-  for (const w of weapons()) if ((w.lv || 0) < MAX_LV) add(BENCH[w.lv || 0], "atelier");
+  for (const w of benchable()) if ((w.lv || 0) < MAX_LV) add(BENCH[w.lv || 0], "atelier");
   return n;
 }
 
@@ -132,20 +136,31 @@ function tabQuest() {
     <p class="note">Les ennemis éliminés et les caisses fouillées ne comptent que si tu t'extrais vivant.</p></div>`;
 }
 
-function benchRow(w: Item, slot: "gun" | "blade") {
+/** What the next bench level changes on this piece. */
+function gain(w: Item, nx: Item) {
+  const a = shieldOf(w),
+    b = shieldOf(nx);
+  if (a && b) return `Réserve ${a.pts} → ${b.pts} pts`;
+  const cur = wstat(w),
+    up = wstat(nx);
+  return `Dégâts ${cur.dmg} → ${up.dmg} · cadence ${fmtRate(cur.rate)} → ${fmtRate(up.rate)}`;
+}
+
+function benchRow(w: Item, slot: Benched) {
   const lv = w.lv || 0;
   if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
-  const cur = wstat(w),
-    nx = wstat({ ...w, lv: lv + 1 }),
-    c = BENCH[lv];
+  const c = BENCH[lv];
   return `<div class="item" ${pinned(w.u)}><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
-      <small>Dégâts ${cur.dmg} → ${nx.dmg} · cadence ${fmtRate(cur.rate)} → ${fmtRate(nx.rate)}</small><small>${costTxt(c)}</small></div>
+      <small>${gain(w, { ...w, lv: lv + 1 })}</small><small>${costTxt(c)}</small></div>
       <div class="btns"><button data-a="bench" data-s="${slot}" ${canPay(c) ? "" : "disabled"}>Améliorer</button></div></div>`;
 }
 
 function tabShop() {
-  const rows = [S.lo.eq.gun && benchRow(S.lo.eq.gun, "gun"), S.lo.eq.blade && benchRow(S.lo.eq.blade, "blade")].filter(Boolean);
-  const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme dans l'onglet Raid pour l'améliorer.</p>`;
+  const rows = BENCHED.flatMap((s) => {
+    const it = S.lo.eq[s];
+    return it ? [benchRow(it, s)] : [];
+  });
+  const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme ou un bouclier dans l'onglet Raid pour l'améliorer.</p>`;
   const ups = (Object.keys(UP) as (keyof Upgrades)[]).map((k) => {
     const u = UP[k],
       l = S.up[k],
@@ -200,7 +215,7 @@ export function renderStash() {
   norm();
   const upReady =
     (Object.keys(UP) as (keyof Upgrades)[]).some((k) => S.up[k] < MAX_LV && canPay(UP[k].cost[S.up[k]])) ||
-    weapons().some((w) => (w.lv || 0) < MAX_LV && canPay(BENCH[w.lv || 0]));
+    benchable().some((w) => (w.lv || 0) < MAX_LV && canPay(BENCH[w.lv || 0]));
   const tabs: [Tab, string, boolean][] = [
     ["raid", "Raid", false],
     ["stash", "Coffre", S.stash.some((i) => upgradeOver(i, S.lo.eq))],
@@ -269,7 +284,7 @@ function upgrade(b: HTMLElement) {
 }
 
 function bench(b: HTMLElement) {
-  const bw = S.lo.eq[b.dataset.s === "blade" ? "blade" : "gun"],
+  const bw = S.lo.eq[BENCHED.find((s) => s === b.dataset.s) ?? "gun"],
     l = bw?.lv || 0;
   if (!bw || l >= MAX_LV || !canPay(BENCH[l])) return;
   pay(BENCH[l]);

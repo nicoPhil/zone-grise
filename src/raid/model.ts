@@ -6,6 +6,7 @@ import type { Decal, Decor } from "../render/decor";
 import type { Pt, Rect } from "../util";
 import type { Building } from "../world/mapgen";
 import type { Nav } from "../world/nav";
+import type { Shield } from "./shield";
 import type { Zone } from "../zones";
 
 export type Kind = "walker" | "runner" | "gunner" | "boss" | "smg" | "bloat" | "sniper" | "shield" | "stalker" | "alpha";
@@ -110,6 +111,7 @@ export interface Player extends Pt {
   still: number;
   /** time to the next audible footstep while running */
   step: number;
+  sh: Shield | null;
 }
 export interface Vault {
   room: Rect;

@@ -1,4 +1,4 @@
-import { KNIFE, dps, gearStats } from "./items";
+import { KNIFE, dps, gearStats, shieldOf } from "./items";
 import { maxHp } from "./progression";
 import { S, type Save } from "./state";
 import { clamp } from "./util";
@@ -98,10 +98,10 @@ export const UNLOCK_AFTER = 3;
 export const zoneDepth = (z: Zone, d: number) => clamp(z.lo + z.span * d, 0, 1.4);
 export const unlocked = (s: Save, i: number) => i === 0 || s.zx[i - 1] >= UNLOCK_AFTER;
 
-/** One number for "how strong am I": the best weapon's damage per second with its gear bonus, scaled by damage reduction and max HP. */
+/** One number for "how strong am I": the best weapon's damage per second with its gear bonus, scaled by damage reduction and max HP plus shield. */
 export function power(s: Save = S): number {
   const g = s.lo.eq,
     st = gearStats(g);
   const best = Math.max(dps(g.blade || KNIFE) * (1 + st.mel), g.gun ? dps(g.gun) * (1 + st.fire) : 0);
-  return Math.round((best / (1 - st.red)) * ((maxHp() + st.hp) / 100));
+  return Math.round((best / (1 - st.red)) * ((maxHp() + st.hp + (shieldOf(g.shield)?.pts || 0)) / 100));
 }

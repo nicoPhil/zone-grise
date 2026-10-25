@@ -17,6 +17,7 @@ const P = {
   trinket: '<path d="M6 3l6 8 6-8"/><circle cx="12" cy="16" r="4"/>',
   gun: '<path d="M2 7h19v4h-8l-1 3H9l-1 5H4l1.5-8H2z"/>',
   blade: '<path d="M4 20l3-3M6 15l3 3M8 16 20 4c0 6-4 10.5-9 12.5"/>',
+  shield: '<path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z"/><path d="M8 12h8"/>',
   quest: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h4"/>',
   shop: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
   trade: '<circle cx="9" cy="9" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.3 18M8 7h1.5v4"/>',

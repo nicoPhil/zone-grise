@@ -25,7 +25,15 @@ export type ItemDef =
   | (Base & { t: "med"; heal: number; dur: number })
   | (Base & { t: "stim"; dur: number })
   | (Base & WeaponStats & { t: "wpn" })
-  | (Base & Mods & { t: "gear"; slot: WornSlot });
+  | (Base & Mods & { t: "gear"; slot: WornSlot })
+  | (Base & ShieldStats & { t: "shield" });
+
+/** A shield generator: a reserve of points taken before HP, refilling at `rate` per second once `delay` seconds pass unhit. */
+export interface ShieldStats {
+  pts: number;
+  delay: number;
+  rate: number;
+}
 
 /** Bonuses a worn piece gives; fractions are percentages (0.1 = +10 %), cap is bag places, hp is max HP. */
 export interface Mods {
@@ -39,7 +47,7 @@ export interface Mods {
   quiet?: number;
 }
 export type WornSlot = "head" | "body" | "hands" | "feet" | "back" | "trinket";
-export type Slot = WornSlot | "gun" | "blade";
+export type Slot = WornSlot | "gun" | "blade" | "shield";
 export const SLOTS: Record<Slot, string> = {
   head: "Tête",
   trinket: "Accessoire",
@@ -49,9 +57,13 @@ export const SLOTS: Record<Slot, string> = {
   blade: "Arme blanche",
   hands: "Mains",
   feet: "Pieds",
+  shield: "Bouclier",
 };
 const gear = (n: string, slot: WornSlot, base: { r: number; v: number; s: number }, m: Mods) =>
   ({ n, t: "gear", slot, ...base, ...m }) as const;
+
+const shield = (n: string, base: { r: number; v: number; s: number }, [pts, delay, rate]: [number, number, number]) =>
+  ({ n, t: "shield", ...base, pts, delay, rate }) as const;
 
 const melee = (
   n: string,
@@ -136,6 +148,10 @@ export const ITEMS = {
   medal: gear("Médaille porte-bonheur", "trinket", { r: 1, v: 220, s: 1 }, { hp: 15 }),
   jammer: gear("Brouilleur", "trinket", { r: 2, v: 600, s: 1 }, { quiet: 0.25 }),
   vial: gear("Fiole de sérum", "trinket", { r: 3, v: 1300, s: 1 }, { hp: 30, red: 0.05 }),
+  gen1: shield("Bouclier bricolé", { r: 0, v: 90, s: 1 }, [20, 3.5, 15]),
+  gen2: shield("Bouclier civil", { r: 1, v: 260, s: 1 }, [35, 3, 20]),
+  gen3: shield("Bouclier militaire", { r: 2, v: 720, s: 2 }, [55, 2.5, 30]),
+  gen4: shield("Bouclier prototype", { r: 3, v: 1500, s: 2 }, [80, 2, 40]),
 } satisfies Record<string, ItemDef>;
 
 export type ItemKey = keyof typeof ITEMS;
@@ -148,7 +164,7 @@ export interface Item {
 export const KEYS = Object.keys(ITEMS) as ItemKey[];
 /** handed out when the player has no weapon; never dropped, never kept */
 export const FREE: ItemKey = "knife";
-export const SHOP: ItemKey[] = ["p9", "vest1", "med"];
+export const SHOP: ItemKey[] = ["p9", "vest1", "gen1", "med"];
 export const RAR = ["Commun", "Peu commun", "Rare", "Épique"];
 
 export const def = (k: ItemKey): ItemDef => ITEMS[k];
@@ -173,6 +189,7 @@ export const KNIFE: Item = { k: FREE, u: "free-knife" };
 export const slotOf = (it: Item): Slot | null => {
   const d = def(it.k);
   if (d.t === "gear") return d.slot;
+  if (d.t === "shield") return "shield";
   if (d.t !== "wpn") return null;
   return d.mel ? "blade" : "gun";
 };
@@ -187,6 +204,7 @@ export const emptyGear = (): Gear => ({
   trinket: null,
   gun: null,
   blade: null,
+  shield: null,
 });
 export const RED_CAP = 0.7;
 export function gearStats(g: Gear): Required<Mods> {
@@ -198,6 +216,13 @@ export function gearStats(g: Gear): Required<Mods> {
   }
   s.red = Math.min(RED_CAP, +s.red.toFixed(2));
   return s;
+}
+
+/** Each bench level adds 15 % to the reserve. */
+export function shieldOf(it: Item | null): ShieldStats | null {
+  const d = it && def(it.k);
+  if (d?.t !== "shield") return null;
+  return { pts: Math.round(d.pts * (1 + 0.15 * (it?.lv || 0))), delay: d.delay, rate: d.rate };
 }
 
 export function wstat(it: Item): WeaponStats {
@@ -244,6 +269,8 @@ export function desc(it: Item): string {
     return `${w.pel > 1 ? w.pel + "×" : ""}${w.dmg} dég · ${fmtRate(w.rate)} tirs/s · portée ${fmtM(w.range)}`;
   }
   if (d.t === "gear") return `${SLOTS[d.slot]} · ${modLines(d).join(" · ")}`;
+  const sh = shieldOf(it);
+  if (sh) return `${sh.pts} pts de bouclier · recharge ${sh.rate}/s après ${fmtRate(sh.delay)} s sans dégâts`;
   if (d.t === "med") return `Rend ${d.heal} PV en ${d.dur} s`;
   if (d.t === "stim") return `+35 % de vitesse pendant ${d.dur} s`;
   if (d.t === "key") return "Ouvre une salle forte";

@@ -168,7 +168,7 @@ function lootTypes(kit: boolean): ItemDef["t"][] {
     [val, med, wpn] = kit ? [0.3, 0.4, 0.7] : [0.64, 0.78, 0.88];
   if (tr < val) return ["val"];
   if (tr < med) return ["med", "stim"];
-  return tr < wpn ? ["wpn"] : ["gear"];
+  return tr < wpn ? ["wpn"] : ["gear", "shield"];
 }
 
 function rarity(x: number, d: number) {

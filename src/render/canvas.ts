@@ -8,7 +8,7 @@ export const shade = document.createElement("canvas");
 export const sg = context2d(shade);
 export const view = { dpr: 1, vw: 0, vh: 0, zoom: 1 };
 
-const COLORS = ["ground", "fg", "accent", "ok", "bad", "enemy2", "r0", "r1", "r2", "r3"] as const;
+const COLORS = ["ground", "fg", "accent", "ok", "bad", "shield", "enemy2", "r0", "r1", "r2", "r3"] as const;
 export const C = {} as Record<(typeof COLORS)[number], string>;
 export let FONT = "sans-serif";
 export const rarCol = (r: number) => [C.r0, C.r1, C.r2, C.r3][r];

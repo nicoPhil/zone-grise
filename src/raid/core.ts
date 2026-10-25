@@ -6,6 +6,7 @@ import { toast } from "../ui/hud";
 import { rnd, type Pt } from "../util";
 import { los } from "../world/geometry";
 import { DEATH_TIME, type Enemy, type Raid } from "./model";
+import { absorb } from "./shield";
 
 export let R: Raid | null = null;
 export const setRaid = (r: Raid) => {
@@ -50,9 +51,12 @@ export function die(r: Raid, why: string) {
 export function hurt(r: Raid, base: number) {
   if (over() || r.dead > 0) return;
   const p = r.p,
-    d = base * r.zone.dmg;
-  p.hp -= d * (1 - p.st.red);
-  p.hit = 0.15;
+    d = base * r.zone.dmg,
+    rest = d - absorb(p.sh, d);
   r.shake = 0.12 + 0.004 * d;
+  if (rest <= 0) return;
+  // what the shield lets through is softened by armour
+  p.hp -= rest * (1 - p.st.red);
+  p.hit = 0.15;
   if (p.hp <= 0) die(r, "Tu es mort.");
 }

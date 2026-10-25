@@ -15,6 +15,7 @@ import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
 import { R, burst, die, noise, over } from "./raid/core";
 import { spawnByZone, updateEnemy } from "./raid/enemies";
 import { pickUp, search } from "./raid/loot";
+import { recharge } from "./raid/shield";
 import { EXTRACT_TIME, RAID_TIME, RUN, STEP_NOISE, STEP_TIME, type Raid } from "./raid/model";
 
 export * from "./raid/model";
@@ -22,6 +23,7 @@ export { R, clock } from "./raid/core";
 export { sight } from "./raid/enemies";
 export { GROUND_R, bladeOf, drop, equip, ground, heal, rcap, setSlot, useItem } from "./raid/loot";
 export { startRaid } from "./raid/start";
+export type { Shield } from "./raid/shield";
 
 /** Time step of this frame: slowed during the death sequence, null once the raid has ended. */
 function deathClock(r: Raid, dt: number): number | null {
@@ -53,6 +55,7 @@ function movePlayer(r: Raid, m: Pt, dt: number) {
   p.cd -= dt;
   p.mcd -= dt;
   p.hit -= dt;
+  recharge(p.sh, dt);
   r.shake -= dt;
   r.toastT -= dt;
   if (p.regen > 0) {

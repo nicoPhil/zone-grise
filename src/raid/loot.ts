@@ -8,6 +8,7 @@ import { nearestInReach } from "../world/geometry";
 import { makeNav } from "../world/nav";
 import { R, burst, say } from "./core";
 import { UNLOCK_TIME, crateTime, hasKey, lockCentre, type Crate, type Player, type Raid, type Vault } from "./model";
+import { wornShield } from "./shield";
 
 /** Heals over time from one medical item; false when it can't be used right now. */
 function applyMed(r: Raid, it: Item): boolean {
@@ -63,6 +64,7 @@ export function setSlot(r: Raid, slot: Slot, it: Item | null): Item | null {
   p.st = gearStats(p.eq);
   p.max = maxHp() + p.st.hp;
   p.hp = Math.min(p.max, p.hp + Math.max(0, p.max - hp0));
+  if (slot === "shield") p.sh = wornShield(it, false);
   updHud(r);
   return old;
 }

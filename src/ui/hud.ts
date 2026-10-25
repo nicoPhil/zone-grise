@@ -52,6 +52,7 @@ export function updHud(r: Raid) {
   $("hpfill").style.width = f * 100 + "%";
   $("hpfill").style.background = f < 0.35 ? C.bad : C.ok;
   $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";
+  $("shfill").style.width = p.sh ? (p.sh.left / p.sh.pts) * 100 + "%" : "0";
   $("timern").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   $("timer").classList.toggle("warn", s <= 60);
   $("ring").textContent = RINGS[r.ring].n;

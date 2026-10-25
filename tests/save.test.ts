@@ -32,6 +32,13 @@ describe("parseSave", () => {
     expect(s.lo.eq.gun).toBeNull();
   });
 
+  it("keeps a worn shield, and gives a save from before shields an empty shield slot", () => {
+    const worn = parseSave(JSON.stringify({ ...fresh(), lo: { eq: { shield: { k: "gen2", u: "s" } }, meds: 0 } }));
+    expect(worn.lo.eq.shield?.k).toBe("gen2");
+    const old = parseSave(JSON.stringify({ ...fresh(), lo: { eq: { gun: { k: "p9", u: "w" } }, meds: 0 } }));
+    expect(old.lo.eq.shield).toBeNull();
+  });
+
   it("moves a blade from the gun slot to its own slot", () => {
     const s = parseSave(JSON.stringify({ ...fresh(), lo: { w: { k: "bat", u: "w" }, a: null, meds: 0 } }));
     expect(s.lo.eq.gun).toBeNull();

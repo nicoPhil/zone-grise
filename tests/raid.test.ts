@@ -146,6 +146,41 @@ describe("raid rings", () => {
   });
 });
 
+describe("raid shield", () => {
+  const shot = (r: Raid, dmg: number) => {
+    r.ebul.push({ x: r.p.x, y: r.p.y, vx: 0, vy: 0, life: 1, dmg });
+    update(DT);
+  };
+  /** A raid in the first zone (damage ×1) wearing the 20-point shield and a vest taking 20 % off. */
+  const shielded = () => {
+    S.lo.eq.shield = mk("gen1");
+    S.lo.eq.body = mk("vest1");
+    const r = quietRaid();
+    if (!r.p.sh) throw new Error("no shield worn");
+    return { r, sh: r.p.sh };
+  };
+
+  it("takes a hit before HP, and armour softens only what gets through", () => {
+    const { r, sh } = shielded();
+    shot(r, 30);
+    expect(sh.left).toBe(0);
+    expect(r.p.max - r.p.hp).toBeCloseTo(8);
+  });
+
+  it("refills only once the player has gone unhit for its delay", () => {
+    const { r, sh } = shielded();
+    shot(r, 20);
+    run(sh.delay - 0.5);
+    shot(r, 0.01);
+    run(sh.delay - 0.1);
+    expect(sh.left).toBe(0);
+    run(0.5);
+    expect(sh.left).toBeGreaterThan(0);
+    run(2);
+    expect(sh.left).toBe(sh.pts);
+  });
+});
+
 describe("raid combat", () => {
   it("takes melee damage scaled by the zone from an enemy in contact", () => {
     S.zx[0] = UNLOCK_AFTER;

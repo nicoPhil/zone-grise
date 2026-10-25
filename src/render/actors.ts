@@ -1,5 +1,5 @@
 import { wstat } from "../items";
-import { KINDS, bladeOf, sight, type Enemy, type Kind } from "../raid";
+import { KINDS, bladeOf, sight, type Enemy, type Kind, type Shield } from "../raid";
 import type { Pt } from "../util";
 import { MELEE_ARC, rayLen } from "../world/geometry";
 import { sprite, type CharKey } from "./assets";
@@ -97,16 +97,30 @@ function drawBlade({ x, y }: Pt, face: number, reach: number, swing: number) {
   ctx.lineCap = "butt";
 }
 
-function drawPlayer({ p }: Frame) {
-  if (p.eq.body) {
-    ctx.strokeStyle = C.r2;
-    ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 2;
+/** Blue ring as strong as the reserve, brighter on impact, bursting outwards when it breaks. */
+function shieldRing({ x, y }: Pt, sh: Shield | null) {
+  if (!sh) return;
+  ctx.strokeStyle = C.shield;
+  if (sh.broke > 0) {
+    const f = sh.broke / 0.4;
+    ctx.globalAlpha = f;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 19, 0, 6.28);
+    ctx.arc(x, y, 21 + 26 * (1 - f), 0, 6.28);
     ctx.stroke();
-    ctx.globalAlpha = 1;
   }
+  if (sh.left > 0) {
+    ctx.globalAlpha = sh.flash > 0 ? 1 : 0.2 + 0.6 * (sh.left / sh.pts);
+    ctx.lineWidth = sh.flash > 0 ? 4 : 2.5;
+    ctx.beginPath();
+    ctx.arc(x, y, 21, 0, 6.28);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPlayer({ p }: Frame) {
+  shieldRing(p, p.sh);
   // the gun stays in hand; the blade comes out for a swing, or for good with no gun
   const gun = p.swing > 0 ? null : p.eq.gun;
   sprite(gun ? wpnPose(gun.k) : "pHold", { x: p.x, y: p.y, a: p.face }, p.hit > 0);
