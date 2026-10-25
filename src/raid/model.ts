@@ -165,6 +165,8 @@ export interface Raid {
   core: number;
   /** seconds from first hit to kill, summed over the enemies killed after being hit */
   ttk: { s: number; n: number };
+  /** gun bullets fired, bullets that hit an enemy, enemies the gun finished */
+  gun: { fired: number; hits: number; kills: number };
   toastT: number;
   shake: number;
   flash: number;

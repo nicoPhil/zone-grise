@@ -89,6 +89,7 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
     dmgCore: 0,
     core: 0,
     ttk: { s: 0, n: 0 },
+    gun: { fired: 0, hits: 0, kills: 0 },
     toastT: 0,
     shake: 0,
     flash: 0,

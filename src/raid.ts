@@ -192,6 +192,7 @@ function logRaid(r: Raid, ok: boolean, val: number) {
     dmg: Math.round(r.dmg),
     core: Math.round(r.core),
     dmgCore: Math.round(r.dmgCore),
+    gun: { ...r.gun },
     ttk: r.ttk.n ? +(r.ttk.s / r.ttk.n).toFixed(1) : 0,
     hp: Math.max(0, Math.round(r.p.hp)),
     pw: r.power0,

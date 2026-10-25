@@ -75,4 +75,19 @@ describe("raid log", () => {
     expect(S.log[0].dmgCore).toBeGreaterThanOrEqual(20);
     expect(S.log[0].ttk).toBeCloseTo(2, 1);
   });
+
+  it("counts gun bullets fired, those that hit and the enemies the gun finished", () => {
+    S.lo.eq.gun = mk("dmr");
+    const r = quietRaid();
+    r.walls = [];
+    Object.assign(r.p, { x: W / 2, y: H / 2 });
+    spawn(r, "walker", { x: W / 2 + 250, y: H / 2 });
+    r.enemies[0].aggro = true;
+    run(4);
+    r.t = DT / 2;
+    run(DEATH_TIME + 0.2);
+    const g = S.log[0].gun;
+    expect(g?.kills).toBe(1);
+    expect(g && g.fired >= g.hits && g.hits >= 1).toBe(true);
+  });
 });

@@ -45,6 +45,8 @@ export interface RaidLog {
   ttk?: number;
   /** HP lost in the Cœur */
   dmgCore?: number;
+  /** gun bullets fired, hits, kills */
+  gun?: { fired: number; hits: number; kills: number };
   /** power going in, credits and stash value after */
   pw: number;
   cr: number;

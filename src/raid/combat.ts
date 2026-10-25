@@ -72,7 +72,9 @@ export function hitEnemy(r: Raid, e: Enemy, { dmg: base, at, big: hard = false, 
   else alert(e, r.p.x, r.p.y);
   burst(r, at, C.bad, { n: 4, sp: 90 });
   blood(r.decal, at, 3, false);
-  if (e.hp <= 0) killed(r, e);
+  if (e.hp > 0) return;
+  if (by === "gun") r.gun.kills++;
+  killed(r, e);
 }
 
 /** Swings at the nearest enemy in reach and hits everyone inside the arc in front. */
@@ -129,6 +131,7 @@ function fire(r: Raid, at: Enemy, wd: WeaponStats) {
     sp = 680;
   p.face = a0;
   p.cd = 1 / wd.rate;
+  r.gun.fired += wd.pel;
   for (let i = 0; i < wd.pel; i++) {
     const a = a0 + rnd(-wd.spr, wd.spr);
     r.bullets.push({
@@ -176,6 +179,7 @@ export function moveBullets(r: Raid, dt: number) {
     const e = r.enemies.find((e) => Math.hypot(e.x - b.x, e.y - b.y) < KINDS[e.kind].r + 1);
     if (!e) continue;
     r.bullets.splice(i, 1);
+    r.gun.hits++;
     if (e.kind === "shield" && frontHit(Math.atan2(p.y - e.y, p.x - e.x), b.vx, b.vy)) {
       burst(r, b, "#dfe8f0", { n: 5, sp: 140, glow: true });
       hitEnemy(r, e, { dmg: Math.max(1, Math.round(b.dmg * 0.15)), at: { x: b.x, y: b.y } });

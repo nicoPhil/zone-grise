@@ -34,6 +34,8 @@ const raidLine = (l: RaidLog) =>
     l.core ?? "",
     l.ttk ?? "",
     l.dmgCore ?? "",
+    l.gun?.kills ? +(l.gun.hits / l.gun.kills).toFixed(1) : "",
+    l.gun?.fired ? Math.round((100 * l.gun.hits) / l.gun.fired) : "",
   ].join(";");
 
 /** The whole save as plain text, to paste into a chat and have the game's balance analysed. */
@@ -54,7 +56,7 @@ export function report(build: string, now = new Date()): string {
     "Contrats :",
     ...S.q.map((q) => `- ${q.t}${q.k ? " " + q.k : ""} ${q.have}/${q.n} · ${q.cr} cr${qInfo(q).done ? " · fait" : ""}`),
     `Derniers raids (${S.log.length}) :`,
-    "n;zone;issue;durée;butin;kills;brute;salles;militaires;anneau max;PV perdus;PV fin;puissance;crédits;valeur coffre;s au Cœur;s pour tuer;PV perdus au Cœur",
+    "n;zone;issue;durée;butin;kills;brute;salles;militaires;anneau max;PV perdus;PV fin;puissance;crédits;valeur coffre;s au Cœur;s pour tuer;PV perdus au Cœur;balles par kill;précision %",
     ...S.log.map(raidLine),
   ].join("\n");
 }
