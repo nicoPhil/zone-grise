@@ -2,6 +2,7 @@ import { CONE_HALF, WAVE_SEARCH, hear, inCone, track, watch } from "../aware";
 import { mode } from "../state";
 import { clamp, rnd, type Pt } from "../util";
 import { collide, inWall, los } from "../world/geometry";
+import { freePt } from "../world/mapgen";
 import { CORE, RING_POW, ringOf } from "../world/rings";
 import { cellOf, flowDir, updFlow } from "../world/nav";
 import { killed } from "./combat";
@@ -100,6 +101,17 @@ export function spawnByZone(r: Raid, at: Pt, lure?: Pt) {
     roll -= w;
     if (roll < 0) return go();
   }
+}
+
+/** A wave: two groups 700 to 1400 px from the player, searching towards `lure` if given. */
+export function reinforce(r: Raid, lure?: Pt) {
+  const p = r.p;
+  for (let i = 0; i < 2; i++)
+    spawnByZone(
+      r,
+      freePt(r.walls, 24, (x, y) => Math.abs(Math.hypot(x - p.x, y - p.y) - 1050) < 350),
+      lure,
+    );
 }
 
 /** Direction to walk to a searched spot, around walls; null once there. */

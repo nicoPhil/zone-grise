@@ -82,7 +82,7 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
     t: RAID_TIME,
     spawnT: zone.wave,
     flowT: 0,
-    ext: 0,
+    call: null,
     ring: ringAt(sp.x, sp.y, 0),
     toastT: 0,
     shake: 0,

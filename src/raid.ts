@@ -7,16 +7,16 @@ import { setRaidHud, toast, updHud } from "./ui/hud";
 import { renderEnd } from "./ui/end";
 import type { Pt } from "./util";
 import { collide } from "./world/geometry";
-import { freePt } from "./world/mapgen";
 import { updFlow } from "./world/nav";
 import { RINGS, ringAt } from "./world/rings";
 import { ZONES, UNLOCK_AFTER, power } from "./zones";
 import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
 import { R, burst, die, noise, over } from "./raid/core";
-import { spawnByZone, updateEnemy } from "./raid/enemies";
+import { reinforce, updateEnemy } from "./raid/enemies";
+import { extraction } from "./raid/extract";
 import { pickUp, search } from "./raid/loot";
 import { recharge } from "./raid/shield";
-import { EXTRACT_TIME, RAID_TIME, RUN, STEP_NOISE, STEP_TIME, type Raid } from "./raid/model";
+import { RAID_TIME, RUN, STEP_NOISE, STEP_TIME, type Raid } from "./raid/model";
 
 export * from "./raid/model";
 export { R, clock } from "./raid/core";
@@ -131,15 +131,11 @@ function timeAlerts(r: Raid, dt: number) {
 }
 
 /** Extraction, the raid timer and enemy waves; false once the raid is over. */
-function raidClocks(r: Raid, moving: boolean, dt: number): boolean {
-  const p = r.p;
-  if (!moving && r.exits.some((e) => Math.hypot(e.x - p.x, e.y - p.y) < 62)) {
-    r.ext += dt;
-    if (r.ext >= EXTRACT_TIME) {
-      endRaid(true);
-      return false;
-    }
-  } else r.ext = 0;
+function raidClocks(r: Raid, dt: number): boolean {
+  if (extraction(r, dt)) {
+    endRaid(true);
+    return false;
+  }
   timeAlerts(r, dt);
   r.t -= dt;
   if (r.t <= 0) {
@@ -149,10 +145,7 @@ function raidClocks(r: Raid, moving: boolean, dt: number): boolean {
   r.spawnT -= dt;
   if (r.spawnT > 0) return true;
   r.spawnT = r.zone.wave;
-  for (let i = 0; i < 2; i++) {
-    const c = freePt(r.walls, 24, (x, y) => Math.abs(Math.hypot(x - p.x, y - p.y) - 1050) < 350);
-    spawnByZone(r, c, r.t < RAID_TIME - 90 ? { x: p.x, y: p.y } : undefined);
-  }
+  reinforce(r, r.t < RAID_TIME - 90 ? { x: r.p.x, y: r.p.y } : undefined);
   return true;
 }
 
@@ -176,7 +169,7 @@ export function update(frame: number) {
   moveBullets(r, dt);
   if (!moveEnemyBullets(r, dt)) return;
   fadeEffects(r, dt);
-  if (r.dead > 0 || !raidClocks(r, moving, dt)) return;
+  if (r.dead > 0 || !raidClocks(r, dt)) return;
   updHud(r);
 }
 

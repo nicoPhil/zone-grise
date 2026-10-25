@@ -149,7 +149,8 @@ export interface Raid {
   t: number;
   spawnT: number;
   flowT: number;
-  ext: number;
+  /** the extraction called at an exit, if any: seconds left and time to the next flare */
+  call: (Pt & { left: number; ping: number }) | null;
   /** index in RINGS of the ring the player is in */
   ring: number;
   toastT: number;
@@ -168,8 +169,11 @@ export const RUN = 0.7,
 export const DEATH_TIME = 1.8,
   RAID_TIME = 180,
   CRATE_TIME = 0.8,
-  EXTRACT_TIME = 3,
+  CALL_TIME = 15,
   UNLOCK_TIME = 1.2;
+/** Radius of an exit, and of the area around it where an extraction call keeps counting down. */
+export const EXIT_R = 62,
+  CALL_ZONE = 150;
 /** Opening a military crate is long, and the hands are busy all along. */
 export const crateTime = (c: Crate) => (c.vault ? CRATE_TIME : [0.4, 0.8, 2.5][c.tier]);
 

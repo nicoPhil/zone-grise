@@ -1,6 +1,6 @@
 import { ALERT_POP, suspicious } from "../aware";
 import { def, nameOf, upgradeOver } from "../items";
-import { EXTRACT_TIME, UNLOCK_TIME, crateTime, hasKey, lockCentre, type Raid } from "../raid";
+import { CALL_TIME, CALL_ZONE, EXIT_R, UNLOCK_TIME, crateTime, hasKey, lockCentre, type Raid } from "../raid";
 import { clamp } from "../util";
 import { C, FONT, ctx, rarCol } from "./canvas";
 import { GOLD, ring, type Frame } from "./frame";
@@ -92,16 +92,30 @@ function vaultHints(r: Raid) {
 
 /** Progress rings: crates being searched, the vault being unlocked, the extraction countdown. */
 function progress(r: Raid) {
-  const p = r.p;
   for (const c of r.crates) if (!c.open && c.prog > 0) ring(c, c.prog / crateTime(c), C.accent);
   vaultHints(r);
-  if (r.ext > 0) {
-    ring(p, r.ext / EXTRACT_TIME, C.ok);
-    ctx.fillStyle = C.ok;
-    ctx.textAlign = "center";
-    ctx.font = "600 15px " + FONT;
-    ctx.fillText("EXTRACTION " + Math.ceil(EXTRACT_TIME - r.ext), p.x, p.y - 34);
-  }
+  if (r.call) callZone(r.call);
+}
+
+/** The area to hold during an extraction call, its rim filling up as the countdown runs. */
+function callZone(c: NonNullable<Raid["call"]>) {
+  ctx.strokeStyle = C.ok;
+  ctx.globalAlpha = 0.35;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, CALL_ZONE, 0, 6.28);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, CALL_ZONE, -1.57, -1.57 + 6.28 * (1 - c.left / CALL_TIME));
+  ctx.stroke();
+  ctx.fillStyle = C.ok;
+  ctx.textAlign = "center";
+  ctx.font = "600 15px " + FONT;
+  ctx.fillText(`EXTRACTION ${Math.ceil(c.left)} s`, c.x, c.y - EXIT_R - 14);
 }
 
 /** World-space markers drawn over the darkness. */

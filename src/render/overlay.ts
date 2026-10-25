@@ -1,5 +1,5 @@
 import { STICK_R, moveVec, stick } from "../input";
-import { DEATH_TIME, type Enemy, type Raid } from "../raid";
+import { CALL_ZONE, DEATH_TIME, type Enemy, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, type Pt } from "../util";
 import { H, W } from "../world/mapgen";
@@ -87,6 +87,17 @@ function clearOf<T extends Pt>(at: T, taken: Pt[]): T {
   return at;
 }
 
+/** The extraction countdown under the HUD, or a reminder to get back when it is paused. */
+function callBanner({ r, p }: Frame, y: number) {
+  const c = r.call;
+  if (!c) return;
+  const away = Math.hypot(c.x - p.x, c.y - p.y) >= CALL_ZONE;
+  ctx.textAlign = "center";
+  ctx.font = "700 15px " + FONT;
+  ctx.fillStyle = away ? C.accent : C.ok;
+  ctx.fillText(away ? "EXTRACTION EN PAUSE · reviens à la sortie" : `EXTRACTION DANS ${Math.ceil(c.left)} S`, view.vw / 2, y);
+}
+
 function joystick() {
   if (!stick || mode !== "raid") return;
   const m = moveVec();
@@ -130,6 +141,8 @@ export function overlay(f: Frame) {
   const boss = f.r.enemies.find((e) => e.kind === "boss" && e.aggro && f.seen(e));
   if (boss) bossBar(boss);
   arrows(f, boss ? 120 : 60);
+  // below the toasts, and below the boss bar when it shows
+  if (f.r.call && f.r.dead <= 0) callBanner(f, boss ? 140 : 124);
   joystick();
   if (f.r.dead > 0) deathScreen(f.r);
 }

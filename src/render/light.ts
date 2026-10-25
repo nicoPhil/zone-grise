@@ -80,6 +80,8 @@ export function lights(f: Frame, locks: Set<Rect>) {
   const { r, p, tt } = f;
   for (const l of locks) glow(lockCentre(l), 70, GOLD, 0.25 + 0.08 * Math.sin(tt * 2.5));
   for (const e of r.exits) glow(e, 130, C.ok, 0.32 + 0.1 * Math.sin(tt * 3));
+  // the extraction flare
+  if (r.call) glow(r.call, 260, C.ok, 0.3 + 0.25 * Math.abs(Math.sin(tt * 4)));
   for (const c of r.crates) if (!c.open && (c.tier === 2 || c.vault)) glow(c, 46, crateCol(c), 0.2 + 0.08 * Math.sin(tt * 2 + c.x));
   for (const q of r.pick) lootGlow(f, q);
   if (r.flash > 0) {

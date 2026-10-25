@@ -18,7 +18,7 @@ vi.mock("../src/ui/end", () => ({ renderEnd: vi.fn() }));
 import { moveVec } from "../src/input";
 import { def, mk, type ItemKey } from "../src/items";
 import { huntable } from "../src/progression";
-import { DEATH_TIME, EXTRACT_TIME, KINDS, R, type Raid, heal, startRaid, update } from "../src/raid";
+import { CALL_TIME, CALL_ZONE, DEATH_TIME, KINDS, R, type Raid, heal, startRaid, update } from "../src/raid";
 import { S, fresh, mode, setMode, setSave } from "../src/state";
 import { toast } from "../src/ui/hud";
 import { spawn, spawnByZone } from "../src/raid/enemies";
@@ -53,28 +53,54 @@ beforeEach(() => {
   setMode("stash");
 });
 
-describe("raid end", () => {
-  it("extracts after standing still on an exit: the bag goes to the stash and the extraction counts for the zone", () => {
+describe("extraction call", () => {
+  it("extracts once the player has held out near the exit for the whole call: the bag goes to the stash and the extraction counts for the zone", () => {
     const r = quietRaid();
     const loot = mk("med");
     r.bag.push(loot);
     Object.assign(r.p, r.exits[0]);
-    run(EXTRACT_TIME + 0.5);
+    update(DT);
+    r.enemies = [];
+    r.p.x += CALL_ZONE - 20;
+    run(CALL_TIME - 0.5);
+    expect(mode).toBe("raid");
+    run(1);
     expect(ended()).toMatchObject({ ok: true, items: [loot] });
     expect(S.stash).toContainEqual(loot);
     expect([S.st.ext, S.zx[0]]).toEqual([1, 1]);
   });
 
-  it("restarts the extraction countdown when the player moves inside the exit", () => {
+  it("pauses the call while the player is away from the exit", () => {
     const r = quietRaid();
     Object.assign(r.p, r.exits[0]);
-    run(EXTRACT_TIME - 0.5);
-    vi.mocked(moveVec).mockReturnValueOnce({ x: 0.01, y: 0 });
     update(DT);
-    run(EXTRACT_TIME - 0.5);
+    r.enemies = [];
+    r.p.x += CALL_ZONE + 50;
+    run(CALL_TIME + 5);
     expect(mode).toBe("raid");
+    r.p.x -= CALL_ZONE;
+    run(CALL_TIME);
+    expect(ended()).toMatchObject({ ok: true });
   });
 
+  it("brings a wave searching towards the exit as the call starts, and its flare draws enemies nearby", () => {
+    const r = quietRaid();
+    const ex = r.exits[0];
+    const near = { ...r.p };
+    Object.assign(r.p, ex);
+    update(DT);
+    expect(r.enemies.length).toBeGreaterThanOrEqual(2);
+    for (const e of r.enemies) expect(Math.hypot(e.lx - ex.x, e.ly - ex.y)).toBeLessThan(1);
+    r.enemies = [];
+    spawn(r, "walker", { x: ex.x + 250, y: ex.y });
+    Object.assign(r.enemies[0], { fa: 0 });
+    Object.assign(r.p, near);
+    run(3.1);
+    expect(r.enemies[0].sr).toBeGreaterThan(0);
+  });
+});
+
+describe("raid end", () => {
   it("loses everything worn and carried on death, after the death sequence", () => {
     const gun = mk("p9");
     S.lo.eq.gun = gun;
