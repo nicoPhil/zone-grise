@@ -16,7 +16,7 @@ let detail: string | null = null;
 let full = false;
 
 export function openBag() {
-  if (!R) return;
+  if (!R || R.dead > 0) return;
   setMode("bag");
   clearStick();
   detail = null;
@@ -62,7 +62,7 @@ function renderBag() {
   const r = R, p = r.p, used = bagUsed(r.bag);
   const free = Array.from({ length: Math.max(0, rcap(r) - used) }, () => `<div class="cell" aria-hidden="true"></div>`).join("");
   const near = ground(r);
-  $("bag").innerHTML = `<div class="wrap">
+  $("bag").innerHTML = `<div class="dismiss" data-a="back" aria-hidden="true"></div><div class="wrap">
     <div class="top"><h2>Sac ${used} / ${rcap(r)}</h2></div>
     <div id="bagLive" class="live"></div>
     ${detailPanel()}
@@ -131,7 +131,7 @@ export function initBag() {
   el.addEventListener("contextmenu", (e) => e.preventDefault());
   el.addEventListener("scroll", () => pin(el), { passive: true });
   el.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim"), card = t.closest<HTMLElement>(".tile");
+    const t = e.target as HTMLElement, b = t.closest<HTMLElement>("button, .scrim, .dismiss"), card = t.closest<HTMLElement>(".tile");
     if (!R) return;
     const a = b?.dataset.a;
     if (a === "back") return closeBag();

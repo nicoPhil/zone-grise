@@ -8,6 +8,7 @@ import { S, mode, save, setMode } from "./state";
 import { clearStick, moveVec, prefs } from "./input";
 import { WAVE_HUNT, alert, track, type Awareness } from "./aware";
 import { setRaidHud, showHint, toast, updHud } from "./ui/hud";
+import { closeBag } from "./ui/bag";
 import { renderEnd } from "./ui/end";
 import { pick, rnd, type Pt, type Rect } from "./util";
 import { MELEE_ARC, collide, frontHit, inArc, inWall, los, nearestInReach } from "./world/geometry";
@@ -145,9 +146,12 @@ export interface Raid {
   shake: number;
   flash: number;
   tally: Omit<RaidTally, "haul">;
+  /** seconds left of the death sequence before the end screen, and why the raid is lost */
+  dead: number;
+  why: string;
 }
 
-export const RING_LIFE = 0.6, RAID_TIME = 240, CRATE_TIME = 0.8, EXTRACT_TIME = 3, UNLOCK_TIME = 1.2, VIOLET = 0.62;
+export const DEATH_TIME = 1.8, RING_LIFE = 0.6, RAID_TIME = 240, CRATE_TIME = 0.8, EXTRACT_TIME = 3, UNLOCK_TIME = 1.2, VIOLET = 0.62;
 export let R: Raid | null = null;
 export const clock = { last: performance.now() };
 
@@ -215,7 +219,7 @@ export function startRaid() {
     p: { x: sp.x, y: sp.y, hp: maxHp() + st.hp, max: maxHp() + st.hp, cd: 0, mcd: 0, face: 0, eq: { ...S.lo.eq }, st, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
     exits, vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
     crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], rings: [], nums: [], bag: [],
-    t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
+    t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 }, dead: 0, why: "",
   };
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== plan?.room);
   const far = (c: Pt | null, m: number): c is Pt => !!c && Math.hypot(c.x - sp.x, c.y - sp.y) > m;
@@ -271,14 +275,22 @@ const noise = (r: Raid, x: number, y: number, rad: number) => {
 /** The raid has ended (death or extraction) during this frame; sorting the bag still counts as in the raid. */
 const over = () => mode !== "raid" && mode !== "bag";
 
+/** The raid is lost: a slow-motion death sequence plays before the end screen. */
+function die(r: Raid, why: string) {
+  if (r.dead > 0) return;
+  [r.dead, r.why, r.shake] = [DEATH_TIME, why, 0.5];
+  if (mode === "bag") closeBag();
+  clearStick();
+}
+
 function hurt(r: Raid, d: number) {
-  if (over()) return;
+  if (over() || r.dead > 0) return;
   const p = r.p;
   d *= r.zone.dmg;
   p.hp -= d * (1 - p.st.red);
   p.hit = 0.15;
   r.shake = 0.12 + 0.004 * d;
-  if (p.hp <= 0) endRaid(false, "Tu es mort.");
+  if (p.hp <= 0) die(r, "Tu es mort.");
 }
 
 function say(r: Raid, msg: string) {
@@ -302,7 +314,7 @@ function applyMed(r: Raid, it: Item): boolean {
 /** The heal button: carried medkits first, then whatever medical item is in the bag. */
 export function heal() {
   const r = R;
-  if (!r) return;
+  if (!r || r.dead > 0) return;
   const i = r.bag.findIndex((x) => def(x.k).t === "med");
   if (r.p.meds > 0) {
     if (applyMed(r, mk("med"))) r.p.meds--;
@@ -589,8 +601,12 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
 export function update(dt: number) {
   const r = R;
   if (!r) return;
+  if (r.dead > 0) {
+    if ((r.dead -= dt) <= 0) return endRaid(false, r.why);
+    dt *= 0.25;
+  }
   // the raid keeps running while the bag is open: the player stands still, doesn't fight and isn't spotted
-  const sorting = mode === "bag";
+  const sorting = mode === "bag" || r.dead > 0;
   const p = r.p, m = sorting ? { x: 0, y: 0 } : moveVec(), moving = m.x !== 0 || m.y !== 0;
   const spd = (p.boost > 0 ? 236 : 175) * (1 + p.st.spd);
   p.x += m.x * spd * dt;
@@ -626,6 +642,8 @@ export function update(dt: number) {
     v.prog = atLock && !moving && !sorting && hasKey(r) ? v.prog + dt : 0;
     if (v.prog >= UNLOCK_TIME) unlockVault(r, v);
   }
+  // searching a crate or picking a lock keeps the hands busy: no shooting
+  const busy = (near && !near.open && near.prog > 0) || (v && !v.open && v.prog > 0);
 
   // the blade always strikes what reaches it, even on the move; the gun fires only standing still, and only when fire is on
   if (!sorting && p.mcd <= 0) {
@@ -633,7 +651,7 @@ export function update(dt: number) {
     strike(r, { ...bw, dmg: Math.round(bw.dmg * (1 + p.st.mel)) });
   }
   const gw = p.eq.gun && wstat(p.eq.gun), wd = gw && { ...gw, rate: gw.rate * (1 + p.st.fire) };
-  if (wd && !sorting && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
+  if (wd && !sorting && !busy && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null, bd = wd.range;
     for (const e of r.enemies) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
@@ -751,12 +769,13 @@ export function update(dt: number) {
     if (q.life <= 0) r.parts.splice(i, 1);
   }
 
-  if (r.exits.some((e) => Math.hypot(e.x - p.x, e.y - p.y) < 62)) {
+  if (r.dead > 0) return;
+  if (!moving && r.exits.some((e) => Math.hypot(e.x - p.x, e.y - p.y) < 62)) {
     r.ext += dt;
     if (r.ext >= EXTRACT_TIME) return endRaid(true);
   } else r.ext = 0;
   r.t -= dt;
-  if (r.t <= 0) return endRaid(false, "Temps écoulé : la zone a été verrouillée.");
+  if (r.t <= 0) return die(r, "Temps écoulé : la zone a été verrouillée.");
   r.spawnT -= dt;
   if (r.spawnT <= 0) {
     r.spawnT = r.zone.wave;

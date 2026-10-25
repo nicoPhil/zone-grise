@@ -1,7 +1,7 @@
 import { def, nameOf, upgradeOver, wstat } from "../items";
 import { ALERT_POP } from "../aware";
 import { STICK_R, moveVec, stick } from "../input";
-import { AIM_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, RING_LIFE, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
+import { AIM_TIME, DEATH_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, RING_LIFE, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
 import { MELEE_ARC, los } from "../world/geometry";
@@ -479,6 +479,23 @@ export function draw(r: Raid | null) {
     ctx.beginPath();
     ctx.arc(stick.bx + m.x * STICK_R, stick.by + m.y * STICK_R, 22, 0, 6.28);
     ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  if (r.dead > 0) {
+    const f = clamp(1 - r.dead / DEATH_TIME, 0, 1), dead = r.why.startsWith("Tu");
+    ctx.fillStyle = `rgba(60,0,0,${(0.75 * f).toFixed(2)})`;
+    ctx.fillRect(0, 0, vw, vh);
+    ctx.globalAlpha = clamp(f * 2.5, 0, 1);
+    ctx.textAlign = "center";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(0,0,0,.8)";
+    ctx.fillStyle = C.bad;
+    ctx.font = `800 ${Math.round(38 + 10 * f)}px ` + FONT;
+    ctx.strokeText(dead ? "TU ES MORT" : "ZONE VERROUILLÉE", vw / 2, vh * 0.42);
+    ctx.fillText(dead ? "TU ES MORT" : "ZONE VERROUILLÉE", vw / 2, vh * 0.42);
+    ctx.fillStyle = C.fg;
+    ctx.font = "600 15px " + FONT;
+    ctx.fillText("Tout ce que tu portais est perdu", vw / 2, vh * 0.42 + 40);
     ctx.globalAlpha = 1;
   }
 }
