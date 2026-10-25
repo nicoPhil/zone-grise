@@ -9,7 +9,7 @@ import { pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "../world/geometry";
 import { depth, freePt, genMap, inBld, placeEntries } from "../world/mapgen";
 import { makeNav } from "../world/nav";
-import { ringAt } from "../world/rings";
+import { RING_SHARE, ringAt, ringOf } from "../world/rings";
 import { pickVault } from "../world/vault";
 import { ZONES, power, unlocked, zoneDepth } from "../zones";
 import { clock, setRaid } from "./core";
@@ -96,7 +96,7 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
 const CRATES = 80,
   ROOM_CRATES = 52;
 
-/** Debris in the street, crates in the rooms, military crates more often towards the centre; enemies away from the entry, thicker at the centre. */
+/** Debris in the street, crates in the rooms, military crates more often towards the centre; enemies placed ring by ring. */
 function populate(r: Raid, sp: Pt, skip: Rect | undefined) {
   const { walls, bld, zone } = r;
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== skip);
@@ -110,10 +110,19 @@ function populate(r: Raid, sp: Pt, skip: Rect | undefined) {
       tier = inBld(bld, c.x, c.y) ? indoorTier(d) : 0;
     r.crates.push({ x: c.x, y: c.y, d, tier, open: false, prog: 0 });
   }
-  for (let i = 0; i < zone.enemies; i++) {
-    let c = Math.random() < 0.5 ? inRoom(24) : null;
-    if (!far(c, 600)) c = freePt(walls, 24, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 600 && Math.random() < 0.3 + depth(x, y));
-    spawnByZone(r, c);
+  placeEnemies(r, sp, rooms);
+}
+
+/** Each ring gets its share of the zone's enemies, half of them in its rooms, none near the entry. */
+function placeEnemies(r: Raid, sp: Pt, rooms: Rect[]) {
+  const far = (x: number, y: number) => Math.hypot(x - sp.x, y - sp.y) > 600;
+  for (const [ring, share] of RING_SHARE.entries()) {
+    const own = rooms.filter((rm) => ringOf(rm.x + rm.w / 2, rm.y + rm.h / 2) === ring);
+    for (let i = 0; i < Math.round(r.zone.enemies * share); i++) {
+      let c = own.length && Math.random() < 0.5 ? randIn(r.walls, pick(own), 24) : null;
+      if (!c || !far(c.x, c.y) || ringOf(c.x, c.y) !== ring) c = freePt(r.walls, 24, (x, y) => far(x, y) && ringOf(x, y) === ring);
+      spawnByZone(r, c);
+    }
   }
 }
 

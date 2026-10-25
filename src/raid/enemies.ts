@@ -2,19 +2,19 @@ import { CONE_HALF, WAVE_SEARCH, hear, inCone, track, watch } from "../aware";
 import { mode } from "../state";
 import { clamp, rnd, type Pt } from "../util";
 import { collide, inWall, los } from "../world/geometry";
-import { depth } from "../world/mapgen";
+import { CORE, RING_POW, ringOf } from "../world/rings";
 import { cellOf, flowDir, updFlow } from "../world/nav";
-import { zoneDepth } from "../zones";
 import { killed } from "./combat";
 import { hurt, noise } from "./core";
 import { AIM_TIME, KINDS, LUNGE_R, PACK_R, type Enemy, type Kind, type KindStats, type Player, type Raid } from "./model";
 
-/** A wave enemy is lured towards where the player was when it appeared. */
-export function spawn(r: Raid, kind: Kind, at: Pt, lure?: Pt) {
-  const hp = Math.round(KINDS[kind].hp * r.zone.hp),
+/** A wave enemy is lured towards where the player was when it appeared; a pack shares its leader's ring. */
+export function spawn(r: Raid, kind: Kind, at: Pt, { lure, ring = ringOf(at.x, at.y) }: { lure?: Pt; ring?: number } = {}) {
+  const hp = Math.round(KINDS[kind].hp * r.zone.hp * RING_POW[ring]),
     fa = rnd(0, 6.28);
   const e: Enemy = {
     kind,
+    ring,
     x: at.x,
     y: at.y,
     hp,
@@ -40,9 +40,9 @@ export function spawn(r: Raid, kind: Kind, at: Pt, lure?: Pt) {
   r.enemies.push(e);
 }
 
-/** View cone of an enemy; a searching one is on the lookout and sees further. */
+/** View cone of an enemy; a searching one, or one from the Cœur, is on the lookout and sees further. */
 export const sight = (e: Enemy, p: Player) => ({
-  range: KINDS[e.kind].see * (e.sr > 0 ? 1.2 : 1) * (1 - p.st.quiet),
+  range: KINDS[e.kind].see * (e.sr > 0 ? 1.2 : 1) * (e.ring === CORE ? 1.2 : 1) * (1 - p.st.quiet),
   half: e.kind === "sniper" ? 0.4 : CONE_HALF,
 });
 
@@ -52,16 +52,18 @@ interface Spawners {
   pack: (k: Kind, n: number, lead?: Kind) => Spawner;
 }
 
-function spawnTable(d: number, opt: (k: Kind, w: number) => number, { one, pack }: Spawners): [number, Spawner][] {
-  if (d < 0.3)
+/** Tier 0 at the edge, 1 in the Zone chaude, 2 armed squads in the Cœur. */
+function spawnTable(tier: number, opt: (k: Kind, w: number) => number, { one, pack }: Spawners): [number, Spawner][] {
+  if (tier === 0)
     return [
       [85, one("walker")],
       [opt("bloat", 15), one("bloat")],
     ];
-  if (d < 0.6)
+  if (tier === 1)
     return [
       [40, pack("runner", Math.random() < 0.5 ? 2 : 3)],
-      [45, one("walker")],
+      [35, one("walker")],
+      [15, one("gunner")],
       [opt("bloat", 15), one("bloat")],
       [opt("alpha", 15), pack("runner", 3, "alpha")],
     ];
@@ -84,12 +86,15 @@ export function spawnByZone(r: Raid, at: Pt, lure?: Pt) {
       ny = at.y + rnd(-40, 40);
     return inWall(r.walls, nx, ny, 14) ? at : { x: nx, y: ny };
   };
-  const one = (k: Kind) => () => spawn(r, k, at, lure);
+  const ring = ringOf(at.x, at.y);
+  const one = (k: Kind) => () => spawn(r, k, at, { lure, ring });
   const pack = (k: Kind, n: number, lead?: Kind) => () => {
-    if (lead) spawn(r, lead, at, lure);
-    for (let i = 0; i < n; i++) spawn(r, k, near(), lure);
+    if (lead) spawn(r, lead, at, { lure, ring });
+    for (let i = 0; i < n; i++) spawn(r, k, near(), { lure, ring });
   };
-  const table = spawnTable(zoneDepth(r.zone, depth(at.x, at.y)), (k, w) => (r.zone.adds.includes(k) ? w : 0), { one, pack });
+  // from the Cœur zone on, every ring fields the next tier
+  const tier = Math.min(2, ring + (r.zone.lo >= 0.5 ? 1 : 0));
+  const table = spawnTable(tier, (k, w) => (r.zone.adds.includes(k) ? w : 0), { one, pack });
   let roll = Math.random() * table.reduce((s, [w]) => s + w, 0);
   for (const [w, go] of table) {
     roll -= w;
@@ -146,7 +151,7 @@ interface Volley {
 function shoot(r: Raid, e: Enemy, a: number, { n, spread, speed, dmg }: Volley) {
   for (let i = 0; i < n; i++) {
     const b = a + (n > 1 ? -spread + (2 * spread * i) / (n - 1) : rnd(-spread, spread));
-    r.ebul.push({ x: e.x, y: e.y, vx: Math.cos(b) * speed, vy: Math.sin(b) * speed, life: 1.6, dmg });
+    r.ebul.push({ x: e.x, y: e.y, vx: Math.cos(b) * speed, vy: Math.sin(b) * speed, life: 1.6, dmg: dmg * RING_POW[e.ring] });
   }
   // a firefight draws the neighbours to the shooter
   noise(r, e, e.kind === "sniper" ? 380 : 200, e);
@@ -156,7 +161,7 @@ const fireAt = (c: Ctx, v: Volley) => shoot(c.r, c.e, Math.atan2(c.dy, c.dx), v)
 /** Hits the player in contact; true when it did. */
 function bite({ r, e, k, d }: Ctx): boolean {
   if (d >= k.r + 16 || e.cd > 0) return false;
-  hurt(r, k.melee);
+  hurt(r, k.melee * RING_POW[e.ring]);
   e.cd = k.hitCd;
   return true;
 }
@@ -315,7 +320,8 @@ export function updateEnemy(r: Raid, e: Enemy, dt: number) {
   const see = d < 600 && los(r.walls, e, p),
     { range, half } = sight(e, p);
   const view = !e.aggro && see && mode !== "bag" && inCone(e.fa, e, p, { range, half });
-  watch(e, { view, d, range }, p, dt);
+  // the Cœur's enemies make up their minds faster
+  watch(e, { view, d, range }, p, e.ring === CORE ? dt * 1.25 : dt);
   track(e, see, p, dt);
   if (e.aggro) e.fa = e.ta = Math.atan2(dy, dx);
   const c: Ctx = { r, e, k, dx, dy, d, see, dt };

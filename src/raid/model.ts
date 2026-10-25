@@ -41,6 +41,8 @@ export const SNEAK = 2.5;
 
 export interface Enemy extends Pt, Awareness {
   kind: Kind;
+  /** ring it appeared in, which sets its strength for good */
+  ring: number;
   hp: number;
   max: number;
   wx: number;

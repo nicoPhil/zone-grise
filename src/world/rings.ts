@@ -16,12 +16,18 @@ const SLACK = 0.02;
 /** Distance from the centre of each ring line, outermost first. */
 export const RING_R = FROM.map((f) => (1 - f) * DEPTH_R);
 
-const ringOf = (d: number) => FROM.filter((f) => d >= f).length;
+/** Enemy HP and damage multiplier in each ring, on top of the zone's. */
+export const RING_POW = [1, 1.4, 2];
+/** Share of a zone's enemies placed in each ring at the start of a raid. */
+export const RING_SHARE = [0.2, 0.35, 0.45];
+
+const byDepth = (d: number) => FROM.filter((f) => d >= f).length;
+export const ringOf = (x: number, y: number) => byDepth(depth(x, y));
 
 /** The ring at (x, y) for a player currently in ring `cur`. */
 export function ringAt(x: number, y: number, cur: number) {
   const d = depth(x, y),
-    n = ringOf(d);
+    n = byDepth(d);
   if (n === cur) return cur;
-  return ringOf(n > cur ? d - SLACK : d + SLACK) === n ? n : cur;
+  return byDepth(n > cur ? d - SLACK : d + SLACK) === n ? n : cur;
 }

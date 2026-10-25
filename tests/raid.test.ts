@@ -21,6 +21,8 @@ import { huntable } from "../src/progression";
 import { DEATH_TIME, EXTRACT_TIME, KINDS, R, type Raid, heal, startRaid, update } from "../src/raid";
 import { S, fresh, mode, setMode, setSave } from "../src/state";
 import { toast } from "../src/ui/hud";
+import { spawn, spawnByZone } from "../src/raid/enemies";
+import { RING_R } from "../src/world/rings";
 import { renderEnd } from "../src/ui/end";
 import { H, W } from "../src/world/mapgen";
 import { UNLOCK_AFTER, ZONES } from "../src/zones";
@@ -111,9 +113,10 @@ describe("raid clock", () => {
     r.spawnT = DT / 2;
     update(DT);
     const d = r.enemies.map((e) => Math.hypot(e.x - r.p.x, e.y - r.p.y));
-    expect(d).toHaveLength(2);
-    for (const x of d) expect(x).toBeGreaterThan(700);
-    for (const x of d) expect(x).toBeLessThan(1400);
+    expect(d.length).toBeGreaterThanOrEqual(2);
+    // pack members stand up to 40 px around their spawn point
+    for (const x of d) expect(x).toBeGreaterThan(660);
+    for (const x of d) expect(x).toBeLessThan(1440);
   });
 });
 
@@ -178,6 +181,50 @@ describe("raid shield", () => {
     expect(sh.left).toBeGreaterThan(0);
     run(2);
     expect(sh.left).toBe(sh.pts);
+  });
+});
+
+describe("ring difficulty", () => {
+  const centre = { x: W / 2, y: H / 2 },
+    edge = { x: 100, y: H / 2 };
+
+  /** HP the player loses to one bite from a walker that appeared at `from`. */
+  const bite = (from: { x: number; y: number }) => {
+    const r = quietRaid();
+    spawn(r, "walker", from);
+    const e = r.enemies[0];
+    Object.assign(e, { x: r.p.x, y: r.p.y, aggro: true, cd: 0 });
+    r.p.mcd = Infinity;
+    const hp0 = r.p.hp;
+    update(DT);
+    return { lost: hp0 - r.p.hp, max: e.max };
+  };
+
+  it("makes an enemy from the Cœur twice as tough and twice as hard-hitting as one from the edge", () => {
+    const out = bite(edge),
+      core = bite(centre);
+    expect(core.max).toBe(2 * out.max);
+    expect(core.lost).toBeCloseTo(2 * out.lost);
+  });
+
+  it("arms the Cœur of the first zone and keeps its edge to walkers", () => {
+    const r = begin();
+    const kinds = (ring: number) => new Set(r.enemies.filter((e) => e.ring === ring).map((e) => e.kind));
+    expect(kinds(0)).toEqual(new Set(["walker"]));
+    expect(kinds(2).has("gunner")).toBe(true);
+  });
+
+  it("gives a whole pack its leader's ring, even when members spill over the line", () => {
+    const r = quietRaid();
+    const at = { x: W / 2 + RING_R[0] - 5, y: H / 2 };
+    for (let i = 0; i < 30; i++) spawnByZone(r, at);
+    expect(new Set(r.enemies.map((e) => e.ring))).toEqual(new Set([1]));
+  });
+
+  it("puts more enemies in the Cœur than at the edge", () => {
+    const r = begin();
+    const n = (ring: number) => r.enemies.filter((e) => e.ring === ring).length;
+    expect(n(2)).toBeGreaterThan(1.5 * n(0));
   });
 });
 
