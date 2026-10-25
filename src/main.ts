@@ -10,7 +10,7 @@ import { initEnd } from "./ui/end";
 import { hideHint, toast, updFire } from "./ui/hud";
 import { mountIcons } from "./ui/icons";
 import { initStash, renderStash } from "./ui/stash";
-import { $ } from "./util";
+import { $, clamp } from "./util";
 
 loadLocal();
 mountIcons();
@@ -31,7 +31,8 @@ $("bBag").addEventListener("click", () => mode === "raid" && openBag());
 renderStash();
 
 function frame(now: number) {
-  const dt = Math.min(0.05, (now - clock.last) / 1000);
+  // the first frame of a raid can be stamped before startRaid reset the clock
+  const dt = clamp((now - clock.last) / 1000, 0, 0.05);
   clock.last = now;
   if (mode === "raid" || mode === "bag") update(dt);
   if (mode === "bag") tickBag();
