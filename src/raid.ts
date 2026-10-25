@@ -132,6 +132,8 @@ export interface Player extends Pt {
   faceLock: number;
   hit: number;
   still: number;
+  /** time to the next audible footstep while running */
+  step: number;
 }
 export interface Vault {
   room: Rect;
@@ -177,6 +179,10 @@ export interface Raid {
   why: string;
 }
 
+/** Stick push from which the player runs, and the footsteps that come with it. */
+export const RUN = 0.7,
+  STEP_TIME = 0.35,
+  STEP_NOISE = 90;
 export const DEATH_TIME = 1.8,
   RAID_TIME = 240,
   CRATE_TIME = 0.8,
@@ -319,6 +325,7 @@ export function startRaid() {
       faceLock: 0,
       hit: 0,
       still: 0,
+      step: 0,
     },
     exits,
     vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
@@ -812,6 +819,12 @@ export function update(dt: number) {
   p.faceLock -= dt;
   if (moving && p.faceLock <= 0) p.face = Math.atan2(m.y, m.x);
   p.still = moving ? 0 : p.still + dt;
+  p.step -= dt;
+  if (Math.hypot(m.x, m.y) > RUN && p.step <= 0) {
+    p.step = STEP_TIME;
+    noise(r, p, STEP_NOISE * (1 - p.st.quiet));
+    burst(r, p.x, p.y + 8, "#b9ad94", 4, 45);
+  }
   p.cd -= dt;
   p.mcd -= dt;
   p.hit -= dt;

@@ -104,6 +104,31 @@ describe("raid", () => {
     expect(hp0 - r.p.hp).toBeCloseTo(KINDS.walker.melee * ZONES[1].dmg * (1 - r.p.st.red));
   });
 
+  it.each([
+    { gait: "running", push: 0.9, heard: true },
+    { gait: "walking", push: 0.4, heard: false },
+  ])("$gait past the back of an unaware enemy, it hears: $heard", ({ push, heard }) => {
+    startRaid();
+    const r = R as Raid;
+    const w = r.enemies[0];
+    Object.assign(r, { enemies: [w], spawnT: Infinity, walls: [] });
+    Object.assign(w, {
+      kind: "walker",
+      x: r.p.x,
+      y: r.p.y + 80,
+      fa: Math.PI / 2,
+      ta: Math.PI / 2,
+      wt: Infinity,
+      aggro: false,
+      sus: 0,
+      sr: 0,
+    });
+    vi.mocked(moveVec).mockReturnValue({ x: push, y: 0 });
+    run(0.3);
+    vi.mocked(moveVec).mockReturnValue({ x: 0, y: 0 });
+    expect(w.sr > 0).toBe(heard);
+  });
+
   it("heals over time with a carried medkit, and keeps it when HP is full", () => {
     const r = quietRaid();
     r.p.meds = 1;
