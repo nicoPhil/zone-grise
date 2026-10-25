@@ -1,6 +1,7 @@
 import type { Crate, Player, Raid } from "../raid";
 import { clamp, rnd, type Pt, type Rect } from "../util";
 import { los } from "../world/geometry";
+import { wallsIn } from "../world/wallindex";
 import type { Pose } from "./assets";
 import { ctx, view } from "./canvas";
 
@@ -48,7 +49,9 @@ export function frame(r: Raid): Frame {
     vr,
     tt: performance.now() / 1000,
     poly: visPoly(r, p, vr),
-    near: r.walls.filter((w) => w.x < cx + ww + 20 && w.x + w.w > cx - 20 && w.y < cy + wh + 20 && w.y + w.h > cy - 20),
+    near: wallsIn(r.walls, { x0: cx - 20, y0: cy - 20, x1: cx + ww + 20, y1: cy + wh + 20 }).filter(
+      (w) => w.x < cx + ww + 20 && w.x + w.w > cx - 20 && w.y < cy + wh + 20 && w.y + w.h > cy - 20,
+    ),
     seen: (o) => Math.hypot(o.x - p.x, o.y - p.y) < vr && los(r.walls, p, o),
     inView: (x, y, m = 60) => x > cx - m && x < cx + ww + m && y > cy - m && y < cy + wh + m,
     world: (g) => g.setTransform(k, 0, 0, k, -cx * k, -cy * k),
@@ -73,7 +76,7 @@ function occluders(r: Raid, o: Pt, vr: number) {
     [x1, y1],
     [x0, y1],
   ];
-  for (const w of r.walls) {
+  for (const w of wallsIn(r.walls, { x0, y0, x1, y1 })) {
     if (w.x > x1 || w.x + w.w < x0 || w.y > y1 || w.y + w.h < y0) continue;
     const a = w.x,
       b = w.y,

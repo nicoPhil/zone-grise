@@ -4,7 +4,7 @@ import { clamp } from "../util";
 import { H, W } from "../world/mapgen";
 import { T, floorPattern, tile } from "./assets";
 import { ctx, rarCol } from "./canvas";
-import { GN } from "./decor";
+import { DECAL, GN } from "./decor";
 import { crateCol, type Frame } from "./frame";
 
 export function groundTiles({ r, cx, cy, ww, wh }: Frame) {
@@ -26,7 +26,8 @@ export function stains({ r, cx, cy, ww, wh, near, inView }: Frame) {
     sy0 = clamp(cy, 0, H),
     sx1 = clamp(cx + ww, 0, W),
     sy1 = clamp(cy + wh, 0, H);
-  if (sx1 > sx0 && sy1 > sy0) ctx.drawImage(r.decal.c, sx0 / 2, sy0 / 2, (sx1 - sx0) / 2, (sy1 - sy0) / 2, sx0, sy0, sx1 - sx0, sy1 - sy0);
+  if (sx1 > sx0 && sy1 > sy0)
+    ctx.drawImage(r.decal.c, sx0 * DECAL, sy0 * DECAL, (sx1 - sx0) * DECAL, (sy1 - sy0) * DECAL, sx0, sy0, sx1 - sx0, sy1 - sy0);
   for (const o of r.decor)
     if (inView(o.x, o.y)) {
       ctx.save();

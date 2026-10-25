@@ -174,13 +174,16 @@ export const THEMES: Theme[] = [
   },
 ];
 
-/** Half-resolution layer under everything: dirt stains, then blood and casings stamped during the raid. */
+/** Scale of the stain layer: half resolution, capped at 1500 px a side so a bigger map stays light on a phone. */
+export const DECAL = Math.min(0.5, 1500 / Math.max(W, H));
+
+/** Low-resolution layer under everything: dirt stains, then blood and casings stamped during the raid. */
 export function makeDecal(th: Theme): Decal {
   const c = document.createElement("canvas");
-  c.width = W / 2;
-  c.height = H / 2;
+  c.width = W * DECAL;
+  c.height = H * DECAL;
   const g = context2d(c);
-  g.scale(0.5, 0.5);
+  g.scale(DECAL, DECAL);
   for (let i = 0; i < 150; i++) {
     const x = rnd(0, W),
       y = rnd(0, H),

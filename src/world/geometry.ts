@@ -1,4 +1,5 @@
 import { clamp, type Pt, type Rect } from "../util";
+import { around, spanOf, wallsIn } from "./wallindex";
 
 /** One Liang–Barsky edge: the narrowed [t0, t1], or null once the segment misses. */
 function clipEdge(p: number, q: number, [t0, t1]: [number, number]): [number, number] | null {
@@ -36,13 +37,14 @@ export function inArc(o: Pt, face: number, t: Pt, arc: { reach: number; half: nu
   return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) <= arc.half;
 }
 
-export const los = (walls: Rect[], a: Pt, b: Pt) => !walls.some((w) => segHits(a, b, w));
+export const los = (walls: Rect[], a: Pt, b: Pt) => !wallsIn(walls, spanOf(a.x, a.y, b.x, b.y)).some((w) => segHits(a, b, w));
 export const inWall = (walls: Rect[], x: number, y: number, pad = 0) =>
-  walls.some((w) => x > w.x - pad && x < w.x + w.w + pad && y > w.y - pad && y < w.y + w.h + pad);
+  wallsIn(walls, around(x, y, pad)).some((w) => x > w.x - pad && x < w.x + w.w + pad && y > w.y - pad && y < w.y + w.h + pad);
 
 /** Pushes a circle of radius r out of every wall it overlaps. */
 export function collide(walls: Rect[], o: Pt, r: number) {
-  for (const w of walls) {
+  // a push from outside moves the circle by less than r: walls further than 2r cannot be reached
+  for (const w of wallsIn(walls, around(o.x, o.y, 2 * r))) {
     const cx = clamp(o.x, w.x, w.x + w.w),
       cy = clamp(o.y, w.y, w.y + w.h);
     const dx = o.x - cx,
@@ -91,7 +93,7 @@ export function rayLen(walls: Rect[], o: Pt, dir: Pt, max: number) {
   const { x, y } = o,
     { x: dx, y: dy } = dir;
   let best = max;
-  for (const w of walls) {
+  for (const w of wallsIn(walls, spanOf(x, y, x + dx * max, y + dy * max))) {
     let t0 = 0,
       t1 = best;
     if (Math.abs(dx) < 1e-9) {
