@@ -12,10 +12,11 @@ const SLACK = 0.02;
 /** Distance from the centre of each ring line, outermost first. */
 export const RING_R = FROM.map((f) => (1 - f) * DEPTH_R);
 
-/** Enemy HP and damage multiplier in each ring, on top of the zone's. */
+/** Enemy damage and HP multipliers in each ring, on top of the zone's: HP grows slower, so fights stay short. */
 export const RING_POW = [1, 1.4, 2];
-/** Share of a zone's enemies placed in each ring at the start of a raid. */
-export const RING_SHARE = [0.2, 0.35, 0.45];
+export const RING_HP = [1, 1.3, 1.7];
+/** Share of a zone's enemies placed in each ring at the start of a raid; the Cœur gets 30 % more on top of the zone's count. */
+export const RING_SHARE = [0.2, 0.35, 0.585];
 
 const byDepth = (d: number) => FROM.filter((f) => d >= f).length;
 export const ringOf = (x: number, y: number) => byDepth(depth(x, y));

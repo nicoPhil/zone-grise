@@ -5,6 +5,7 @@ import { closeBag } from "../ui/bag";
 import { toast } from "../ui/hud";
 import { rnd, type Pt } from "../util";
 import { los } from "../world/geometry";
+import { CORE } from "../world/rings";
 import { DEATH_TIME, type Enemy, type Raid } from "./model";
 import { absorb } from "./shield";
 
@@ -58,6 +59,7 @@ export function hurt(r: Raid, base: number) {
   // what the shield lets through is softened by armour
   p.hp -= rest * (1 - p.st.red);
   r.dmg += rest * (1 - p.st.red);
+  if (r.ring === CORE) r.dmgCore += rest * (1 - p.st.red);
   p.hit = 0.15;
   if (p.hp <= 0) die(r, "Tu es mort.");
 }

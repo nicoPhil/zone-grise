@@ -161,6 +161,7 @@ export interface Raid {
   deep: number;
   /** HP lost so far, seconds spent in the Cœur */
   dmg: number;
+  dmgCore: number;
   core: number;
   /** seconds from first hit to kill, summed over the enemies killed after being hit */
   ttk: { s: number; n: number };

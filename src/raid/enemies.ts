@@ -3,7 +3,7 @@ import { mode } from "../state";
 import { clamp, rnd, type Pt } from "../util";
 import { collide, inWall, los } from "../world/geometry";
 import { freePt } from "../world/mapgen";
-import { CORE, RING_POW, ringOf } from "../world/rings";
+import { CORE, RING_HP, RING_POW, ringOf } from "../world/rings";
 import { cellOf, flowDir, updFlow } from "../world/nav";
 import { killed } from "./combat";
 import { hurt, noise } from "./core";
@@ -11,7 +11,7 @@ import { AIM_TIME, KINDS, LUNGE_R, PACK_R, type Enemy, type Kind, type KindStats
 
 /** A wave enemy is lured towards where the player was when it appeared; a pack shares its leader's ring. */
 export function spawn(r: Raid, kind: Kind, at: Pt, { lure, ring = ringOf(at.x, at.y) }: { lure?: Pt; ring?: number } = {}) {
-  const hp = Math.round(KINDS[kind].hp * r.zone.hp * RING_POW[ring]),
+  const hp = Math.round(KINDS[kind].hp * r.zone.hp * RING_HP[ring]),
     fa = rnd(0, 6.28);
   const e: Enemy = {
     kind,

@@ -66,11 +66,13 @@ describe("raid log", () => {
     spawn(r, "walker", { x: W / 2 + 300, y: H / 2 });
     const e = r.enemies[0];
     hitEnemy(r, e, { dmg: 1, at: e });
+    r.ebul.push({ x: r.p.x, y: r.p.y, vx: 0, vy: 0, life: 1, dmg: 20 });
     run(2);
     hitEnemy(r, e, { dmg: 9999, at: e });
     r.t = DT / 2;
     run(DEATH_TIME + 0.2);
     expect(S.log[0].core).toBeGreaterThanOrEqual(2);
+    expect(S.log[0].dmgCore).toBeGreaterThanOrEqual(20);
     expect(S.log[0].ttk).toBeCloseTo(2, 1);
   });
 });

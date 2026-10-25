@@ -273,10 +273,10 @@ describe("ring difficulty", () => {
     return { lost: hp0 - r.p.hp, max: e.max };
   };
 
-  it("makes an enemy from the Cœur twice as tough and twice as hard-hitting as one from the edge", () => {
+  it("makes an enemy from the Cœur 1.7 times as tough and twice as hard-hitting as one from the edge", () => {
     const out = bite(edge),
       core = bite(centre);
-    expect(core.max).toBe(2 * out.max);
+    expect(core.max).toBe(Math.round(1.7 * out.max));
     expect(core.lost).toBeCloseTo(2 * out.lost);
   });
 

@@ -43,6 +43,8 @@ export interface RaidLog {
   /** seconds in the Cœur, average seconds from first hit to kill; missing in logs from before they were kept */
   core?: number;
   ttk?: number;
+  /** HP lost in the Cœur */
+  dmgCore?: number;
   /** power going in, credits and stash value after */
   pw: number;
   cr: number;
