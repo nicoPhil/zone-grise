@@ -1,7 +1,8 @@
 import { bagUsed, def, gearStats, mk, valOf, type Item } from "../src/items";
 import { cap, type RaidTally } from "../src/progression";
 import { S } from "../src/state";
-import { ZONES, power, unlocked, zoneDepth, type Zone } from "../src/zones";
+import { ZONES, power, zoneDepth, type Zone } from "../src/zones";
+import { unlockedZone } from "./econ";
 import { needed } from "./hideout";
 import { crateKey, crateLoot, killDrops, killKind, tierOf, type Crate } from "./loot";
 import type { CrateSpot } from "./map";
@@ -39,7 +40,7 @@ export interface RaidOut {
 export function pickZone(p: Profile): number {
   let best = 0;
   ZONES.forEach((z, i) => {
-    if (unlocked(S, i) && power() * p.amb >= z.power) best = i;
+    if (unlockedZone(S.zx, i) && power() * p.amb >= z.power) best = i;
   });
   return best;
 }
@@ -117,6 +118,7 @@ export function fillBag(found: Item[]): Item[] {
 export function simRaid(p: Profile, spots: CrateSpot[]): RaidOut {
   const zone = pickZone(p),
     z = ZONES[zone];
+  S.zone = zone;
   const st = { keys: S.lo.keys, tally: { kills: 0, violet: 0, vaults: 0, boss: 0, haul: 0 } };
   const found = [...openCrates(p, z, spots, st.tally), ...fight(p, z, st.tally)];
   const boss = raidVault(p, z, found, st);

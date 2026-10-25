@@ -1,15 +1,17 @@
-import { SHOP, def, emptyGear, mk, price, slotOf, upgradeOver, valOf, wearable, type Item, type ItemKey, type Slot } from "../src/items";
-import { BENCH, KEY_MAX, MAX_LV, UP, applyRaid, canPay, medMax, norm, pay, qInfo, type Cost } from "../src/progression";
+import { SHOP, def, emptyGear, mk, price, slotOf, upgradeOver, valOf, type Item, type ItemKey, type Slot } from "../src/items";
+import { KEY_MAX, MAX_LV, UP, applyRaid, medMax, norm, pay, qInfo, type Cost } from "../src/progression";
 import { S, type Upgrades } from "../src/state";
+import { E, X, benchCap, benchCost } from "./econ";
+import { affords, buildStations, craft, pocketed, recycle, recycleOf, saleOf, shop, stationNeeds, take, wear } from "./market";
 import type { Profile, RaidOut } from "./raid";
 
 // the stash screen's handlers (src/ui/stash.ts), played by a player who spends as soon as they can
-const take = (it: Item) => S.stash.splice(S.stash.indexOf(it), 1);
 const BENCHED: Slot[] = ["gun", "shield", "blade"];
 
 export function endRaid(p: Profile, r: RaidOut) {
   S.st.raids++;
   if (!r.ok) {
+    S.stash.push(...pocketed(r.bag));
     S.lo = { eq: emptyGear(), meds: 0, keys: 0 };
     S.st.dead++;
     return;
@@ -27,8 +29,9 @@ function claimAll(): number {
   for (const q of [...S.q]) {
     if (!qInfo(q).done) continue;
     if (q.t === "bring" && q.k) pay({ cr: 0, it: { [q.k]: q.n } });
-    S.credits += q.cr;
-    got += q.cr;
+    const cr = Math.round(q.cr * (1 + E.questZone * S.zone));
+    S.credits += cr;
+    got += cr;
     if (q.rew) S.stash.push(mk(q.rew));
     S.q.splice(S.q.indexOf(q), 1);
   }
@@ -38,16 +41,15 @@ function claimAll(): number {
 
 function equipBest() {
   for (const it of [...S.stash].sort((a, b) => valOf(b) - valOf(a))) {
-    const s = slotOf(it);
-    if (!s || !upgradeOver(it, S.lo.eq)) continue;
+    if (!slotOf(it) || !upgradeOver(it, S.lo.eq)) continue;
     take(it);
-    const old = S.lo.eq[s];
-    if (old) S.stash.push(old);
-    S.lo.eq[s] = it;
+    wear(it);
   }
 }
 
-/** How many of each item a contract or the next upgrade asks for, as the stash screen flags them. */
+const benchNext = (w: Item | null) => (w && (w.lv || 0) < Math.min(MAX_LV, benchCap()) ? benchCost(w.lv || 0, def(w.k).r) : null);
+
+/** How many of each item a contract, the next upgrade or the next station level asks for. */
 export function needed(): Map<ItemKey, number> {
   const n = new Map<ItemKey, number>();
   const add = (c: Cost) => {
@@ -56,9 +58,10 @@ export function needed(): Map<ItemKey, number> {
   for (const q of S.q) if (q.t === "bring" && q.k) add({ cr: 0, it: { [q.k]: q.n } });
   for (const k of Object.keys(UP) as (keyof Upgrades)[]) if (S.up[k] < MAX_LV) add(UP[k].cost[S.up[k]]);
   for (const s of BENCHED) {
-    const w = S.lo.eq[s];
-    if (w && (w.lv || 0) < MAX_LV) add(BENCH[w.lv || 0]);
+    const c = benchNext(S.lo.eq[s]);
+    if (c) add(c);
   }
+  for (const c of stationNeeds()) add(c);
   return n;
 }
 
@@ -70,22 +73,30 @@ function keep(it: Item, need: Map<ItemKey, number>, kept: Map<ItemKey, number>):
   return n < limit;
 }
 
-/** Sells everything but what a contract or upgrade needs, spare keys and medkits; returns the credits made. */
+/** Recycles what yields a missing material, sells the rest, keeping what is needed; returns the credits made. */
 function sellSurplus(): number {
   const need = needed(),
     kept = new Map<ItemKey, number>();
+  const lack = new Map(need);
+  for (const it of S.stash) lack.set(it.k, (lack.get(it.k) || 0) - 1);
+  const lacks = (k: ItemKey) => Object.keys(recycleOf(k) || {}).some((m) => (lack.get(m as ItemKey) || 0) > 0);
   let got = 0;
   for (const it of [...S.stash]) {
     if (keep(it, need, kept)) continue;
+    if (E.recycle && lacks(it.k)) {
+      recycle(it);
+      continue;
+    }
     take(it);
-    S.credits += valOf(it);
-    got += valOf(it);
+    S.credits += saleOf(it);
+    got += saleOf(it);
   }
   return got;
 }
 
 /** Buys the merchant's piece for each empty slot it sells, keeping enough for a medkit. */
 function rebuy(): number {
+  if (E.freeKit && !S.lo.eq.gun && S.credits < price("p9")) S.lo.eq.gun = mk("p9");
   let spent = 0;
   for (const k of SHOP) {
     const s = slotOf(mk(k));
@@ -97,33 +108,40 @@ function rebuy(): number {
   return spent;
 }
 
+function payFor(c: Cost): number {
+  pay(c);
+  return c.cr;
+}
+
 function upgrade(): number {
   let spent = 0;
   for (const k of ["bag", "hp", "meds"] as (keyof Upgrades)[]) {
     const c = UP[k].cost[S.up[k]];
-    if (S.up[k] >= MAX_LV || !canPay(c)) continue;
-    pay(c);
-    spent += c.cr;
+    if (S.up[k] >= MAX_LV || !affords(c)) continue;
+    spent += payFor(c);
     S.up[k]++;
   }
   for (const s of BENCHED) {
     const w = S.lo.eq[s],
-      c = w && BENCH[w.lv || 0];
-    if (!w || !c || (w.lv || 0) >= MAX_LV || !canPay(c)) continue;
-    pay(c);
-    spent += c.cr;
+      c = benchNext(w);
+    if (!w || !c || !affords(c)) continue;
+    spent += payFor(c);
     w.lv = (w.lv || 0) + 1;
   }
   return spent;
 }
 
 /** Medkits and keys into the loadout, buying medkits when the stash has none and credits allow. */
-function packLoadout() {
+function packLoadout(): number {
   const meds = S.stash.filter((i) => i.k === "med");
+  let spent = 0;
   while (S.lo.meds < medMax() && (meds.length || S.credits >= price("med") * 4)) {
     const m = meds.pop();
     if (m) take(m);
-    else S.credits -= price("med");
+    else {
+      S.credits -= price("med");
+      spent += price("med");
+    }
     S.lo.meds++;
   }
   for (const k of S.stash.filter((i) => i.k === "vkey")) {
@@ -131,25 +149,30 @@ function packLoadout() {
     take(k);
     S.lo.keys++;
   }
+  return spent;
 }
 
 export interface Flow {
   sold: number;
   quests: number;
   spent: number;
-  idle: boolean;
+  /** credits spent on: basic kit, upgrades and bench, stations, crafts, merchant pieces, medkits */
+  by: number[];
+  /** everything there is to build is built */
+  done: boolean;
 }
 
-/** Everything a player does at the hideout between two raids; `idle` when nothing was left to buy. */
+const allBuilt = () =>
+  Object.values(S.up).every((l) => l >= MAX_LV) &&
+  Object.entries(E.stations).every(([k, lv]) => X.st[k as keyof typeof X.st] >= (lv?.length || 0));
+
+/** Everything a player does at the hideout between two raids. */
 export function hideout(): Flow {
   const quests = claimAll();
   equipBest();
   const sold = sellSurplus();
-  const spent = rebuy() + upgrade();
-  packLoadout();
-  const maxed = Object.values(S.up).every((l) => l >= MAX_LV) && BENCHED.every((s) => (S.lo.eq[s]?.lv || 0) >= MAX_LV);
-  return { sold, quests, spent, idle: maxed };
+  const by = [rebuy(), upgrade(), buildStations(), craft(), shop(), packLoadout()];
+  return { sold, quests, spent: by.reduce((a, b) => a + b, 0), by, done: allBuilt() };
 }
 
 export const gearValue = () => Object.values(S.lo.eq).reduce((s, it) => s + (it ? valOf(it) : 0), 0);
-export const wornRarity = () => Object.values(S.lo.eq).reduce((s, it) => s + (it && wearable(it.k) ? def(it.k).r : 0), 0);
