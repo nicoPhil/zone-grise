@@ -6,11 +6,12 @@ import { THEMES, blood, makeDecal, makeDecor, makeGround, stampCasing, type Deca
 import type { Tile } from "./render/assets";
 import { S, mode, save, setMode } from "./state";
 import { clearStick, moveVec, prefs } from "./input";
+import { WAVE_HUNT, alert, track, type Awareness } from "./aware";
 import { setRaidHud, showHint, toast, updHud } from "./ui/hud";
 import { renderEnd } from "./ui/end";
 import { pick, rnd, type Pt, type Rect } from "./util";
 import { MELEE_ARC, collide, frontHit, inArc, inWall, los, nearestInReach } from "./world/geometry";
-import { H, W, depth, freePt, genMap, inBld, rollItem, type Building } from "./world/mapgen";
+import { depth, freePt, genMap, placeEntries, rollItem, type Building } from "./world/mapgen";
 import { flowDir, makeNav, updFlow, type Nav } from "./world/nav";
 import { pickVault } from "./world/vault";
 import { ZONES, UNLOCK_AFTER, power, unlocked, zoneDepth, type Zone } from "./zones";
@@ -39,11 +40,10 @@ export const KINDS: Record<Kind, KindStats> = {
 /** Bloater blast; sniper aim before the shot; how close the stalker creeps before charging; reach of the pack leader's howl. */
 export const BLAST_R = 95, AIM_TIME = 1.1, LUNGE_R = 260, PACK_R = 280;
 
-export interface Enemy extends Pt {
+export interface Enemy extends Pt, Awareness {
   kind: Kind;
   hp: number;
   max: number;
-  aggro: boolean;
   wx: number;
   wy: number;
   wt: number;
@@ -132,6 +132,8 @@ export interface Raid {
   pick: Pickup[];
   parts: Particle[];
   cas: Casing[];
+  /** noise waves, drawn so the player sees how far a shot carries */
+  rings: (Pt & { rad: number; life: number })[];
   /** floating damage numbers */
   nums: (Pt & { v: number; life: number; big: boolean })[];
   bag: Item[];
@@ -145,7 +147,7 @@ export interface Raid {
   tally: Omit<RaidTally, "haul">;
 }
 
-export const RAID_TIME = 240, CRATE_TIME = 0.8, EXTRACT_TIME = 3, UNLOCK_TIME = 1.2, VIOLET = 0.62;
+export const RING_LIFE = 0.6, RAID_TIME = 240, CRATE_TIME = 0.8, EXTRACT_TIME = 3, UNLOCK_TIME = 1.2, VIOLET = 0.62;
 export let R: Raid | null = null;
 export const clock = { last: performance.now() };
 
@@ -154,7 +156,8 @@ export const lockCentre = (l: Rect): Pt => ({ x: l.x + l.w / 2, y: l.y + l.h / 2
 
 function spawn(r: Raid, kind: Kind, x: number, y: number, aggro = false) {
   const hp = Math.round(KINDS[kind].hp * r.zone.hp);
-  r.enemies.push({ kind, x, y, hp, max: hp, aggro, wx: 0, wy: 0, wt: 0, cd: rnd(0.5, 1.5), hit: 0, ph: 0, t: 0 });
+  const lost = aggro ? -WAVE_HUNT : 0;
+  r.enemies.push({ kind, x, y, hp, max: hp, aggro, lx: r.p.x, ly: r.p.y, lost, sr: 0, al: 0, wx: 0, wy: 0, wt: 0, cd: rnd(0.5, 1.5), hit: 0, ph: 0, t: 0 });
 }
 
 /** Walkers at the edge, runner packs further in, gunners near the centre; harder zones shift the mix inwards and add their own kinds. */
@@ -204,17 +207,14 @@ export function startRaid() {
   const { walls, bld } = genMap();
   const plan = zone.vault ? pickVault(walls, bld) : null;
   if (plan) walls.push(...plan.locks);
-  const out = (x: number, y: number) => !inBld(bld, x, y, 60);
-  const e1 = freePt(walls, 70, (x, y) => Math.min(x, y, W - x, H - y) < 260 && out(x, y));
-  const e2 = freePt(walls, 70, (x, y) => Math.min(x, y, W - x, H - y) < 260 && out(x, y) && Math.hypot(x - e1.x, y - e1.y) > 1400);
-  const sp = freePt(walls, 30, (x, y) => out(x, y) && Math.min(Math.hypot(x - e1.x, y - e1.y), Math.hypot(x - e2.x, y - e2.y)) > 1100);
+  const { sp, exits } = placeEntries(walls, bld, plan && { x: plan.room.x + plan.room.w / 2, y: plan.room.y + plan.room.h / 2 });
   const st = gearStats(S.lo.eq);
   const r: Raid = {
     zi, zone, power0: power(),
     walls, bld, nav: makeNav(walls), ground: makeGround(THEMES[zi]), decor: [...furnish(bld, THEMES[zi].fit, THEMES[zi].mess), ...makeDecor(walls, bld, THEMES[zi])], decal: makeDecal(THEMES[zi]),
     p: { x: sp.x, y: sp.y, hp: maxHp() + st.hp, max: maxHp() + st.hp, cd: 0, mcd: 0, face: 0, eq: { ...S.lo.eq }, st, meds: S.lo.meds, keys: S.lo.keys, regen: 0, regenRate: 0, boost: 0, swing: 0, faceLock: 0, hit: 0, still: 0 },
-    exits: [e1, e2], vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
-    crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], nums: [], bag: [],
+    exits, vault: plan && { room: plan.room, locks: plan.locks, open: false, prog: 0 },
+    crates: [], enemies: [], bullets: [], ebul: [], pick: [], parts: [], cas: [], rings: [], nums: [], bag: [],
     t: RAID_TIME, spawnT: zone.wave, flowT: 0, ext: 0, toastT: 0, shake: 0, flash: 0, tally: { kills: 0, violet: 0, vaults: 0, boss: 0 },
   };
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== plan?.room);
@@ -264,7 +264,8 @@ function burst(r: Raid, x: number, y: number, col: string, n = 8, sp = 140, glow
   }
 }
 const noise = (r: Raid, x: number, y: number, rad: number) => {
-  for (const e of r.enemies) if (Math.hypot(e.x - x, e.y - y) < rad) e.aggro = true;
+  for (const e of r.enemies) if (Math.hypot(e.x - x, e.y - y) < rad) alert(e, x, y);
+  if (!r.rings.some((q) => q.life > RING_LIFE - 0.3 && Math.hypot(q.x - x, q.y - y) < 40)) r.rings.push({ x, y, rad, life: RING_LIFE });
 };
 
 /** The raid has ended (death or extraction) during this frame; sorting the bag still counts as in the raid. */
@@ -418,7 +419,7 @@ function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = fa
   e.hp -= dmg;
   e.hit = big ? 0.16 : 0.1;
   r.nums.push({ x: e.x + rnd(-6, 6), y: e.y - 18, v: dmg, life: 0.7, big });
-  e.aggro = true;
+  alert(e, r.p.x, r.p.y);
   burst(r, x, y, C.bad, 4, 90);
   blood(r.decal, x, y, 3, false);
   if (e.hp <= 0) killed(r, e);
@@ -472,10 +473,14 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
   e.cd -= dt;
   e.hit -= dt;
   const see = d < 600 && los(r.walls, e, p);
-  if (!e.aggro && d < k.see * (1 - p.st.quiet) && see && mode !== "bag") e.aggro = true;
-  if (e.aggro && d > 950) e.aggro = false;
+  // a searching enemy is on the lookout and spots from further away
+  if (!e.aggro && d < k.see * (e.sr > 0 ? 1.3 : 1) * (1 - p.st.quiet) && see && mode !== "bag") alert(e, p.x, p.y);
+  track(e, see, p, dt);
   let vx = 0, vy = 0;
-  if (!e.aggro) {
+  if (!e.aggro && e.sr > 0) {
+    const sx = e.lx - e.x, sy = e.ly - e.y, sd = Math.hypot(sx, sy), v = Math.min(k.spd * 0.6, 110);
+    if (sd > 30) [e.wx, e.wy, vx, vy] = [sx / sd, sy / sd, (sx / sd) * v, (sy / sd) * v];
+  } else if (!e.aggro) {
     if (e.kind === "boss" || e.kind === "stalker" || e.kind === "sniper") return;
     e.wt -= dt;
     if (e.wt <= 0) {
@@ -735,6 +740,7 @@ export function update(dt: number) {
     n.life -= dt;
     if (n.life <= 0) r.nums.splice(i, 1);
   }
+  for (let i = r.rings.length - 1; i >= 0; i--) if ((r.rings[i].life -= dt) <= 0) r.rings.splice(i, 1);
   for (let i = r.parts.length - 1; i >= 0; i--) {
     const q = r.parts[i];
     q.x += q.vx * dt;

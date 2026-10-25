@@ -1,6 +1,7 @@
 import { def, nameOf, upgradeOver, wstat } from "../items";
+import { ALERT_POP } from "../aware";
 import { STICK_R, moveVec, stick } from "../input";
-import { AIM_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
+import { AIM_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, RING_LIFE, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
 import { MELEE_ARC, los } from "../world/geometry";
@@ -376,12 +377,22 @@ export function draw(r: Raid | null) {
     ctx.textAlign = "center";
     ctx.fillText("SORTIE", e.x, e.y + 5);
   }
+  ctx.lineWidth = 3;
+  for (const q of r.rings) {
+    const f = 1 - q.life / RING_LIFE;
+    ctx.strokeStyle = `rgba(255,236,200,${0.6 * (1 - f)})`;
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, q.rad * Math.sqrt(f), 0, 6.28);
+    ctx.stroke();
+  }
+  ctx.textAlign = "center";
   for (const e of r.enemies)
-    if (e.aggro && seen(e)) {
-      ctx.fillStyle = C.bad;
-      ctx.font = "700 16px " + FONT;
-      ctx.textAlign = "center";
-      ctx.fillText("!", e.x, e.y - 24);
+    if (seen(e) && (e.aggro || e.sr > 0)) {
+      ctx.fillStyle = e.aggro ? C.bad : C.accent;
+      ctx.strokeStyle = "rgba(0,0,0,.7)";
+      ctx.font = `800 ${20 + 14 * clamp(e.al / ALERT_POP, 0, 1)}px ` + FONT;
+      ctx.strokeText(e.aggro ? "!" : "?", e.x, e.y - 24);
+      ctx.fillText(e.aggro ? "!" : "?", e.x, e.y - 24);
     }
   ctx.textAlign = "center";
   ctx.lineWidth = 3;
