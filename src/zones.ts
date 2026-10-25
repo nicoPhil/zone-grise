@@ -93,7 +93,7 @@ export const ZONES: Zone[] = [
     adds: ["bloat", "smg", "sniper", "shield", "stalker", "alpha"],
   },
 ];
-export const UNLOCK_AFTER = 6;
+export const UNLOCK_AFTER = 1;
 
 export const zoneDepth = (z: Zone, d: number) => clamp(z.lo + z.span * d, 0, 1.4);
 export const unlocked = (s: Save, i: number) => i <= s.opened;

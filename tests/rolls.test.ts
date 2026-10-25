@@ -80,3 +80,10 @@ describe("rolled pieces", () => {
     expect(parseSave(JSON.stringify({ ...fresh(), stash: [it] })).stash).toEqual([it]);
   });
 });
+
+describe("stealth", () => {
+  it("cap stealth so felt boots and a jammer don't make the player near invisible", () => {
+    const g = { ...emptyGear(), feet: { ...mk("felt"), q: 1.1 }, trinket: { ...mk("jammer"), q: 1.1 } };
+    expect(gearStats(g).quiet).toBe(0.4);
+  });
+});

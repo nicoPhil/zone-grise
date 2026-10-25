@@ -230,7 +230,15 @@ export const emptyGear = (): Gear => ({
 });
 export const RED_CAP = 0.7;
 /** Ceilings on bonuses added up across worn pieces. */
-const CAPS: Partial<Record<keyof Mods, number>> = { red: RED_CAP, search: 0.5, call: 0.5, step: 0.8, recharge: 0.6, dodge: 0.3 };
+const CAPS: Partial<Record<keyof Mods, number>> = {
+  red: RED_CAP,
+  quiet: 0.4,
+  search: 0.5,
+  call: 0.5,
+  step: 0.8,
+  recharge: 0.6,
+  dodge: 0.3,
+};
 const MOD_KEYS: (keyof Mods)[] = ["red", "hp", "spd", "cap", "mel", "fire", "vis", "quiet", "search", "call", "step", "recharge", "dodge"];
 export const noMods = (): Required<Mods> => ({
   red: 0,
