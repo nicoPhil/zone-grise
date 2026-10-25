@@ -15,8 +15,10 @@ Pushing `main` deploys: the GitHub Action runs lint, tests and build, and publis
 
 ## Layout
 
-- Rules: `src/raid.ts` (raid loop), `src/items.ts`, `src/zones.ts`, `src/progression.ts`, `src/state.ts` (save), `src/aware.ts`,
-  `src/world/` (map, geometry, pathfinding, vault).
+- Rules: `src/raid.ts` (raid loop), `src/items.ts`, `src/zones.ts`, `src/progression.ts`, `src/economy.ts` (resale, recycling,
+  stations, recipes, merchant stock), `src/state.ts` (save), `src/aware.ts`, `src/world/` (map, geometry, pathfinding, vault).
+- `sim/`: economy simulation over thousands of careers (`npx vite-node sim/run.ts game`). It reads the game's tables; check
+  it after changing a price, a cost, a recipe or loot (raid loot is copied in `sim/loot.ts`).
 - Display: `src/render/` (canvas), `src/ui/` (DOM screens). Rules must not grow new imports from these two.
 - The save lives in `localStorage` under `zone-grise-save`; any change to `Save` needs a migration in `parseSave`, with a test.
 

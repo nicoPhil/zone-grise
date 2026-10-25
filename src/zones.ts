@@ -93,10 +93,19 @@ export const ZONES: Zone[] = [
     adds: ["bloat", "smg", "sniper", "shield", "stalker", "alpha"],
   },
 ];
-export const UNLOCK_AFTER = 3;
+export const UNLOCK_AFTER = 6;
 
 export const zoneDepth = (z: Zone, d: number) => clamp(z.lo + z.span * d, 0, 1.4);
-export const unlocked = (s: Save, i: number) => i === 0 || s.zx[i - 1] >= UNLOCK_AFTER;
+export const unlocked = (s: Save, i: number) => i <= s.opened;
+
+/** Counts an extraction in zone `zi` and opens the next zone once there are enough; returns the name of the zone it opened, if any. */
+export function extractedIn(s: Save, zi: number): string {
+  s.zx[zi]++;
+  const next = ZONES[zi + 1];
+  if (!next || s.opened > zi || s.zx[zi] < UNLOCK_AFTER) return "";
+  s.opened = zi + 1;
+  return next.name;
+}
 
 /** One number for "how strong am I": the best weapon's damage per second with its gear bonus, scaled by damage reduction and max HP plus shield. */
 export function power(s: Save = S): number {

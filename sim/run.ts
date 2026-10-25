@@ -8,7 +8,7 @@ import { VARIANTS } from "./variants";
 
 // npx vite-node sim/run.ts [variant] [careers] [raids] [scale]: writes sim/out/<variant>-<scale>.json and prints a scorecard;
 // scale multiplies the crates opened and enemies killed by every profile
-const VARIANT = process.argv[2] || "base",
+const VARIANT = process.argv[2] || "game",
   CAREERS = Number(process.argv[3]) || 300,
   RAIDS = Number(process.argv[4]) || 150,
   SCALE = Number(process.argv[5]) || 1,

@@ -11,6 +11,8 @@ export interface RaidResult {
   why: string;
   val: number;
   items: Item[];
+  /** what the secure pocket saved from a lost bag */
+  kept: Item[];
   meds: number;
   keys: number;
   quests: Quest[];
@@ -33,6 +35,9 @@ export function renderEnd(res: RaidResult) {
 const line = (i: Item, btns: string, extra = "") => row(i, btns, extra);
 const loot = (items: Item[]) => stacks(items).map((g) => row(g[0], valTag(valOf(g[0]) * g.length), "", g.length));
 
+const keptCard = (kept: Item[]) =>
+  kept.length ? `<div class="card"><div class="lbl">Sauvé par la poche sécurisée</div>${loot(kept).join("")}</div>` : "";
+
 function draw() {
   if (!last) return;
   const { res, extra } = last;
@@ -52,10 +57,10 @@ function draw() {
     const lost =
       loot(res.items).join("") +
       extra.map((i) => line(i, "", i.k === "med" ? res.meds + " trousse(s)" : res.keys + " clé(s) emportée(s)")).join("");
-    html = `<div class="lbl">Raid perdu</div><h1 style="color:var(--bad)">${res.why}</h1><div class="res">− ${res.val} cr perdus</div>${pw}
+    html = `<div class="lbl">Raid perdu</div><h1 style="color:var(--bad)">${res.why}</h1><div class="res">− ${res.val} cr perdus</div>${pw}${keptCard(res.kept)}
       <div class="card">${lost || `<p class="empty">Tu n'avais rien à perdre. Le kit gratuit t'attend.</p>`}</div>`;
   }
-  const it = sel ? [...res.items, ...extra].find((i) => i.u === sel) : null;
+  const it = sel ? [...res.items, ...res.kept, ...extra].find((i) => i.u === sel) : null;
   $("end").innerHTML =
     `<div class="wrap">${html}${it ? popup(it, [], []) : ""}<button class="go" data-a="home">Retour à la planque</button></div>`;
   $("end").hidden = false;

@@ -9,7 +9,8 @@ import type { Pt } from "./util";
 import { collide } from "./world/geometry";
 import { updFlow } from "./world/nav";
 import { RINGS, ringAt } from "./world/rings";
-import { ZONES, UNLOCK_AFTER, power } from "./zones";
+import { extractedIn, power } from "./zones";
+import { pocketed } from "./economy";
 import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
 import { R, burst, die, noise, over } from "./raid/core";
 import { reinforce, updateEnemy } from "./raid/enemies";
@@ -183,21 +184,22 @@ function extracted(r: Raid) {
   S.lo.keys = p.keys;
   S.st.ext++;
   S.st.best = Math.max(S.st.best, val);
-  S.zx[r.zi]++;
-  const opened = S.zx[r.zi] === UNLOCK_AFTER && ZONES[r.zi + 1] ? ZONES[r.zi + 1].name : "";
+  const opened = extractedIn(S, r.zi);
   const done = applyRaid({ ...r.tally, haul: val });
   save();
-  renderEnd({ ok: true, why: "", val, items: gained, meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
+  renderEnd({ ok: true, why: "", val, items: gained, kept: [], meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
 }
 
 function lost(r: Raid, why: string) {
   const p = r.p,
-    items = [...Object.values(p.eq), ...r.bag].filter((i): i is Item => !!i);
+    kept = pocketed(r.bag),
+    items = [...Object.values(p.eq), ...r.bag].filter((i): i is Item => !!i && !kept.includes(i));
   const val = items.reduce((s, i) => s + valOf(i), 0) + p.meds * def("med").v + p.keys * def("vkey").v;
+  S.stash.push(...kept);
   S.lo = { eq: emptyGear(), meds: 0, keys: 0 };
   S.st.dead++;
   save();
-  renderEnd({ ok: false, why, val, items, meds: p.meds, keys: p.keys, quests: [], power: [r.power0, power()], opened: "" });
+  renderEnd({ ok: false, why, val, items, kept, meds: p.meds, keys: p.keys, quests: [], power: [r.power0, power()], opened: "" });
 }
 
 export function endRaid(ok: boolean, why = "") {

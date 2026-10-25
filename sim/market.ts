@@ -2,6 +2,7 @@ import { FREE, KEYS, def, mk, price, slotOf, upgradeOver, valOf, wearable, type 
 import { canPay, pay, type Cost } from "../src/progression";
 import { S } from "../src/state";
 import { pick } from "../src/util";
+import { recycleOf } from "../src/economy";
 import { E, X, type StationKey } from "./econ";
 
 export const take = (it: Item) => S.stash.splice(S.stash.indexOf(it), 1);
@@ -11,19 +12,6 @@ export const saleOf = (it: Item) => {
   const d = def(it.k);
   return Math.round(valOf(it) * (d.t === "part" ? E.partSell : (E.sellR?.[d.r] ?? E.sell)));
 };
-
-const ELEC = new Set<ItemKey>(["batt", "torch", "radio", "hdd", "gpu", "milbat", "laptop"]);
-
-/** The common materials an item breaks down into, or null when it can't be recycled. */
-export function recycleOf(k: ItemKey): Partial<Record<ItemKey, number>> | null {
-  const d = def(k),
-    n = 1 + d.r;
-  if (d.t === "wpn") return d.mel ? { scrap: n, tape: 1 } : { scrap: n, bolts: n };
-  if (d.t === "gear") return { tape: n, scrap: 1 + Math.floor(d.r / 2) };
-  if (d.t === "shield") return { batt: n, wires: n };
-  if (d.t === "val" && ELEC.has(k)) return { wires: n, batt: 1 };
-  return null;
-}
 
 export function recycle(it: Item) {
   take(it);

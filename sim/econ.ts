@@ -29,8 +29,6 @@ export interface Econ {
   /** worn pieces the merchant offers on each visit, on top of the fixed shop; their rarity is capped by the trade station */
   stock: number;
   recycle: boolean;
-  /** contract credits × (1 + questZone × zone index) */
-  questZone: number;
   /** each level's cost; the bench station caps bench levels on pieces, the pocket keeps that many bag places at death */
   stations: Partial<Record<StationKey, Cost[]>>;
   recipes: Recipe[];
@@ -45,7 +43,6 @@ export const BASE: Econ = {
   benchRarity: 0,
   stock: 0,
   recycle: false,
-  questZone: 0,
   stations: {},
   recipes: [],
 };

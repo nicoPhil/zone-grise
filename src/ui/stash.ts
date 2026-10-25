@@ -1,33 +1,18 @@
-import {
-  ITEMS,
-  SHOP,
-  def,
-  desc,
-  gearStats,
-  mk,
-  nameOf,
-  price,
-  slotOf,
-  wearable,
-  upgradeOver,
-  valOf,
-  shieldOf,
-  wstat,
-  type Item,
-  type ItemKey,
-  type Slot,
-} from "../items";
-import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
+import { ITEMS, desc, gearStats, mk, slotOf, wearable, upgradeOver, type Item, type Slot } from "../items";
+import { freeKit, needs, recycleOf, recycled, restock, saleOf } from "../economy";
+import { KEY_MAX, cap, count, maxHp, medMax, norm, pay, qInfo } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
-import { KEY, S, resetSave, save, setMode, type Upgrades } from "../state";
-import { $, fmtRate } from "../util";
+import { KEY, S, resetSave, save, setMode } from "../state";
+import { $ } from "../util";
 import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
 import { icon, type Icon } from "./icons";
+import { MARKET_ACTIONS, marketPick, tabTrade } from "./market";
 import { pin, popup } from "./popup";
-import { pinned, row, stackKey, stacks } from "./row";
+import { row, stackKey, stacks } from "./row";
 import { sheet } from "./sheet";
+import { WORKSHOP_ACTIONS, recipeOf, tabWorkshop, workshopReady } from "./workshop";
 
 type Tab = "raid" | "stash" | "quest" | "shop" | "trade";
 const TAB_IC: Record<Tab, Icon> = { raid: "fire", stash: "stash", quest: "quest", shop: "shop", trade: "trade" };
@@ -43,29 +28,6 @@ try {
 }
 
 const REROLL = 40;
-const costTxt = (c: Cost) =>
-  `${c.cr} cr` +
-  costParts(c)
-    .map((p) => ` · ${p.n} × ${ITEMS[p.k].n} <span class="${p.have >= p.n ? "have" : "miss"}">(${p.have}/${p.n})</span>`)
-    .join("");
-
-type Benched = "gun" | "blade" | "shield";
-const BENCHED: Benched[] = ["gun", "blade", "shield"];
-/** Worn pieces the bench can improve: weapons and the shield. */
-const benchable = () => BENCHED.map((s) => S.lo.eq[s]).filter((w): w is Item => !!w);
-
-/** Items a contract or the next upgrade still asks for, so the player doesn't sell them by mistake. */
-function needed() {
-  const n = new Map<ItemKey, string>();
-  const add = (c: Cost, why: string) => {
-    for (const k of Object.keys(c.it) as ItemKey[]) if (!n.has(k)) n.set(k, why);
-  };
-  for (const q of S.q) if (q.t === "bring" && q.k) n.set(q.k, "contrat");
-  for (const k of Object.keys(UP) as (keyof Upgrades)[]) if (S.up[k] < MAX_LV) add(UP[k].cost[S.up[k]], "atelier");
-  for (const w of benchable()) if ((w.lv || 0) < MAX_LV) add(BENCH[w.lv || 0], "atelier");
-  return n;
-}
-
 function tabRaid() {
   const lo = S.lo,
     meds = count("med"),
@@ -85,20 +47,29 @@ function tabRaid() {
     <button class="go" data-a="raid">Partir · ${ZONES[S.zone].name}</button>`;
 }
 
+const recycleBtn = (i: Item) =>
+  recycleOf(i.k) ? `<button data-a="recycle" data-u="${i.u}" aria-label="Recycler">${icon("recycle")}</button>` : "";
+
+/** What recycling gives, for the item card. */
+const recycleTxt = (i: Item) =>
+  Object.entries(recycleOf(i.k) || {})
+    .map(([k, n]) => `${n} × ${ITEMS[k as keyof typeof ITEMS].n}`)
+    .join(", ");
+
 function tabStash() {
   const lo = S.lo,
-    need = needed(),
-    stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
+    need = needs(),
+    stashVal = S.stash.reduce((s, i) => s + saleOf(i), 0);
   const up = (i: Item) => (upgradeOver(i, lo.eq) ? 1 : 0);
   // upgrades over what is worn come first, then by value
-  const list = stacks([...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a))).map((g) => {
+  const list = stacks([...S.stash].sort((a, b) => up(b) - up(a) || saleOf(b) - saleOf(a))).map((g) => {
     const i = g[0];
     const eq = wearable(i.k) ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
     const all =
       g.length > 1
-        ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>`
+        ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${saleOf(i) * g.length}</button>`
         : "";
-    const btns = `<div class="btns">${eq}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${valOf(i)}</button>${all}</div>`;
+    const btns = `<div class="btns">${eq}${recycleBtn(i)}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${saleOf(i)}</button>${all}</div>`;
     const tags = [
       upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "",
       need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : "",
@@ -107,7 +78,7 @@ function tabStash() {
   });
   return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
-      <p class="note">${icon("equip")} équiper · ${icon("sell")} vendre un · ${icon("sellAll")} tout vendre (prix en cr)</p>
+      <p class="note">${icon("equip")} équiper · ${icon("recycle")} recycler en matériaux · ${icon("sell")} vendre un · ${icon("sellAll")} tout vendre (prix en cr)</p>
     </div>`;
 }
 
@@ -136,85 +107,51 @@ function tabQuest() {
     <p class="note">Les ennemis éliminés et les caisses fouillées ne comptent que si tu t'extrais vivant.</p></div>`;
 }
 
-/** What the next bench level changes on this piece. */
-function gain(w: Item, nx: Item) {
-  const a = shieldOf(w),
-    b = shieldOf(nx);
-  if (a && b) return `Réserve ${a.pts} → ${b.pts} pts`;
-  const cur = wstat(w),
-    up = wstat(nx);
-  return `Dégâts ${cur.dmg} → ${up.dmg} · cadence ${fmtRate(cur.rate)} → ${fmtRate(up.rate)}`;
+function itemPopup(it: Item) {
+  const n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
+  return popup(
+    it,
+    [
+      n > 1 ? `×${n} au coffre` : "",
+      upgradeOver(it, S.lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "",
+      recycleOf(it.k) ? `recyclage : ${recycleTxt(it)}` : "",
+    ].filter(Boolean),
+    [
+      wearable(it.k) ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
+      recycleOf(it.k) ? `<button data-a="recycle" data-u="${it.u}" aria-label="Recycler">${icon("recycle")}Recycler</button>` : "",
+      `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${saleOf(it)}</button>`,
+      n > 1
+        ? `<button data-a="sellall" data-g="${stackKey(it)}" aria-label="Tout vendre">${icon("sellAll")}${saleOf(it) * n}</button>`
+        : "",
+    ],
+  );
 }
 
-function benchRow(w: Item, slot: Benched) {
-  const lv = w.lv || 0;
-  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
-  const c = BENCH[lv];
-  return `<div class="item" ${pinned(w.u)}><div class="nm"><b style="color:var(--r${def(w.k).r})">${nameOf(w)} → +${lv + 1}</b>
-      <small>${gain(w, { ...w, lv: lv + 1 })}</small><small>${costTxt(c)}</small></div>
-      <div class="btns"><button data-a="bench" data-s="${slot}" ${canPay(c) ? "" : "disabled"}>Améliorer</button></div></div>`;
-}
-
-function tabShop() {
-  const rows = BENCHED.flatMap((s) => {
-    const it = S.lo.eq[s];
-    return it ? [benchRow(it, s)] : [];
-  });
-  const bench = rows.length ? rows.join("") : `<p class="empty">Équipe une arme ou un bouclier dans l'onglet Raid pour l'améliorer.</p>`;
-  const ups = (Object.keys(UP) as (keyof Upgrades)[]).map((k) => {
-    const u = UP[k],
-      l = S.up[k],
-      more = l < MAX_LV;
-    return `<div class="item"><div class="nm"><b>${u.n} · ${u.lv[l]}</b><small>${more ? `Suivant : ${u.lv[l + 1]}` : "Niveau maximum"}</small>${more ? `<small>${costTxt(u.cost[l])}</small>` : ""}</div>
-      <div class="btns">${more ? `<button data-a="up" data-k="${k}" ${canPay(u.cost[l]) ? "" : "disabled"}>Améliorer</button>` : `<span class="val">Max</span>`}</div></div>`;
-  });
-  return `<div class="card"><div class="lbl">Améliorations de la planque</div>${ups.join("")}</div>
-    <div class="card"><div class="lbl">Établi · armes équipées</div>${bench}</div>`;
-}
-
-const SHOP_PIN = "shop:";
-const buyBtn = (k: ItemKey) =>
-  `<button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button>`;
-
-function tabTrade() {
-  const rows = SHOP.map((k) => row({ k, u: SHOP_PIN + k }, `<div class="btns">${buyBtn(k)}</div>`));
-  return `<div class="card"><div class="lbl">Marchand</div>${rows.join("")}
-    <p class="note">Les objets de valeur ne s'achètent pas : il faut les trouver en raid.</p></div>`;
+/** The card of a merchant offer or a recipe, when one is open. */
+function offerPopup(pin: string) {
+  const m = marketPick(pin);
+  if (m) return popup({ k: m.k, u: pin }, [`${count(m.k)} au coffre`], [m.btn]);
+  const rc = recipeOf(pin);
+  return rc ? popup({ k: rc.out, u: pin }, [`fabrication : établi niv. ${rc.bench}`], []) : "";
 }
 
 function stashPopup() {
-  if (sel?.startsWith(SHOP_PIN)) {
-    const k = sel.slice(SHOP_PIN.length) as ItemKey;
-    return popup({ k, u: sel }, [`${count(k)} au coffre`], [buyBtn(k)]);
-  }
+  if (!sel) return "";
   const lo = S.lo,
-    it = sel && S.stash.find((i) => i.u === sel);
-  if (it) {
-    const n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
-    return popup(
-      it,
-      [n > 1 ? `×${n} au coffre` : "", upgradeOver(it, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : ""].filter(Boolean),
-      [
-        wearable(it.k) ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
-        `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${valOf(it)}</button>`,
-        n > 1
-          ? `<button data-a="sellall" data-g="${stackKey(it)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(it) * n}</button>`
-          : "",
-      ],
-    );
-  }
-  const slot = sel ? (Object.keys(lo.eq) as Slot[]).find((k) => lo.eq[k]?.u === sel) : undefined,
+    it = S.stash.find((i) => i.u === sel);
+  if (it) return itemPopup(it);
+  const slot = (Object.keys(lo.eq) as Slot[]).find((k) => lo.eq[k]?.u === sel),
     worn = slot && lo.eq[slot];
-  if (!worn) return "";
+  if (!worn) return offerPopup(sel);
   return popup(worn, ["équipé"], [`<button data-a="unequip" data-slot="${slot}">${icon("unequip")}Retirer</button>`]);
 }
 
 export function renderStash() {
   setMode("stash");
   norm();
-  const upReady =
-    (Object.keys(UP) as (keyof Upgrades)[]).some((k) => S.up[k] < MAX_LV && canPay(UP[k].cost[S.up[k]])) ||
-    benchable().some((w) => (w.lv || 0) < MAX_LV && canPay(BENCH[w.lv || 0]));
+  restock();
+  if (freeKit()) toast("Le marchand te prête un pistolet 9 mm pour repartir");
+  const upReady = workshopReady();
   const tabs: [Tab, string, boolean][] = [
     ["raid", "Raid", false],
     ["stash", "Coffre", S.stash.some((i) => upgradeOver(i, S.lo.eq))],
@@ -222,7 +159,7 @@ export function renderStash() {
     ["shop", "Atelier", upReady],
     ["trade", "Marchand", false],
   ];
-  const body = { raid: tabRaid, stash: tabStash, quest: tabQuest, shop: tabShop, trade: tabTrade }[tab];
+  const body = { raid: tabRaid, stash: tabStash, quest: tabQuest, shop: tabWorkshop, trade: tabTrade }[tab];
   $("stash").innerHTML = `<div class="wrap">
     <div class="ver">version ${__BUILD__}<button class="reset" data-a="reset">Reset progression</button></div>
     <div class="top"><div><div class="lbl">Planque</div><h1>Zone Grise</h1></div>
@@ -262,33 +199,8 @@ function equipFromStash(b: HTMLElement) {
 function sellAll(b: HTMLElement) {
   for (const it of S.stash.filter((i) => stackKey(i) === b.dataset.g)) {
     take(it.u);
-    S.credits += valOf(it);
+    S.credits += saleOf(it);
   }
-}
-
-function buy(b: HTMLElement) {
-  const k = b.dataset.k as ItemKey;
-  if (S.credits < price(k)) return;
-  S.credits -= price(k);
-  S.stash.push(mk(k));
-}
-
-function upgrade(b: HTMLElement) {
-  const k = b.dataset.k as keyof Upgrades,
-    l = S.up[k];
-  if (l >= MAX_LV || !canPay(UP[k].cost[l])) return;
-  pay(UP[k].cost[l]);
-  S.up[k]++;
-  toast(UP[k].n + " : " + UP[k].lv[S.up[k]]);
-}
-
-function bench(b: HTMLElement) {
-  const bw = S.lo.eq[BENCHED.find((s) => s === b.dataset.s) ?? "gun"],
-    l = bw?.lv || 0;
-  if (!bw || l >= MAX_LV || !canPay(BENCH[l])) return;
-  pay(BENCH[l]);
-  bw.lv = l + 1;
-  toast(nameOf(bw) + " prêt");
 }
 
 function claim(b: HTMLElement) {
@@ -316,7 +228,15 @@ function zone(b: HTMLElement) {
 
 function sell(b: HTMLElement) {
   const it = take(b.dataset.u);
-  if (it) S.credits += valOf(it);
+  if (it) S.credits += saleOf(it);
+}
+
+function recycle(b: HTMLElement) {
+  const it = S.stash.find((x) => x.u === b.dataset.u);
+  if (!it || !recycleOf(it.k)) return;
+  take(it.u);
+  S.stash.push(...recycled(it.k));
+  toast("Recyclé : " + recycleTxt(it));
 }
 
 /** Moves one trousse or key between the stash and what the player carries in. */
@@ -341,9 +261,9 @@ const ACTIONS: Record<string, ((b: HTMLElement) => void) | undefined> = {
   eq: equipFromStash,
   sell,
   sellall: sellAll,
-  buy,
-  up: upgrade,
-  bench,
+  recycle,
+  ...MARKET_ACTIONS,
+  ...WORKSHOP_ACTIONS,
   claim,
   reroll,
   reset: () => {

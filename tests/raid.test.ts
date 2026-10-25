@@ -25,7 +25,7 @@ import { spawn, spawnByZone } from "../src/raid/enemies";
 import { RING_R, ringOf } from "../src/world/rings";
 import { renderEnd } from "../src/ui/end";
 import { H, W } from "../src/world/mapgen";
-import { UNLOCK_AFTER, ZONES } from "../src/zones";
+import { ZONES } from "../src/zones";
 
 const DT = 1 / 60;
 const run = (s: number) => {
@@ -116,6 +116,18 @@ describe("raid end", () => {
     expect(S.lo).toMatchObject({ meds: 0, keys: 0, eq: { gun: null } });
     expect(S.st.dead).toBe(1);
     expect(S.stash).toEqual([]);
+  });
+
+  it("keeps in the stash what the secure pocket holds", () => {
+    S.sta.pocket = 1;
+    const r = quietRaid();
+    const jewels = mk("jewels");
+    r.bag.push(mk("cans"), jewels);
+    r.ebul.push({ x: r.p.x, y: r.p.y, vx: 0, vy: 0, life: 1, dmg: 9999 });
+    run(DEATH_TIME + 0.2);
+    expect(S.stash).toEqual([jewels]);
+    expect(ended()).toMatchObject({ ok: false, kept: [jewels] });
+    expect(ended()?.items).not.toContain(jewels);
   });
 
   it("is lost when the clock runs out", () => {
@@ -256,7 +268,7 @@ describe("ring difficulty", () => {
 
 describe("raid combat", () => {
   it("takes melee damage scaled by the zone from an enemy in contact", () => {
-    S.zx[0] = UNLOCK_AFTER;
+    S.opened = 1;
     S.zone = 1;
     const r = begin();
     const e = r.enemies[0];
@@ -362,7 +374,7 @@ describe("medkits", () => {
 describe("hunt contracts", () => {
   it("only ask for components of enemies met in the zones already open", () => {
     expect(huntable().sort()).toEqual(["flesh", "gland", "gunparts"]);
-    S.zx[0] = UNLOCK_AFTER;
+    S.opened = 1;
     expect(huntable()).toContain("gas");
   });
 });

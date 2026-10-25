@@ -19,27 +19,27 @@ export const UP: Record<keyof Upgrades, Upgrade> = {
     n: "Sac à dos",
     lv: ["10 places", "14 places", "18 places", "22 places"],
     cost: [
-      { cr: 600, it: { wires: 2, tape: 2 } },
-      { cr: 1800, it: { hdd: 2, gpu: 1 } },
-      { cr: 4000, it: { laptop: 1, milbat: 2 } },
+      { cr: 1200, it: { wires: 2, tape: 2 } },
+      { cr: 3600, it: { hdd: 2, gpu: 1 } },
+      { cr: 8000, it: { laptop: 1, milbat: 2 } },
     ],
   },
   meds: {
     n: "Poche à trousses",
     lv: ["3 trousses", "4 trousses", "5 trousses", "6 trousses"],
     cost: [
-      { cr: 300, it: { pills: 2 } },
-      { cr: 900, it: { pills: 3, radio: 1 } },
-      { cr: 2500, it: { jewels: 1, binoc: 2 } },
+      { cr: 600, it: { pills: 2 } },
+      { cr: 1800, it: { pills: 3, radio: 1 } },
+      { cr: 5000, it: { jewels: 1, binoc: 2 } },
     ],
   },
   hp: {
     n: "Entraînement",
     lv: ["100 PV", "125 PV", "150 PV", "175 PV"],
     cost: [
-      { cr: 500, it: { batt: 3, cans: 2 } },
-      { cr: 1500, it: { gold: 1, pills: 2 } },
-      { cr: 4500, it: { virus: 1, goldwatch: 1 } },
+      { cr: 1000, it: { batt: 3, cans: 2 } },
+      { cr: 3000, it: { gold: 1, pills: 2 } },
+      { cr: 9000, it: { virus: 1, goldwatch: 1 } },
     ],
   },
 };
@@ -136,6 +136,9 @@ const OFFERS: Record<QuestType | "hunt", (lvl: number) => Offer> = {
   },
 };
 
+/** Contracts pay this much more per zone past the first, for the zone selected when they are drawn. */
+export const QUEST_ZONE = 0.15;
+
 function reward(lvl: number): ItemKey | undefined {
   const roll = Math.random();
   if (roll < 0.2) return "vkey";
@@ -150,7 +153,7 @@ export function newQuest(): Quest {
     const q = OFFERS[pick(types)](lvl);
     if (taken.has(q.t + (q.k || ""))) continue;
     const rew = reward(lvl);
-    return { u: uid(), have: 0, ...q, ...(rew && { rew }) };
+    return { u: uid(), have: 0, ...q, cr: Math.round((q.cr * (1 + QUEST_ZONE * S.zone)) / 10) * 10, ...(rew && { rew }) };
   }
   return { u: uid(), have: 0, t: "kills", n: 5, cr: 225 };
 }

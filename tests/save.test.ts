@@ -17,6 +17,14 @@ describe("parseSave", () => {
     expect(s.lo.eq.gun?.k).toBe("p9");
   });
 
+  it("gives a save from before the stations none built and an empty merchant stock", () => {
+    const { sta, stock, ...old } = fresh();
+    const s = parseSave(JSON.stringify(old));
+    expect(s.sta).toEqual({ bench: 0, pocket: 0, trade: 0 });
+    expect(s.stock).toEqual({ raid: -1, k: [] });
+    expect(sta && stock).toBeTruthy();
+  });
+
   it("drops items whose key no longer exists", () => {
     const s = parseSave(
       JSON.stringify({

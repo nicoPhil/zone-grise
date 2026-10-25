@@ -2,7 +2,8 @@ import { SHOP, def, emptyGear, mk, price, slotOf, upgradeOver, valOf, type Item,
 import { KEY_MAX, MAX_LV, UP, applyRaid, medMax, norm, pay, qInfo, type Cost } from "../src/progression";
 import { S, type Upgrades } from "../src/state";
 import { E, X, benchCap, benchCost } from "./econ";
-import { affords, buildStations, craft, pocketed, recycle, recycleOf, saleOf, shop, stationNeeds, take, wear } from "./market";
+import { recycleOf } from "../src/economy";
+import { affords, buildStations, craft, pocketed, recycle, saleOf, shop, stationNeeds, take, wear } from "./market";
 import type { Profile, RaidOut } from "./raid";
 
 // the stash screen's handlers (src/ui/stash.ts), played by a player who spends as soon as they can
@@ -29,7 +30,7 @@ function claimAll(): number {
   for (const q of [...S.q]) {
     if (!qInfo(q).done) continue;
     if (q.t === "bring" && q.k) pay({ cr: 0, it: { [q.k]: q.n } });
-    const cr = Math.round(q.cr * (1 + E.questZone * S.zone));
+    const cr = q.cr;
     S.credits += cr;
     got += cr;
     if (q.rew) S.stash.push(mk(q.rew));

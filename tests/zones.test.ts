@@ -1,15 +1,23 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mk } from "../src/items";
 import { fresh, parseSave, setSave, S } from "../src/state";
-import { UNLOCK_AFTER, ZONES, power, unlocked, zoneDepth } from "../src/zones";
+import { UNLOCK_AFTER, ZONES, extractedIn, power, unlocked, zoneDepth } from "../src/zones";
 
 describe("zones", () => {
   beforeEach(() => setSave(fresh()));
 
   it("unlock one after another, after enough extractions in the previous one", () => {
     expect([0, 1, 2].map((i) => unlocked(S, i))).toEqual([true, false, false]);
-    S.zx = [UNLOCK_AFTER, 0, 0];
+    const opened = Array.from({ length: UNLOCK_AFTER }, () => extractedIn(S, 0));
+    expect(opened.at(-1)).toBe(ZONES[1].name);
+    expect(opened.slice(0, -1).every((n) => n === "")).toBe(true);
     expect([0, 1, 2].map((i) => unlocked(S, i))).toEqual([true, true, false]);
+    expect(extractedIn(S, 0)).toBe("");
+  });
+
+  it("keep open the zones an older save opened after 3 extractions", () => {
+    const s = parseSave(JSON.stringify({ ...fresh(), opened: undefined, zx: [4, 3, 0, 0, 0] }));
+    expect(s.opened).toBe(2);
   });
 
   it("credit pre-zone extractions to the first zone", () => {
