@@ -83,6 +83,12 @@ export function parseSave(raw: string | null): Save {
   };
 }
 
+/** Dev tool: back to a new player's save, items, credits, upgrades and stats included. */
+export function resetSave() {
+  S = fresh();
+  save();
+}
+
 export function loadLocal() {
   try {
     S = parseSave(localStorage.getItem(KEY));

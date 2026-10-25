@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyRaid, norm, qInfo } from "../src/progression";
-import { S, fresh, parseSave, setSave } from "../src/state";
+import { S, fresh, parseSave, resetSave, setSave } from "../src/state";
 
 describe("parseSave", () => {
   it("upgrades a save written before upgrades and contracts existed", () => {
@@ -76,5 +76,14 @@ describe("contracts", () => {
     const done = applyRaid({ kills: 3, violet: 1, vaults: 0, boss: 0, haul: 650 });
     expect(done.map((q) => q.u)).toEqual(["k", "h"]);
     expect(qInfo(S.q[1])).toMatchObject({ h: 1, done: false });
+  });
+});
+
+describe("resetSave", () => {
+  it("brings back a new player's save, whatever was earned", () => {
+    setSave({ ...fresh(), credits: 9000, stash: [{ k: "gen4", u: "s" }], up: { bag: 2, meds: 1, hp: 3 }, zx: [3, 3, 1, 0, 0] });
+    S.lo.eq.gun = { k: "ar", u: "g" };
+    resetSave();
+    expect(S).toEqual(fresh());
   });
 });

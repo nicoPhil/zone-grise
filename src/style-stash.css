@@ -107,10 +107,21 @@ button.claim {
   color: var(--ok);
 }
 .ver {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-family: var(--f-display);
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--muted);
+}
+.ver .reset {
+  font: inherit;
+  color: var(--bad);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 3px 8px;
 }
 .res {
   font-family: var(--f-display);

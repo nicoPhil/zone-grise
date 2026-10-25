@@ -20,7 +20,7 @@ import {
 import { BENCH, KEY_MAX, MAX_LV, UP, canPay, cap, costParts, count, maxHp, medMax, norm, pay, qInfo, type Cost } from "../progression";
 import { startRaid } from "../raid";
 import { assetsReady } from "../render/assets";
-import { KEY, S, save, setMode, type Upgrades } from "../state";
+import { KEY, S, resetSave, save, setMode, type Upgrades } from "../state";
 import { $, fmtRate } from "../util";
 import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
@@ -224,7 +224,7 @@ export function renderStash() {
   ];
   const body = { raid: tabRaid, stash: tabStash, quest: tabQuest, shop: tabShop, trade: tabTrade }[tab];
   $("stash").innerHTML = `<div class="wrap">
-    <div class="ver">version ${__BUILD__}</div>
+    <div class="ver">version ${__BUILD__}<button class="reset" data-a="reset">Reset progression</button></div>
     <div class="top"><div><div class="lbl">Planque</div><h1>Zone Grise</h1></div>
       <div style="text-align:right"><div class="lbl">Puissance · crédits</div><div class="cr"><span class="pw">${power()}</span> · ${S.credits} cr</div></div></div>
     <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${icon(TAB_IC[id])}${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
@@ -346,6 +346,11 @@ const ACTIONS: Record<string, ((b: HTMLElement) => void) | undefined> = {
   bench,
   claim,
   reroll,
+  reset: () => {
+    if (!confirm("Tout effacer ? Objets, crédits, améliorations et statistiques : tu repars comme un nouveau joueur.")) return;
+    resetSave();
+    sel = null;
+  },
 };
 
 function pickTab(t: Tab) {
