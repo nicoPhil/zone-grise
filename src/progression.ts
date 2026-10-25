@@ -1,4 +1,4 @@
-import { ITEMS, KEYS, def, type ItemKey } from "./items";
+import { ITEMS, KEYS, def, wearable, type ItemKey } from "./items";
 import type { Kind } from "./raid";
 import { S, type Quest, type QuestType, type Upgrades } from "./state";
 import { pick, uid } from "./util";
@@ -139,7 +139,7 @@ const OFFERS: Record<QuestType | "hunt", (lvl: number) => Offer> = {
 function reward(lvl: number): ItemKey | undefined {
   const roll = Math.random();
   if (roll < 0.2) return "vkey";
-  if (roll < 0.4) return pick(KEYS.filter((k) => (def(k).t === "wpn" || def(k).t === "gear") && def(k).r >= 1 && def(k).r <= lvl + 1));
+  if (roll < 0.4) return pick(KEYS.filter((k) => wearable(k) && def(k).r >= 1 && def(k).r <= lvl + 1));
 }
 
 export function newQuest(): Quest {

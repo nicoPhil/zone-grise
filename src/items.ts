@@ -194,6 +194,9 @@ export const slotOf = (it: Item): Slot | null => {
   return d.mel ? "blade" : "gun";
 };
 
+/** Can this kind of item go in a slot: weapons, worn gear and shields. */
+export const wearable = (k: ItemKey) => slotOf({ k, u: "" }) !== null;
+
 export type Gear = Record<Slot, Item | null>;
 export const emptyGear = (): Gear => ({
   head: null,

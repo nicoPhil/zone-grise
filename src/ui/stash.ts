@@ -8,6 +8,7 @@ import {
   nameOf,
   price,
   slotOf,
+  wearable,
   upgradeOver,
   valOf,
   shieldOf,
@@ -91,9 +92,8 @@ function tabStash() {
   const up = (i: Item) => (upgradeOver(i, lo.eq) ? 1 : 0);
   // upgrades over what is worn come first, then by value
   const list = stacks([...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a))).map((g) => {
-    const i = g[0],
-      t = def(i.k).t;
-    const eq = t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
+    const i = g[0];
+    const eq = wearable(i.k) ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
     const all =
       g.length > 1
         ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(i) * g.length}</button>`
@@ -190,13 +190,12 @@ function stashPopup() {
   const lo = S.lo,
     it = sel && S.stash.find((i) => i.u === sel);
   if (it) {
-    const t = def(it.k).t,
-      n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
+    const n = S.stash.filter((i) => stackKey(i) === stackKey(it)).length;
     return popup(
       it,
       [n > 1 ? `×${n} au coffre` : "", upgradeOver(it, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : ""].filter(Boolean),
       [
-        t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
+        wearable(it.k) ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
         `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${valOf(it)}</button>`,
         n > 1
           ? `<button data-a="sellall" data-g="${stackKey(it)}" aria-label="Tout vendre">${icon("sellAll")}${valOf(it) * n}</button>`
