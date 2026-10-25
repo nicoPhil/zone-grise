@@ -1,11 +1,12 @@
 import { KNIFE, RAR, bagUsed, def, gearStats, mk, slotOf, valOf, type Item, type Slot } from "../items";
-import { rollItem } from "../world/mapgen";
+import { MILITARY_SHIELDS, ROOM_SHIELDS, rollItem } from "../world/mapgen";
 import { cap, maxHp } from "../progression";
 import { C } from "../render/canvas";
 import { toast, updHud } from "../ui/hud";
 import { pick, rnd } from "../util";
 import { nearestInReach } from "../world/geometry";
 import { makeNav } from "../world/nav";
+import { CORE } from "../world/rings";
 import { R, burst, say } from "./core";
 import { UNLOCK_TIME, crateTime, hasKey, lockCentre, type Crate, type Player, type Raid, type Vault } from "./model";
 import { wornShield } from "./shield";
@@ -111,19 +112,20 @@ function unlockVault(r: Raid, v: Vault) {
   updHud(r);
 }
 
-export const indoorTier = (d: number): Crate["tier"] => (Math.random() < 0.1 + 0.35 * Math.min(d, 1) ? 2 : 1);
+/** Military crates are kept for the Cœur, where most indoor crates are one. */
+export const indoorTier = (ring: number): Crate["tier"] => (ring === CORE && Math.random() < 0.6 ? 2 : 1);
 
 function crateLoot(c: Crate): Item[] {
   const n = (base: number) => base + (Math.random() < 0.5 ? 1 : 0);
   if (c.vault)
     return Array.from({ length: 3 }, () => {
-      let it = rollItem(c.d, 2);
-      while (it.k === "med") it = rollItem(1, 2);
+      let it = rollItem(c.d, { minR: 2 });
+      while (it.k === "med") it = rollItem(1, { minR: 2 });
       return it;
     });
   if (c.tier === 0) return [Math.random() < 0.3 ? mk(pick(["bandage", "bandage", "med"] as const)) : rollItem(c.d * 0.4)];
-  if (c.tier === 1) return Array.from({ length: n(1) }, () => rollItem(c.d));
-  return Array.from({ length: n(2) }, () => rollItem(c.d, 1, true));
+  if (c.tier === 1) return Array.from({ length: n(1) }, () => rollItem(c.d, { shield: ROOM_SHIELDS }));
+  return Array.from({ length: n(2) }, () => rollItem(c.d, { minR: 1, kit: true, shield: MILITARY_SHIELDS }));
 }
 
 function openCrate(r: Raid, c: Crate) {

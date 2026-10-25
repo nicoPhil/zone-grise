@@ -96,7 +96,7 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
 const CRATES = 80,
   ROOM_CRATES = 52;
 
-/** Debris in the street, crates in the rooms, military crates more often towards the centre; enemies placed ring by ring. */
+/** Debris in the street, crates in the rooms, military crates in the Cœur; enemies placed ring by ring. */
 function populate(r: Raid, sp: Pt, skip: Rect | undefined) {
   const { walls, bld, zone } = r;
   const rooms = bld.flatMap((b) => b.rooms).filter((rm) => rm !== skip);
@@ -107,7 +107,7 @@ function populate(r: Raid, sp: Pt, skip: Rect | undefined) {
     let c = room ? inRoom(30) : null;
     if (!far(c, 200)) c = freePt(walls, 30, (x, y) => Math.hypot(x - sp.x, y - sp.y) > 260 && (room || !inBld(bld, x, y, 10)));
     const d = zoneDepth(zone, depth(c.x, c.y)),
-      tier = inBld(bld, c.x, c.y) ? indoorTier(d) : 0;
+      tier = inBld(bld, c.x, c.y) ? indoorTier(ringOf(c.x, c.y)) : 0;
     r.crates.push({ x: c.x, y: c.y, d, tier, open: false, prog: 0 });
   }
   placeEnemies(r, sp, rooms);

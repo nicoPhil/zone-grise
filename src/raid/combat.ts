@@ -46,8 +46,8 @@ export function killed(r: Raid, e: Enemy) {
   if (e.kind === "boss") {
     r.tally.boss++;
     drop(mk("vkey"));
-    drop(rollItem(1, 2));
-    drop(rollItem(1, 2));
+    drop(rollItem(1, { minR: 2 }));
+    drop(rollItem(1, { minR: 2 }));
     toast("La Brute est tombée");
     return;
   }

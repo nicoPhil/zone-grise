@@ -165,12 +165,17 @@ export function placeEntries(walls: Rect[], bld: Building[], vault: Pt | null): 
   return { sp, exits: [e1, e2] };
 }
 
-function lootTypes(kit: boolean): ItemDef["t"][] {
+/** Share of shield generators in a room crate and in a military crate. */
+export const ROOM_SHIELDS = 0.05,
+  MILITARY_SHIELDS = 0.15;
+
+function lootTypes(kit: boolean, shield: number): ItemDef["t"][] {
+  if (Math.random() < shield) return ["shield"];
   const tr = Math.random(),
     [val, med, wpn] = kit ? [0.3, 0.4, 0.7] : [0.64, 0.78, 0.88];
   if (tr < val) return ["val"];
   if (tr < med) return ["med", "stim"];
-  return tr < wpn ? ["wpn"] : ["gear", "shield"];
+  return tr < wpn ? ["wpn"] : ["gear"];
 }
 
 function rarity(x: number, d: number) {
@@ -179,11 +184,11 @@ function rarity(x: number, d: number) {
   return x < 0.42 + 0.2 * d ? 1 : 0;
 }
 
-/** Crate loot of depth d; a military crate (kit) leans towards weapons and worn gear. */
-export function rollItem(d: number, minR = 0, kit = false): Item {
+/** Loot of depth d; a military crate (kit) leans towards weapons and worn gear; `shield` is the share of shield generators. */
+export function rollItem(d: number, { minR = 0, kit = false, shield = 0 } = {}): Item {
   const x = Math.random();
   const r = Math.max(minR, rarity(x, d));
-  const types = lootTypes(kit);
+  const types = lootTypes(kit, shield);
   const ofType = KEYS.filter((k) => types.includes(def(k).t) && k !== FREE);
   for (let k = r; k >= 0; k--) {
     const c = ofType.filter((id) => def(id).r === k);

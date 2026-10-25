@@ -22,7 +22,7 @@ import { DEATH_TIME, EXTRACT_TIME, KINDS, R, type Raid, heal, startRaid, update 
 import { S, fresh, mode, setMode, setSave } from "../src/state";
 import { toast } from "../src/ui/hud";
 import { spawn, spawnByZone } from "../src/raid/enemies";
-import { RING_R } from "../src/world/rings";
+import { RING_R, ringOf } from "../src/world/rings";
 import { renderEnd } from "../src/ui/end";
 import { H, W } from "../src/world/mapgen";
 import { UNLOCK_AFTER, ZONES } from "../src/zones";
@@ -279,6 +279,12 @@ describe("raid loot", () => {
     expect(c.open).toBe(false);
     run(0.2);
     expect(c.open).toBe(true);
+  });
+
+  it("keeps military crates for the Cœur", () => {
+    const mil = Array.from({ length: 3 }, () => begin().crates.filter((c) => c.tier === 2 && !c.vault)).flat();
+    expect(mil.length).toBeGreaterThan(0);
+    for (const c of mil) expect(ringOf(c.x, c.y)).toBe(2);
   });
 
   it("a military crate holds two or three rare-or-better pieces, never components", () => {
