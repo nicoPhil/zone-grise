@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Plays <raids> raids per bot style in each zone, on half the cores, then prints the report.
-# usage: bash sim/bots/fleet.sh [raids per style and zone] [zones...]
+# usage: [JOBS=n] bash sim/bots/fleet.sh [raids per style and zone] [zones...]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 raids=${1:-20}
 shift || true
 zones=("$@")
 [ ${#zones[@]} -eq 0 ] && zones=(0 1 2 3 4)
-jobs=$(( $(nproc) / 2 ))
+jobs=${JOBS:-$(( $(nproc) / 2 ))}
 chunk=2
 out=sim/out/bots
 mkdir -p "$out"
