@@ -105,6 +105,18 @@ export function freePt(walls: Rect[], pad: number, ok: (x: number, y: number) =>
   return { x: W / 2, y: H / 2 };
 }
 
+export const EDGE = 260, ENTRY_EXIT_D = 1700, ENTRY_VAULT_D = 1300;
+
+/** The player enters at the map edge, away from the vault, with both exits across the map. */
+export function placeEntries(walls: Rect[], bld: Building[], vault: Pt | null): { sp: Pt; exits: Pt[] } {
+  const edge = (x: number, y: number) => Math.min(x, y, W - x, H - y) < EDGE && !inBld(bld, x, y, 60);
+  const away = (o: Pt, m: number) => (x: number, y: number) => Math.hypot(x - o.x, y - o.y) > m;
+  const sp = freePt(walls, 30, (x, y) => edge(x, y) && (!vault || away(vault, ENTRY_VAULT_D)(x, y)));
+  const e1 = freePt(walls, 70, (x, y) => edge(x, y) && away(sp, ENTRY_EXIT_D)(x, y));
+  const e2 = freePt(walls, 70, (x, y) => edge(x, y) && away(sp, ENTRY_EXIT_D)(x, y) && away(e1, 1000)(x, y));
+  return { sp, exits: [e1, e2] };
+}
+
 export function rollItem(d: number, minR = 0): Item {
   const x = Math.random();
   const r = Math.max(minR, x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0);

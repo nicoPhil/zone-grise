@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { collide, inWall } from "../src/world/geometry";
-import { H, genMap } from "../src/world/mapgen";
+import { EDGE, ENTRY_EXIT_D, ENTRY_VAULT_D, H, W, genMap, placeEntries } from "../src/world/mapgen";
+import { pickVault } from "../src/world/vault";
 import { G, cellOf, flowDir, makeNav, updFlow } from "../src/world/nav";
 
 const MAPS = 40;
@@ -45,6 +46,19 @@ describe("generated buildings", () => {
         }
         expect(Math.hypot(e.x - target.x, e.y - target.y)).toBeLessThanOrEqual(40);
       }
+    }
+  });
+});
+
+describe("raid entry", () => {
+  it("is on the map edge, far from the vault, with both exits across the map", () => {
+    for (let m = 0; m < MAPS; m++) {
+      const { walls, bld } = genMap();
+      const plan = pickVault(walls, bld), vault = plan && { x: plan.room.x + plan.room.w / 2, y: plan.room.y + plan.room.h / 2 };
+      const { sp, exits } = placeEntries(walls, bld, vault);
+      expect(Math.min(sp.x, sp.y, W - sp.x, H - sp.y), `map ${m}`).toBeLessThan(EDGE);
+      if (vault) expect(Math.hypot(sp.x - vault.x, sp.y - vault.y)).toBeGreaterThan(ENTRY_VAULT_D);
+      for (const e of exits) expect(Math.hypot(sp.x - e.x, sp.y - e.y), `map ${m}`).toBeGreaterThan(ENTRY_EXIT_D);
     }
   });
 });
