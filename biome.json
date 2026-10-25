@@ -1,34 +1,70 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": { "includes": ["src/**", "tests/**", "vite.config.ts"] },
-  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": ["src/**", "tests/**", "vite.config.ts"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 140
+  },
   "javascript": {
-    "formatter": { "quoteStyle": "double", "semicolons": "always", "trailingCommas": "all", "arrowParentheses": "always" }
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
   },
   "linter": {
     "enabled": true,
     "rules": {
       "complexity": {
-        "noExcessiveCognitiveComplexity": { "level": "warn", "options": { "maxAllowedComplexity": 15 } },
-        "noExcessiveLinesPerFunction": { "level": "warn", "options": { "maxLines": 50, "skipBlankLines": true } },
-        "useMaxParams": { "level": "warn", "options": { "max": 4 } },
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        },
+        "noExcessiveLinesPerFunction": {
+          "level": "error",
+          "options": {
+            "maxLines": 50,
+            "skipBlankLines": true
+          }
+        },
+        "useMaxParams": {
+          "level": "error",
+          "options": {
+            "max": 4
+          }
+        },
         "noCommaOperator": "error"
       },
       "style": {
-        "noExcessiveLinesPerFile": { "level": "warn", "options": { "maxLines": 400, "skipBlankLines": true } },
-        "noNonNullAssertion": "warn",
-        "noParameterAssign": "warn",
-        "noNestedTernary": "warn"
+        "noExcessiveLinesPerFile": {
+          "level": "error",
+          "options": {
+            "maxLines": 400,
+            "skipBlankLines": true
+          }
+        },
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
+        "noNestedTernary": "error",
+        "noDescendingSpecificity": "error"
       },
-      "suspicious": { "noExplicitAny": "error" }
+      "suspicious": {
+        "noExplicitAny": "error"
+      }
     }
   },
-  "overrides": [
-    {
-      "includes": ["tests/**"],
-      "linter": { "rules": { "complexity": { "noExcessiveLinesPerFunction": "off" } } }
-    }
-  ],
-  "assist": { "enabled": false }
+  "assist": {
+    "enabled": false
+  }
 }
