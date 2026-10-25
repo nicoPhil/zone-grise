@@ -115,13 +115,28 @@ button.claim {
   letter-spacing: 0.08em;
   color: var(--muted);
 }
-.ver .reset {
+.vbtns {
+  display: flex;
+  gap: 6px;
+}
+.ver .reset,
+.ver .share {
   font: inherit;
   color: var(--bad);
   background: none;
   border: 1px solid var(--line);
   border-radius: 3px;
   padding: 3px 8px;
+}
+.ver .share {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fg);
+}
+.ver .share .ic {
+  width: 12px;
+  height: 12px;
 }
 .res {
   font-family: var(--f-display);

@@ -22,6 +22,31 @@ export interface Stations {
   pocket: number;
   trade: number;
 }
+/** One raid as the share report shows it. */
+export interface RaidLog {
+  /** raid number, zone index, extracted or not */
+  n: number;
+  z: number;
+  ok: boolean;
+  /** seconds spent in the raid */
+  t: number;
+  /** value brought out, or lost at death */
+  val: number;
+  kills: number;
+  boss: number;
+  vaults: number;
+  violet: number;
+  /** deepest ring reached, HP lost, HP left */
+  deep: number;
+  dmg: number;
+  hp: number;
+  /** power going in, credits and stash value after */
+  pw: number;
+  cr: number;
+  sv: number;
+}
+export const LOG_MAX = 60;
+
 export interface Save {
   credits: number;
   stash: Item[];
@@ -38,6 +63,8 @@ export interface Save {
   zx: number[];
   /** highest zone open to the player */
   opened: number;
+  /** the last raids, newest last */
+  log: RaidLog[];
 }
 
 export const KEY = "zone-grise-save";
@@ -53,6 +80,7 @@ export const fresh = (): Save => ({
   zone: 0,
   zx: [0, 0, 0, 0, 0],
   opened: 0,
+  log: [],
 });
 
 export let S: Save = fresh();
@@ -74,6 +102,8 @@ const zoneExtractions = (s: Partial<Save>) => fresh().zx.map((z, i) => (Array.is
 
 const stockOf = (s: Partial<Save>): Save["stock"] =>
   s.stock && Array.isArray(s.stock.items) ? { raid: s.stock.raid, items: s.stock.items.filter((i) => isItemKey(i?.k)) } : fresh().stock;
+
+const logOf = (s: Partial<Save>) => (Array.isArray(s.log) ? s.log.slice(-LOG_MAX) : []);
 
 // saves written before the progression update have no `up` / `q`; unknown item keys are dropped
 export function parseSave(raw: string | null): Save {
@@ -106,6 +136,7 @@ export function parseSave(raw: string | null): Save {
     zx,
     opened: typeof s.opened === "number" ? s.opened : openedBefore(zx),
     zone: typeof s.zone === "number" ? s.zone : 0,
+    log: logOf(s),
   };
 }
 

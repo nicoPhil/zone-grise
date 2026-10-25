@@ -57,6 +57,7 @@ export function hurt(r: Raid, base: number) {
   if (rest <= 0) return;
   // what the shield lets through is softened by armour
   p.hp -= rest * (1 - p.st.red);
+  r.dmg += rest * (1 - p.st.red);
   p.hit = 0.15;
   if (p.hp <= 0) die(r, "Tu es mort.");
 }

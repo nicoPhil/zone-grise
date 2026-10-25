@@ -51,11 +51,11 @@ export function updHud(r: Raid) {
     s = Math.max(0, Math.ceil(r.t));
   $("hpfill").style.width = f * 100 + "%";
   $("hpfill").style.background = f < 0.35 ? C.bad : C.ok;
-  $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";
   $("shfill").style.width = p.sh ? (p.sh.left / p.sh.pts) * 100 + "%" : "0";
   $("timern").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   $("timer").classList.toggle("warn", s <= 60);
-  $("ring").textContent = RINGS[r.ring].n;
+  $("ring").dataset.r = String(r.ring);
+  $("ring").setAttribute("aria-label", RINGS[r.ring].n);
   const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
   $("bagn").textContent = bagUsed(r.bag) + "/" + rcap(r);
   $("keyc").hidden = !keys;

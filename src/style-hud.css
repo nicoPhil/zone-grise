@@ -15,32 +15,29 @@
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .hp {
-  position: relative;
   flex: 1;
   max-width: 220px;
   height: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hp .bar {
+  position: relative;
+  flex: 1;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
-#hpfill {
+#hpfill,
+#shfill {
   position: absolute;
   inset: 0 auto 0 0;
   background: var(--ok);
 }
 #shfill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 4px;
   background: var(--shield);
-}
-#hptxt {
-  position: relative;
-  font-size: 12px;
-  padding-left: 6px;
-  line-height: 18px;
 }
 #timer,
 #bagc,
@@ -65,13 +62,31 @@
   display: none;
 }
 #ring {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 32px);
-  left: max(16px, env(safe-area-inset-left, 0px));
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+#ring i {
+  width: 4px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--line);
+}
+#ring i:nth-child(2) {
+  height: 11px;
+}
+#ring i:nth-child(3) {
+  height: 16px;
+}
+#ring[data-r="0"] i:nth-child(1) {
+  background: var(--fg);
+}
+#ring[data-r="1"] i:nth-child(-n + 2) {
+  background: var(--accent);
+}
+#ring[data-r="2"] i {
+  background: var(--bad);
 }
 #timer.warn {
   color: var(--bad);

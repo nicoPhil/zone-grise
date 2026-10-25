@@ -154,8 +154,11 @@ export interface Raid {
   /** the extraction called at an exit, if any: seconds left and time to the next flare */
   /** the extraction call: `left` of `total` seconds to hold out */
   call: (Pt & { left: number; total: number; ping: number }) | null;
-  /** index in RINGS of the ring the player is in */
+  /** index in RINGS of the ring the player is in, and the deepest one reached */
   ring: number;
+  deep: number;
+  /** HP lost so far */
+  dmg: number;
   toastT: number;
   shake: number;
   flash: number;

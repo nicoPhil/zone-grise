@@ -13,9 +13,9 @@
 <body>
 <canvas id="cv"></canvas>
 <div id="hud" hidden>
-  <div class="hp"><div id="hpfill"></div><span id="hptxt"></span><div id="shfill"></div></div>
+  <div class="hp"><div class="bar sh"><div id="shfill"></div></div><div class="bar"><div id="hpfill"></div></div></div>
   <div id="timer"><i data-ic="clock"></i><span id="timern"></span></div>
-  <div id="ring"></div>
+  <div id="ring" role="img"><i></i><i></i><i></i></div>
   <div id="bagc"><i data-ic="bag"></i><span id="bagn"></span><span id="keyc" hidden><i data-ic="key"></i><span id="keyn"></span></span></div>
 </div>
 <div id="act" hidden><button id="bFire" type="button" aria-pressed="true" aria-label="Tir auto"></button><button id="bHeal" type="button" aria-label="Soin"><i data-ic="heal"></i><span class="n" id="healn"></span></button><button id="bBag" type="button" aria-label="Sac"><i data-ic="bag"></i></button></div>

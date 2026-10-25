@@ -8,7 +8,7 @@ import { renderEnd } from "./ui/end";
 import type { Pt } from "./util";
 import { collide } from "./world/geometry";
 import { updFlow } from "./world/nav";
-import { RINGS, ringAt } from "./world/rings";
+import { ringAt } from "./world/rings";
 import { extractedIn, power } from "./zones";
 import { pocketed } from "./economy";
 import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
@@ -119,7 +119,7 @@ function enterRing(r: Raid) {
   const n = ringAt(r.p.x, r.p.y, r.ring);
   if (n === r.ring) return;
   r.ring = n;
-  toast(`${RINGS[n].n} : ${RINGS[n].msg}`);
+  r.deep = Math.max(r.deep, n);
 }
 
 const ALERTS: [number, string][] = [
@@ -174,6 +174,28 @@ export function update(frame: number) {
   updHud(r);
 }
 
+/** Notes the raid in the save's log, for the share report. */
+function logRaid(r: Raid, ok: boolean, val: number) {
+  const { kills, boss, vaults, violet } = r.tally;
+  S.log.push({
+    n: S.st.raids,
+    z: r.zi,
+    ok,
+    t: Math.round(RAID_TIME - Math.max(0, r.t)),
+    val,
+    kills,
+    boss,
+    vaults,
+    violet,
+    deep: r.deep,
+    dmg: Math.round(r.dmg),
+    hp: Math.max(0, Math.round(r.p.hp)),
+    pw: r.power0,
+    cr: S.credits,
+    sv: S.stash.reduce((s, i) => s + valOf(i), 0),
+  });
+}
+
 function extracted(r: Raid) {
   const p = r.p,
     gained = r.bag.filter((i) => i.k !== FREE),
@@ -186,6 +208,7 @@ function extracted(r: Raid) {
   S.st.best = Math.max(S.st.best, val);
   const opened = extractedIn(S, r.zi);
   const done = applyRaid({ ...r.tally, haul: val });
+  logRaid(r, true, val);
   save();
   renderEnd({ ok: true, why: "", val, items: gained, kept: [], meds: 0, keys: 0, quests: done, power: [r.power0, power()], opened });
 }
@@ -198,6 +221,7 @@ function lost(r: Raid, why: string) {
   S.stash.push(...kept);
   S.lo = { eq: emptyGear(), meds: 0, keys: 0 };
   S.st.dead++;
+  logRaid(r, false, val);
   save();
   renderEnd({ ok: false, why, val, items, kept, meds: p.meds, keys: p.keys, quests: [], power: [r.power0, power()], opened: "" });
 }

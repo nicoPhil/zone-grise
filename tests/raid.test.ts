@@ -141,6 +141,23 @@ describe("raid end", () => {
     expect(ended()?.items).not.toContain(jewels);
   });
 
+  it("notes each raid in the save's log, extracted or lost", () => {
+    const r = quietRaid();
+    r.tally.kills = 3;
+    r.t = DT / 2;
+    run(DEATH_TIME + 0.2);
+    const r2 = quietRaid();
+    r2.bag.push(mk("gold"));
+    r2.ebul.push({ x: r2.p.x, y: r2.p.y, vx: 0, vy: 0, life: 1, dmg: 30 });
+    update(DT);
+    Object.assign(r2.p, r2.exits[0]);
+    update(DT);
+    r2.enemies = [];
+    run(CALL_TIME + 1);
+    const [a, b] = S.log.map((l) => [l.n, l.ok, l.kills, l.val > 0, l.dmg, l.hp]);
+    expect([a, b, S.log[0].t]).toEqual([[1, false, 3, false, 0, 100], [2, true, 0, true, 30, 70], 180]);
+  });
+
   it("is lost when the clock runs out", () => {
     const r = quietRaid();
     r.t = DT / 2;
@@ -176,25 +193,23 @@ describe("raid rings", () => {
     Object.assign(r.p, { x: W / 2 + (1 - d) * W * 0.62, y: H / 2 });
     update(DT);
   };
-  const told = () => vi.mocked(toast).mock.calls.map(([m]) => m.split(" :")[0]);
 
-  it("announces the ring the player walks into", () => {
+  it("tracks the ring the player is in and the deepest one reached", () => {
     const r = quietRaid();
     r.ring = 0;
     standAt(r, 1);
     standAt(r, 0.1);
-    expect(told()).toEqual(["Cœur", "Périphérie"]);
-    expect(r.ring).toBe(0);
+    expect([r.ring, r.deep]).toEqual([0, 2]);
   });
 
   it("waits until the player is clearly past a ring line", () => {
     const r = quietRaid();
     r.ring = 0;
     standAt(r, 0.43);
-    expect(told()).toEqual([]);
+    const rings = [r.ring];
     standAt(r, 0.45);
     standAt(r, 0.41);
-    expect(told()).toEqual(["Zone chaude"]);
+    expect([...rings, r.ring]).toEqual([0, 1]);
   });
 });
 

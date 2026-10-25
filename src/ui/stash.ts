@@ -2,6 +2,7 @@ import { ITEMS, desc, gearStats, mk, slotOf, wearable, upgradeOver, type Item, t
 import { freeKit, needs, recycleOf, recycled, restock, saleOf } from "../economy";
 import { KEY_MAX, cap, count, maxHp, medMax, norm, pay, qInfo } from "../progression";
 import { startRaid } from "../raid";
+import { report } from "../report";
 import { roll } from "../rolls";
 import { assetsReady } from "../render/assets";
 import { KEY, S, resetSave, save, setMode } from "../state";
@@ -162,7 +163,7 @@ export function renderStash() {
   ];
   const body = { raid: tabRaid, stash: tabStash, quest: tabQuest, shop: tabWorkshop, trade: tabTrade }[tab];
   $("stash").innerHTML = `<div class="wrap">
-    <div class="ver">version ${__BUILD__}<button class="reset" data-a="reset">Reset progression</button></div>
+    <div class="ver">version ${__BUILD__}<span class="vbtns"><button class="share" data-a="share">${icon("share")}Partager</button><button class="reset" data-a="reset">Reset</button></span></div>
     <div class="top"><div><div class="lbl">Planque</div><h1>Zone Grise</h1></div>
       <div style="text-align:right"><div class="lbl">Puissance · crédits</div><div class="cr"><span class="pw">${power()}</span> · ${S.credits} cr</div></div></div>
     <div class="tabs" role="tablist">${tabs.map(([id, n, dot]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${icon(TAB_IC[id])}${n}${dot ? ` <span class="dot" aria-label="action possible">●</span>` : ""}</button>`).join("")}</div>
@@ -267,12 +268,32 @@ const ACTIONS: Record<string, ((b: HTMLElement) => void) | undefined> = {
   ...WORKSHOP_ACTIONS,
   claim,
   reroll,
+  share,
   reset: () => {
     if (!confirm("Tout effacer ? Objets, crédits, améliorations et statistiques : tu repars comme un nouveau joueur.")) return;
     resetSave();
     sel = null;
   },
 };
+
+/** The phone's share sheet, so the report can go to a Claude chat; the clipboard where there is none. */
+async function shareGame() {
+  const text = report(__BUILD__);
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Zone Grise", text });
+    } catch {
+      // closed without picking an app
+    }
+    return;
+  }
+  await navigator.clipboard.writeText(text);
+  toast("Partie copiée : colle-la dans Claude");
+}
+
+function share() {
+  shareGame().catch(() => toast("Partage impossible sur ce navigateur"));
+}
 
 function pickTab(t: Tab) {
   tab = t;

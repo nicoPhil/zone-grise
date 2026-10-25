@@ -1,10 +1,6 @@
 import { DEPTH_R, depth } from "./mapgen";
 
-export const RINGS = [
-  { n: "Périphérie", msg: "calme, loot modeste" },
-  { n: "Zone chaude", msg: "meilleur loot, plus d'ennemis" },
-  { n: "Cœur", msg: "le meilleur loot, le plus dangereux" },
-] as const;
+export const RINGS = [{ n: "Périphérie" }, { n: "Zone chaude" }, { n: "Cœur" }] as const;
 
 export const CORE = RINGS.length - 1;
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyRaid, norm, qInfo } from "../src/progression";
-import { S, fresh, parseSave, resetSave, setSave } from "../src/state";
+import { LOG_MAX, S, fresh, parseSave, resetSave, setSave } from "../src/state";
 
 describe("parseSave", () => {
   it("upgrades a save written before upgrades and contracts existed", () => {
@@ -98,5 +98,14 @@ describe("resetSave", () => {
     S.lo.eq.gun = { k: "ar", u: "g" };
     resetSave();
     expect(S).toEqual(fresh());
+  });
+});
+
+describe("parseSave raid log", () => {
+  it("gives a save from before the raid log an empty one, and keeps only the last raids", () => {
+    const { log, ...old } = fresh();
+    expect(parseSave(JSON.stringify(old)).log).toEqual(log);
+    const many = Array.from({ length: LOG_MAX + 5 }, (_, n) => ({ n }));
+    expect(parseSave(JSON.stringify({ ...fresh(), log: many })).log.map((l) => l.n)).toEqual(many.slice(5).map((l) => l.n));
   });
 });
