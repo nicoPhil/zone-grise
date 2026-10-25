@@ -57,6 +57,15 @@
 #keyc[hidden] {
   display: none;
 }
+#ring {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 32px);
+  left: max(16px, env(safe-area-inset-left, 0px));
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 #timer.warn {
   color: var(--bad);
 }

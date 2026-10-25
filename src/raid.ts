@@ -9,6 +9,7 @@ import type { Pt } from "./util";
 import { collide } from "./world/geometry";
 import { freePt } from "./world/mapgen";
 import { updFlow } from "./world/nav";
+import { RINGS, ringAt } from "./world/rings";
 import { ZONES, UNLOCK_AFTER, power } from "./zones";
 import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
 import { R, burst, die, noise, over } from "./raid/core";
@@ -110,6 +111,13 @@ function moveEnemies(r: Raid, dt: number): boolean {
   return true;
 }
 
+function enterRing(r: Raid) {
+  const n = ringAt(r.p.x, r.p.y, r.ring);
+  if (n === r.ring) return;
+  r.ring = n;
+  toast(`${RINGS[n].n} : ${RINGS[n].msg}`);
+}
+
 const ALERTS: [number, string][] = [
   [60, "1 min : la zone va être verrouillée, rejoins une sortie"],
   [30, "30 s : sors maintenant"],
@@ -155,6 +163,7 @@ export function update(frame: number) {
   const m = sorting ? { x: 0, y: 0 } : moveVec(),
     moving = m.x !== 0 || m.y !== 0;
   movePlayer(r, m, dt);
+  enterRing(r);
   const busy = search(r, !moving && !sorting, dt);
   playerAttacks(r, { sorting, busy, moving });
   r.flash -= dt;

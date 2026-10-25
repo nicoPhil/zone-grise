@@ -146,6 +146,8 @@ export interface Raid {
   spawnT: number;
   flowT: number;
   ext: number;
+  /** index in RINGS of the ring the player is in */
+  ring: number;
   toastT: number;
   shake: number;
   flash: number;

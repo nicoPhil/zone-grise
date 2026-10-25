@@ -22,6 +22,7 @@ import { DEATH_TIME, EXTRACT_TIME, KINDS, R, type Raid, heal, startRaid, update 
 import { S, fresh, mode, setMode, setSave } from "../src/state";
 import { toast } from "../src/ui/hud";
 import { renderEnd } from "../src/ui/end";
+import { H, W } from "../src/world/mapgen";
 import { UNLOCK_AFTER, ZONES } from "../src/zones";
 
 const DT = 1 / 60;
@@ -113,6 +114,35 @@ describe("raid clock", () => {
     expect(d).toHaveLength(2);
     for (const x of d) expect(x).toBeGreaterThan(700);
     for (const x of d) expect(x).toBeLessThan(1400);
+  });
+});
+
+describe("raid rings", () => {
+  /** Puts the player, alone on a wall-free map, where the map depth is d. */
+  const standAt = (r: Raid, d: number) => {
+    r.walls = [];
+    Object.assign(r.p, { x: W / 2 + (1 - d) * W * 0.62, y: H / 2 });
+    update(DT);
+  };
+  const told = () => vi.mocked(toast).mock.calls.map(([m]) => m.split(" :")[0]);
+
+  it("announces the ring the player walks into", () => {
+    const r = quietRaid();
+    r.ring = 0;
+    standAt(r, 1);
+    standAt(r, 0.1);
+    expect(told()).toEqual(["Cœur", "Périphérie"]);
+    expect(r.ring).toBe(0);
+  });
+
+  it("waits until the player is clearly past a ring line", () => {
+    const r = quietRaid();
+    r.ring = 0;
+    standAt(r, 0.43);
+    expect(told()).toEqual([]);
+    standAt(r, 0.45);
+    standAt(r, 0.41);
+    expect(told()).toEqual(["Zone chaude"]);
   });
 });
 

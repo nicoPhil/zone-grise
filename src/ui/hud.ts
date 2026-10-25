@@ -3,6 +3,7 @@ import { rcap, type Raid } from "../raid";
 import { prefs } from "../input";
 import { C } from "../render/canvas";
 import { $, clamp } from "../util";
+import { RINGS } from "../world/rings";
 import { icon } from "./icons";
 
 let toastTimer = 0;
@@ -53,6 +54,7 @@ export function updHud(r: Raid) {
   $("hptxt").textContent = Math.ceil(Math.max(0, p.hp)) + " PV";
   $("timern").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   $("timer").classList.toggle("warn", s <= 60);
+  $("ring").textContent = RINGS[r.ring].n;
   const keys = r.p.keys + r.bag.filter((i) => i.k === "vkey").length;
   $("bagn").textContent = bagUsed(r.bag) + "/" + rcap(r);
   $("keyc").hidden = !keys;

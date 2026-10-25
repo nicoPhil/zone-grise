@@ -9,6 +9,7 @@ import { pick, rnd, type Pt, type Rect } from "../util";
 import { inWall } from "../world/geometry";
 import { depth, freePt, genMap, inBld, placeEntries } from "../world/mapgen";
 import { makeNav } from "../world/nav";
+import { ringAt } from "../world/rings";
 import { pickVault } from "../world/vault";
 import { ZONES, power, unlocked, zoneDepth } from "../zones";
 import { clock, setRaid } from "./core";
@@ -80,6 +81,7 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
     spawnT: zone.wave,
     flowT: 0,
     ext: 0,
+    ring: ringAt(sp.x, sp.y, 0),
     toastT: 0,
     shake: 0,
     flash: 0,
