@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**", "tests/**", "vite.config.ts"]
+    "includes": ["src/**", "tests/**", "sim/**", "vite.config.ts"]
   },
   "formatter": {
     "indentStyle": "space",
