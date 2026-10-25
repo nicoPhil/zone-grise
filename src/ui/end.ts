@@ -2,7 +2,7 @@ import { mk, valOf, type Item } from "../items";
 import { qInfo } from "../progression";
 import type { Quest } from "../state";
 import { $ } from "../util";
-import { pinned, row, valTag } from "./row";
+import { row, valTag } from "./row";
 import { pin, popup } from "./popup";
 import { renderStash } from "./stash";
 
@@ -30,7 +30,7 @@ export function renderEnd(res: RaidResult) {
   draw();
 }
 
-const line = (i: Item, btns: string, extra = "") => row(i, btns, extra, 1, pinned(i.u));
+const line = (i: Item, btns: string, extra = "") => row(i, btns, extra);
 
 function draw() {
   if (!last) return;
@@ -68,7 +68,7 @@ export function initEnd() {
       a = t.closest<HTMLElement>("[data-a]")?.dataset.a,
       at = t.closest<HTMLElement>(".item[data-u]");
     if (a === "close" || (!a && at)) {
-      sel = a ? null : at!.dataset.u!;
+      sel = a ? null : (at?.dataset.u ?? null);
       return draw();
     }
     if (a !== "home") return;

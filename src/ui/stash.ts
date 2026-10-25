@@ -104,7 +104,7 @@ function tabStash() {
       upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "",
       need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : "",
     ].filter(Boolean);
-    return row(i, btns, [desc(i), ...tags].join(" · "), g.length, pinned(i.u));
+    return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
   });
   return `<div class="card"><div class="top"><div class="lbl">Planque · ${S.stash.length} objets</div><div class="val">${stashVal} cr</div></div>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
@@ -139,7 +139,7 @@ function tabQuest() {
 
 function benchRow(w: Item, slot: "gun" | "blade") {
   const lv = w.lv || 0;
-  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`, "", 1, pinned(w.u));
+  if (lv >= MAX_LV) return row(w, `<span class="val">Max</span>`);
   const cur = wstat(w),
     nx = wstat({ ...w, lv: lv + 1 }),
     c = BENCH[lv];
@@ -167,7 +167,7 @@ const buyBtn = (k: ItemKey) =>
   `<button data-a="buy" data-k="${k}" ${S.credits >= price(k) ? "" : "disabled"} aria-label="Acheter">${icon("buy")}${price(k)}</button>`;
 
 function tabTrade() {
-  const rows = SHOP.map((k) => row({ k, u: SHOP_PIN + k }, `<div class="btns">${buyBtn(k)}</div>`, "", 1, pinned(SHOP_PIN + k)));
+  const rows = SHOP.map((k) => row({ k, u: SHOP_PIN + k }, `<div class="btns">${buyBtn(k)}</div>`));
   return `<div class="card"><div class="lbl">Marchand</div>${rows.join("")}
     <p class="note">Les objets de valeur ne s'achètent pas : il faut les trouver en raid.</p></div>`;
 }
@@ -226,123 +226,160 @@ export function renderStash() {
   pin($("stash"));
 }
 
+const take = (u?: string) => {
+  const i = S.stash.findIndex((x) => x.u === u);
+  return i < 0 ? null : S.stash.splice(i, 1)[0];
+};
+
+function unequip(b: HTMLElement) {
+  const lo = S.lo,
+    slot = b.dataset.slot as Slot | undefined,
+    worn = slot && lo.eq[slot];
+  if (!worn) return;
+  S.stash.push(worn);
+  lo.eq[slot] = null;
+}
+
+function equipFromStash(b: HTMLElement) {
+  const it = S.stash.find((x) => x.u === b.dataset.u),
+    s = it && slotOf(it);
+  if (!it || !s) return;
+  take(it.u);
+  const old = S.lo.eq[s];
+  if (old) S.stash.push(old);
+  S.lo.eq[s] = it;
+}
+
+function sellAll(b: HTMLElement) {
+  for (const it of S.stash.filter((i) => stackKey(i) === b.dataset.g)) {
+    take(it.u);
+    S.credits += valOf(it);
+  }
+}
+
+function buy(b: HTMLElement) {
+  const k = b.dataset.k as ItemKey;
+  if (S.credits < price(k)) return;
+  S.credits -= price(k);
+  S.stash.push(mk(k));
+}
+
+function upgrade(b: HTMLElement) {
+  const k = b.dataset.k as keyof Upgrades,
+    l = S.up[k];
+  if (l >= MAX_LV || !canPay(UP[k].cost[l])) return;
+  pay(UP[k].cost[l]);
+  S.up[k]++;
+  toast(UP[k].n + " : " + UP[k].lv[S.up[k]]);
+}
+
+function bench(b: HTMLElement) {
+  const bw = S.lo.eq[b.dataset.s === "blade" ? "blade" : "gun"],
+    l = bw?.lv || 0;
+  if (!bw || l >= MAX_LV || !canPay(BENCH[l])) return;
+  pay(BENCH[l]);
+  bw.lv = l + 1;
+  toast(nameOf(bw) + " prêt");
+}
+
+function claim(b: HTMLElement) {
+  const i = S.q.findIndex((q) => q.u === b.dataset.q),
+    q = S.q[i];
+  if (!q || !qInfo(q).done) return;
+  if (q.t === "bring" && q.k) pay({ cr: 0, it: { [q.k]: q.n } });
+  S.credits += q.cr;
+  if (q.rew) S.stash.push(mk(q.rew));
+  S.q.splice(i, 1);
+  toast("Contrat payé : +" + q.cr + " cr" + (q.rew ? " + " + ITEMS[q.rew].n : ""));
+}
+
+function reroll(b: HTMLElement) {
+  const i = S.q.findIndex((q) => q.u === b.dataset.q);
+  if (S.credits < REROLL || i < 0) return;
+  S.credits -= REROLL;
+  S.q.splice(i, 1);
+}
+
+function zone(b: HTMLElement) {
+  const z = Number(b.dataset.z);
+  if (unlocked(S, z)) S.zone = z;
+}
+
+function sell(b: HTMLElement) {
+  const it = take(b.dataset.u);
+  if (it) S.credits += valOf(it);
+}
+
+/** Moves one trousse or key between the stash and what the player carries in. */
+function carry(k: "med" | "vkey", d: 1 | -1) {
+  const lo = S.lo,
+    f = k === "med" ? "meds" : "keys",
+    max = k === "med" ? medMax() : KEY_MAX;
+  if (d > 0 && lo[f] < max && take(S.stash.find((i) => i.k === k)?.u)) lo[f]++;
+  if (d < 0 && lo[f]) {
+    lo[f]--;
+    S.stash.push(mk(k));
+  }
+}
+
+const ACTIONS: Record<string, ((b: HTMLElement) => void) | undefined> = {
+  zone,
+  unequip,
+  medp: () => carry("med", 1),
+  medm: () => carry("med", -1),
+  keyp: () => carry("vkey", 1),
+  keym: () => carry("vkey", -1),
+  eq: equipFromStash,
+  sell,
+  sellall: sellAll,
+  buy,
+  up: upgrade,
+  bench,
+  claim,
+  reroll,
+};
+
+function pickTab(t: Tab) {
+  tab = t;
+  try {
+    localStorage.setItem(KEY + "-tab", tab);
+  } catch {
+    // tab choice is a convenience only
+  }
+  renderStash();
+}
+
+function tapSlot(b: HTMLElement, was: string | null) {
+  const slot = b.dataset.slot as Slot | undefined,
+    worn = slot && S.lo.eq[slot];
+  if (worn) sel = was === worn.u ? null : worn.u;
+}
+
+function onStashClick(t: HTMLElement) {
+  const b = t.closest<HTMLElement>("button, .scrim");
+  if (!b) {
+    const u = t.closest<HTMLElement>(".item[data-u]")?.dataset.u;
+    if (u) {
+      sel = u;
+      renderStash();
+    }
+    return;
+  }
+  const was = sel;
+  sel = null;
+  if (b.dataset.tab) return pickTab(b.dataset.tab as Tab);
+  const a = b.dataset.a;
+  if (a === "raid") {
+    assetsReady.then(startRaid);
+    return;
+  }
+  if (a) ACTIONS[a]?.(b);
+  else tapSlot(b, was);
+  save();
+  renderStash();
+}
+
 export function initStash() {
   $("stash").addEventListener("scroll", () => pin($("stash")), { passive: true });
-  $("stash").addEventListener("click", (e) => {
-    const t = e.target as HTMLElement,
-      b = t.closest<HTMLElement>("button, .scrim");
-    if (!b) {
-      const line = t.closest<HTMLElement>(".item[data-u]");
-      if (line) {
-        sel = line.dataset.u!;
-        renderStash();
-      }
-      return;
-    }
-    const was = sel;
-    sel = null;
-    if (b.dataset.tab) {
-      tab = b.dataset.tab as Tab;
-      try {
-        localStorage.setItem(KEY + "-tab", tab);
-      } catch {
-        // tab choice is a convenience only
-      }
-      return renderStash();
-    }
-    const a = b.dataset.a,
-      lo = S.lo;
-    const take = (u?: string) => {
-      const i = S.stash.findIndex((x) => x.u === u);
-      return i < 0 ? null : S.stash.splice(i, 1)[0];
-    };
-    if (a === "zone") {
-      const z = Number(b.dataset.z);
-      if (unlocked(S, z)) S.zone = z;
-    }
-    if (a === "raid") {
-      assetsReady.then(startRaid);
-      return;
-    }
-    const slot = b.dataset.slot as Slot | undefined,
-      worn = slot && lo.eq[slot];
-    if (worn && !a) sel = was === worn.u ? null : worn.u;
-    if (worn && a === "unequip") {
-      S.stash.push(worn);
-      lo.eq[slot] = null;
-    }
-    if (a === "medp" && lo.meds < medMax() && take(S.stash.find((i) => i.k === "med")?.u)) lo.meds++;
-    if (a === "medm" && lo.meds) {
-      lo.meds--;
-      S.stash.push(mk("med"));
-    }
-    if (a === "eq") {
-      const it = take(b.dataset.u);
-      if (it) {
-        const s = slotOf(it)!,
-          old = lo.eq[s];
-        if (old) S.stash.push(old);
-        lo.eq[s] = it;
-      }
-    }
-    if (a === "sell") {
-      const it = take(b.dataset.u);
-      if (it) S.credits += valOf(it);
-    }
-    if (a === "sellall")
-      for (const it of S.stash.filter((i) => stackKey(i) === b.dataset.g)) {
-        take(it.u);
-        S.credits += valOf(it);
-      }
-    if (a === "keyp" && lo.keys < KEY_MAX && take(S.stash.find((i) => i.k === "vkey")?.u)) lo.keys++;
-    if (a === "keym" && lo.keys) {
-      lo.keys--;
-      S.stash.push(mk("vkey"));
-    }
-    if (a === "buy") {
-      const k = b.dataset.k as ItemKey;
-      if (S.credits >= price(k)) {
-        S.credits -= price(k);
-        S.stash.push(mk(k));
-      }
-    }
-    if (a === "up") {
-      const k = b.dataset.k as keyof Upgrades,
-        l = S.up[k];
-      if (l < MAX_LV && canPay(UP[k].cost[l])) {
-        pay(UP[k].cost[l]);
-        S.up[k]++;
-        toast(UP[k].n + " : " + UP[k].lv[S.up[k]]);
-      }
-    }
-    const bw = a === "bench" ? lo.eq[b.dataset.s === "blade" ? "blade" : "gun"] : null;
-    if (bw) {
-      const l = bw.lv || 0;
-      if (l < MAX_LV && canPay(BENCH[l])) {
-        pay(BENCH[l]);
-        bw.lv = l + 1;
-        toast(nameOf(bw) + " prêt");
-      }
-    }
-    if (a === "claim") {
-      const i = S.q.findIndex((q) => q.u === b.dataset.q),
-        q = S.q[i];
-      if (q && qInfo(q).done) {
-        if (q.t === "bring" && q.k) pay({ cr: 0, it: { [q.k]: q.n } });
-        S.credits += q.cr;
-        if (q.rew) S.stash.push(mk(q.rew));
-        S.q.splice(i, 1);
-        toast("Contrat payé : +" + q.cr + " cr" + (q.rew ? " + " + ITEMS[q.rew].n : ""));
-      }
-    }
-    if (a === "reroll" && S.credits >= REROLL) {
-      const i = S.q.findIndex((q) => q.u === b.dataset.q);
-      if (i >= 0) {
-        S.credits -= REROLL;
-        S.q.splice(i, 1);
-      }
-    }
-    save();
-    renderStash();
-  });
+  $("stash").addEventListener("click", (e) => onStashClick(e.target as HTMLElement));
 }

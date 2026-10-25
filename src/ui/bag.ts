@@ -1,5 +1,5 @@
 import { bagUsed, def, nameOf, slotOf, upgradeOver, type Item, type Slot } from "../items";
-import { R, drop, equip, ground, rcap, setSlot, useItem } from "../raid";
+import { R, type Raid, drop, equip, ground, rcap, setSlot, useItem } from "../raid";
 import { sheet } from "./sheet";
 import { setMode } from "../state";
 import { clearStick } from "../input";
@@ -122,29 +122,54 @@ function move(u: string) {
   }
 }
 
+function equipFrom(r: Raid, f: { it: Item; where: Where }) {
+  if (f.where === "bag") r.bag.splice(r.bag.indexOf(f.it), 1);
+  else
+    r.pick.splice(
+      r.pick.findIndex((k) => k.it === f.it),
+      1,
+    );
+  const old = equip(r, f.it);
+  // the replaced piece goes where the new one came from, or to the ground when the bag can't hold it
+  if (old && f.where === "bag" && bagUsed(r.bag) + def(old.k).s <= rcap(r)) r.bag.push(old);
+  else if (old) drop(r, old);
+}
+
+function unequip(r: Raid, it: Item) {
+  const s = slotOf(it);
+  if (!s) return;
+  setSlot(r, s, null);
+  if (bagUsed(r.bag) + def(it.k).s <= rcap(r)) r.bag.push(it);
+  else drop(r, it);
+}
+
 function act(a: string) {
   const r = R,
     f = detail ? findItem(detail) : null;
   if (!r || !f) return;
   if (a === "use") useItem(f.it);
-  if (a === "eq") {
-    if (f.where === "bag") r.bag.splice(r.bag.indexOf(f.it), 1);
-    else
-      r.pick.splice(
-        r.pick.findIndex((k) => k.it === f.it),
-        1,
-      );
-    const old = equip(r, f.it);
-    // the replaced piece goes where the new one came from, or to the ground when the bag can't hold it
-    if (old && f.where === "bag" && bagUsed(r.bag) + def(old.k).s <= rcap(r)) r.bag.push(old);
-    else if (old) drop(r, old);
-  }
-  if (a === "unequip") {
-    setSlot(r, slotOf(f.it)!, null);
-    if (bagUsed(r.bag) + def(f.it.k).s <= rcap(r)) r.bag.push(f.it);
-    else drop(r, f.it);
-  }
+  if (a === "eq") equipFrom(r, f);
+  if (a === "unequip") unequip(r, f.it);
   detail = null;
+}
+
+const toggle = (u?: string) => {
+  detail = u && detail !== u ? u : null;
+};
+
+/** False when the tap hit nothing actionable, so the bag isn't redrawn. */
+function tapBag(t: HTMLElement, b: HTMLElement | null) {
+  const a = b?.dataset.a,
+    card = t.closest<HTMLElement>(".tile");
+  if (a === "close") detail = null;
+  else if (a === "drop" || a === "take") {
+    const u = b?.dataset.u;
+    if (u) move(u);
+  } else if (a) act(a);
+  else if (card) toggle(card.dataset.u);
+  else if (b?.dataset.slot) toggle(R?.p.eq[b.dataset.slot as Slot]?.u);
+  else return false;
+  return true;
 }
 
 export function initBag() {
@@ -153,19 +178,10 @@ export function initBag() {
   el.addEventListener("scroll", () => pin(el), { passive: true });
   el.addEventListener("click", (e) => {
     const t = e.target as HTMLElement,
-      b = t.closest<HTMLElement>("button, .scrim, .dismiss"),
-      card = t.closest<HTMLElement>(".tile");
+      b = t.closest<HTMLElement>("button, .scrim, .dismiss");
     if (!R) return;
-    const a = b?.dataset.a;
-    if (a === "back") return closeBag();
-    if (a === "close") detail = null;
-    else if (a === "drop" || a === "take") move(b!.dataset.u!);
-    else if (a) act(a);
-    else if (card) detail = detail === card.dataset.u ? null : card.dataset.u!;
-    else if (b?.dataset.slot) {
-      const it = R.p.eq[b.dataset.slot as Slot];
-      detail = it && detail !== it.u ? it.u : null;
-    } else return;
+    if (b?.dataset.a === "back") return closeBag();
+    if (!tapBag(t, b)) return;
     updHud(R);
     renderBag();
   });

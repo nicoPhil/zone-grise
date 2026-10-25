@@ -1,0 +1,105 @@
+/* the bag is a sheet over the running raid, so the top of the map stays in sight */
+#bag.screen.over {
+  top: 30vh;
+  background: var(--ground);
+  border-top: 1px solid var(--line);
+  border-radius: 12px 12px 0 0;
+  padding-top: 16px;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6);
+}
+#bag .dismiss {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30vh;
+}
+.live {
+  font-family: var(--f-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  margin-top: -10px;
+}
+.live.danger {
+  color: var(--bad);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+.grid.full {
+  animation: shake 0.3s;
+}
+@keyframes shake {
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+.cell {
+  min-height: 52px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+}
+.tile {
+  position: relative;
+  min-width: 0;
+  min-height: 52px;
+  padding: 4px 4px 22px;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  border: 1px solid var(--rc);
+  background: color-mix(in srgb, var(--rc) 14%, var(--panel));
+  font-family: var(--f-body);
+  -webkit-touch-callout: none;
+}
+.tile b {
+  font-size: 10px;
+  line-height: 1.1;
+  color: var(--rc);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.tile[aria-pressed="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.tile .up {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 11px;
+  font-style: normal;
+  color: var(--ok);
+  font-weight: 700;
+}
+.tile .mv {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.35);
+}
+.tile .mv .ic {
+  width: 14px;
+  height: 14px;
+}

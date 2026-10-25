@@ -1,0 +1,68 @@
+/* item tooltip pinned to the tapped item, placed by pin(); tapping anywhere else closes it */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+}
+.detail {
+  position: fixed;
+  z-index: 7;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  width: min(290px, calc(100vw - 24px));
+  gap: 4px;
+  padding: 12px;
+  background: #0f1012;
+  border: 1px solid var(--rc);
+  box-shadow:
+    0 0 0 1px #000,
+    0 10px 30px rgba(0, 0, 0, 0.75);
+}
+.detail b {
+  font-family: var(--f-display);
+  font-size: 17px;
+  color: var(--rc);
+  line-height: 1.15;
+  padding-right: 30px;
+}
+.detail .x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: var(--muted);
+}
+.detail .x .ic {
+  width: 18px;
+  height: 18px;
+}
+.detail small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.detail .rar {
+  font-family: var(--f-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--rc);
+}
+.detail ul {
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.detail .btns {
+  margin-top: 6px;
+  flex-wrap: wrap;
+}

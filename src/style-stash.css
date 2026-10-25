@@ -1,0 +1,119 @@
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+}
+.tabs button {
+  border: 0;
+  padding: 8px 2px;
+  font-size: 13px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.tabs .ic {
+  width: 20px;
+  height: 20px;
+}
+.tabs button[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.dot {
+  color: var(--accent);
+  font-size: 10px;
+  vertical-align: middle;
+}
+.tabs button[aria-selected="true"] .dot {
+  color: var(--accent-ink);
+}
+.prog {
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.prog i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.have {
+  color: var(--ok);
+}
+.miss {
+  color: var(--bad);
+}
+.need {
+  color: var(--accent);
+}
+button.claim {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: var(--accent-ink);
+}
+.unlock {
+  border-color: var(--ok);
+}
+.unlock b {
+  font-family: var(--f-display);
+  font-size: 20px;
+  color: var(--ok);
+}
+.zones {
+  display: grid;
+  gap: 8px;
+}
+.zone {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  background: var(--panel);
+}
+.zone[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.zone .zt {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 16px;
+}
+.zone small {
+  font-family: var(--f-body);
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pw {
+  font-family: var(--f-display);
+  font-variant-numeric: tabular-nums;
+}
+.pw-low {
+  color: var(--bad);
+}
+.pw-ok {
+  color: var(--ok);
+}
+.ver {
+  font-family: var(--f-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.res {
+  font-family: var(--f-display);
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}

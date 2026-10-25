@@ -1,0 +1,57 @@
+/* character sheet: slots laid out around the body like a paper doll */
+.doll {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas: "trinket head back" "gun body blade" "hands feet .";
+  gap: 6px;
+}
+.slot {
+  min-height: 58px;
+  padding: 6px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  background: var(--panel);
+  font-family: var(--f-body);
+}
+.slot small {
+  font-family: var(--f-display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.slot small .ic {
+  width: 14px;
+  height: 14px;
+}
+.slot b {
+  font-size: 12px;
+  line-height: 1.15;
+  font-weight: 600;
+}
+.slot.empty {
+  border-style: dashed;
+}
+.slot .none {
+  color: var(--muted);
+  font-weight: 400;
+}
+.slot[aria-pressed="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.stats {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.5;
+}
+.better {
+  color: var(--ok);
+}

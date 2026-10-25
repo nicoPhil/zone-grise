@@ -6,10 +6,9 @@ const ORDER: Slot[] = ["trinket", "head", "back", "gun", "body", "blade", "hands
 /** Diablo-style paper doll: one tile per slot around the body, then the summed bonuses. */
 export function sheet(g: Gear, o: { st: Required<Mods>; hp: number; cap: number; sel?: string | null }) {
   const cells = ORDER.map((slot) => {
-    const it = g[slot],
-      d = it && def(it.k);
+    const it = g[slot];
     const body = it
-      ? `<b style="color:var(--r${d!.r})">${nameOf(it)}</b>`
+      ? `<b style="color:var(--r${def(it.k).r})">${nameOf(it)}</b>`
       : `<b class="none">${slot === "blade" ? "Couteau (kit)" : "Vide"}</b>`;
     return `<button class="slot${it ? "" : " empty"}" style="grid-area:${slot}" data-slot="${slot}"${it ? ` data-pin="${it.u}"` : ""} aria-pressed="${!!it && o.sel === it.u}"><small>${icon(slot)}${SLOTS[slot]}</small>${body}</button>`;
   });
