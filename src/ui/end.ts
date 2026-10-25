@@ -2,7 +2,7 @@ import { mk, valOf, type Item } from "../items";
 import { qInfo } from "../progression";
 import type { Quest } from "../state";
 import { $ } from "../util";
-import { row, valTag } from "./row";
+import { row, stacks, valTag } from "./row";
 import { pin, popup } from "./popup";
 import { renderStash } from "./stash";
 
@@ -31,6 +31,7 @@ export function renderEnd(res: RaidResult) {
 }
 
 const line = (i: Item, btns: string, extra = "") => row(i, btns, extra);
+const loot = (items: Item[]) => stacks(items).map((g) => row(g[0], valTag(valOf(g[0]) * g.length), "", g.length));
 
 function draw() {
   if (!last) return;
@@ -46,10 +47,10 @@ function draw() {
       ? `<div class="card"><div class="lbl">Contrats remplis</div>${res.quests.map((q) => `<div class="item"><div class="nm"><b>${qInfo(q).txt}</b><small>${q.cr} cr à réclamer dans l'onglet Contrats</small></div></div>`).join("")}</div>`
       : "";
     html = `<div class="lbl">Extraction réussie</div><h1 style="color:var(--ok)">Sorti vivant</h1><div class="res">+ ${res.val} cr de butin</div>${pw}${opened}${quests}
-      <div class="card">${res.items.length ? res.items.map((i) => line(i, valTag(valOf(i)))).join("") : `<p class="empty">Sac vide, mais ton équipement est sauf.</p>`}</div>`;
+      <div class="card">${res.items.length ? loot(res.items).join("") : `<p class="empty">Sac vide, mais ton équipement est sauf.</p>`}</div>`;
   } else {
     const lost =
-      res.items.map((i) => line(i, valTag(valOf(i)))).join("") +
+      loot(res.items).join("") +
       extra.map((i) => line(i, "", i.k === "med" ? res.meds + " trousse(s)" : res.keys + " clé(s) emportée(s)")).join("");
     html = `<div class="lbl">Raid perdu</div><h1 style="color:var(--bad)">${res.why}</h1><div class="res">− ${res.val} cr perdus</div>${pw}
       <div class="card">${lost || `<p class="empty">Tu n'avais rien à perdre. Le kit gratuit t'attend.</p>`}</div>`;

@@ -24,7 +24,7 @@ import { ZONES, UNLOCK_AFTER, power, unlocked } from "../zones";
 import { toast } from "./hud";
 import { icon, type Icon } from "./icons";
 import { pin, popup } from "./popup";
-import { pinned, row } from "./row";
+import { pinned, row, stackKey, stacks } from "./row";
 import { sheet } from "./sheet";
 
 type Tab = "raid" | "stash" | "quest" | "shop" | "trade";
@@ -41,8 +41,6 @@ try {
 }
 
 const REROLL = 40;
-/** Copies of the same item at the same upgrade level share one stash line. */
-const stackKey = (i: Item) => i.k + ":" + (i.lv || 0);
 const costTxt = (c: Cost) =>
   `${c.cr} cr` +
   costParts(c)
@@ -86,12 +84,9 @@ function tabStash() {
   const lo = S.lo,
     need = needed(),
     stashVal = S.stash.reduce((s, i) => s + valOf(i), 0);
-  const stacks = new Map<string, Item[]>();
   const up = (i: Item) => (upgradeOver(i, lo.eq) ? 1 : 0);
   // upgrades over what is worn come first, then by value
-  for (const i of [...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a)))
-    stacks.set(stackKey(i), [...(stacks.get(stackKey(i)) || []), i]);
-  const list = [...stacks.values()].map((g) => {
+  const list = stacks([...S.stash].sort((a, b) => up(b) - up(a) || valOf(b) - valOf(a))).map((g) => {
     const i = g[0],
       t = def(i.k).t;
     const eq = t === "wpn" || t === "gear" ? `<button data-a="eq" data-u="${i.u}" aria-label="Équiper">${icon("equip")}</button>` : "";
