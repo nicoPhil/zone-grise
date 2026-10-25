@@ -636,7 +636,7 @@ function strike(r: Raid, wd: WeaponStats) {
   p.mcd = 1 / wd.rate;
   p.swing = 0.18;
   for (const e of [...r.enemies]) {
-    if (!inArc(p.x, p.y, a0, e.x, e.y, reach(e), MELEE_ARC)) continue;
+    if (!inArc(p, a0, e, { reach: reach(e), half: MELEE_ARC })) continue;
     const a = Math.atan2(e.y - p.y, e.x - p.x),
       kb = (wd.kb || 0) * (e.kind === "boss" ? 0.2 : 1);
     e.x += Math.cos(a) * kb;
@@ -691,8 +691,8 @@ function updateEnemy(r: Raid, e: Enemy, dt: number) {
   e.hit -= dt;
   const see = d < 600 && los(r.walls, e, p),
     { range, half } = sight(e, p);
-  const view = !e.aggro && see && mode !== "bag" && inCone(e.fa, e, p, range, half);
-  watch(e, view, d, range, p, dt);
+  const view = !e.aggro && see && mode !== "bag" && inCone(e.fa, e, p, { range, half });
+  watch(e, { view, d, range }, p, dt);
   track(e, see, p, dt);
   let vx = 0,
     vy = 0;

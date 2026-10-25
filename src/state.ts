@@ -50,6 +50,8 @@ export const setSave = (s: Save) => {
   S = s;
 };
 
+const preZoneExtractions = (zone: number, none: number, s: Partial<Save>) => (zone ? none : s.st?.ext || 0);
+
 // saves written before the progression update have no `up` / `q`; unknown item keys are dropped
 export function parseSave(raw: string | null): Save {
   let s: Partial<Save> | null = null;
@@ -76,7 +78,7 @@ export function parseSave(raw: string | null): Save {
     up: { ...fresh().up, ...s.up },
     q: Array.isArray(s.q) ? s.q : [],
     // extractions made before zones existed all happened in the first zone
-    zx: fresh().zx.map((z, i) => (Array.isArray(s.zx) ? s.zx[i] || 0 : i ? z : s.st?.ext || 0)),
+    zx: fresh().zx.map((z, i) => (Array.isArray(s.zx) ? s.zx[i] || 0 : preZoneExtractions(i, z, s))),
     zone: typeof s.zone === "number" ? s.zone : 0,
   };
 }

@@ -31,9 +31,14 @@ const run = (s: number) => {
 const ended = () => vi.mocked(renderEnd).mock.calls.at(-1)?.[0];
 
 /** A raid with no enemy and no wave, so only what a test sets up happens. */
-function quietRaid(): Raid {
+function begin(): Raid {
   startRaid();
-  const r = R!;
+  if (!R) throw new Error("startRaid left no raid");
+  return R;
+}
+
+function quietRaid(): Raid {
+  const r = begin();
   r.enemies = [];
   r.spawnT = Infinity;
   return r;
@@ -45,7 +50,7 @@ beforeEach(() => {
   setMode("stash");
 });
 
-describe("raid", () => {
+describe("raid end", () => {
   it("extracts after standing still on an exit: the bag goes to the stash and the extraction counts for the zone", () => {
     const r = quietRaid();
     const loot = mk("med");
@@ -90,12 +95,13 @@ describe("raid", () => {
     run(DEATH_TIME + 0.2);
     expect(ended()).toMatchObject({ ok: false, why: "Temps écoulé : la zone a été verrouillée." });
   });
+});
 
+describe("raid combat", () => {
   it("takes melee damage scaled by the zone from an enemy in contact", () => {
     S.zx[0] = UNLOCK_AFTER;
     S.zone = 1;
-    startRaid();
-    const r = R!;
+    const r = begin();
     const e = r.enemies[0];
     Object.assign(r, { enemies: [e], spawnT: Infinity });
     Object.assign(e, { kind: "walker", x: r.p.x, y: r.p.y, aggro: true, cd: 0 });
@@ -109,8 +115,7 @@ describe("raid", () => {
     { gait: "running", push: 0.9, heard: true },
     { gait: "walking", push: 0.4, heard: false },
   ])("$gait past the back of an unaware enemy, it hears: $heard", ({ push, heard }) => {
-    startRaid();
-    const r = R as Raid;
+    const r = begin();
     const w = r.enemies[0];
     Object.assign(r, { enemies: [w], spawnT: Infinity, walls: [] });
     Object.assign(w, {
@@ -129,21 +134,9 @@ describe("raid", () => {
     vi.mocked(moveVec).mockReturnValue({ x: 0, y: 0 });
     expect(w.sr > 0).toBe(heard);
   });
+});
 
-  it("heals over time with a carried medkit, and keeps it when HP is full", () => {
-    const r = quietRaid();
-    r.p.meds = 1;
-    heal();
-    expect(r.p.meds).toBe(1);
-    expect(toast).toHaveBeenCalledWith("PV déjà au maximum");
-    r.p.hp = 10;
-    heal();
-    expect(r.p.meds).toBe(0);
-    run(30);
-    expect(r.p.hp).toBeGreaterThan(10);
-    expect(r.p.hp).toBeLessThanOrEqual(r.p.max);
-  });
-
+describe("raid loot", () => {
   it.each([
     { tier: 0, secs: 0.4 },
     { tier: 2, secs: 2.5 },
@@ -168,8 +161,7 @@ describe("raid", () => {
   });
 
   it("a killed walker drops only its component, about half the time", () => {
-    startRaid();
-    const r = R as Raid;
+    const r = begin();
     const w = r.enemies[0];
     r.spawnT = Infinity;
     r.enemies = Array.from({ length: 60 }, (_, i) => ({
@@ -185,6 +177,22 @@ describe("raid", () => {
     expect(new Set(drops)).toEqual(new Set<ItemKey>(["flesh"]));
     expect(drops.length).toBeGreaterThan(15);
     expect(drops.length).toBeLessThan(45);
+  });
+});
+
+describe("medkits", () => {
+  it("heals over time with a carried medkit, and keeps it when HP is full", () => {
+    const r = quietRaid();
+    r.p.meds = 1;
+    heal();
+    expect(r.p.meds).toBe(1);
+    expect(toast).toHaveBeenCalledWith("PV déjà au maximum");
+    r.p.hp = 10;
+    heal();
+    expect(r.p.meds).toBe(0);
+    run(30);
+    expect(r.p.hp).toBeGreaterThan(10);
+    expect(r.p.hp).toBeLessThanOrEqual(r.p.max);
   });
 });
 

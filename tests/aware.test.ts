@@ -6,16 +6,16 @@ const run = (e: Awareness, see: boolean, secs: number, p = { x: 500, y: 0 }) => 
   for (let t = 0; t < secs; t += 0.1) track(e, see, p, 0.1);
 };
 const stare = (e: Awareness, d: number, secs: number, view = true) => {
-  for (let t = 0; t < secs; t += 0.05) watch(e, view, d, 200, { x: d, y: 0 }, 0.05);
+  for (let t = 0; t < secs; t += 0.05) watch(e, { view, d, range: 200 }, { x: d, y: 0 }, 0.05);
 };
 
 describe("enemy awareness", () => {
   it("sees in front within range, and only feels what is close behind", () => {
     const e = { x: 0, y: 0 };
-    expect(inCone(0, e, { x: 150, y: 20 }, 200, 0.8)).toBe(true);
-    expect(inCone(0, e, { x: 250, y: 0 }, 200, 0.8)).toBe(false);
-    expect(inCone(0, e, { x: -150, y: 0 }, 200, 0.8)).toBe(false);
-    expect(inCone(0, e, { x: -40, y: 0 }, 200, 0.8)).toBe(true);
+    expect(inCone(0, e, { x: 150, y: 20 }, { range: 200, half: 0.8 })).toBe(true);
+    expect(inCone(0, e, { x: 250, y: 0 }, { range: 200, half: 0.8 })).toBe(false);
+    expect(inCone(0, e, { x: -150, y: 0 }, { range: 200, half: 0.8 })).toBe(false);
+    expect(inCone(0, e, { x: -40, y: 0 }, { range: 200, half: 0.8 })).toBe(true);
   });
 
   it("is only suspicious at a glance, and spots the player who stays in view", () => {

@@ -45,25 +45,25 @@ export function updFlow(nav: Nav, x: number, y: number, d = nav.dist) {
   }
 }
 
+/** Cell one step from (i, j), or -1 off the grid or when a diagonal would cut a wall corner. */
+function neighbour(blocked: Nav["blocked"], [i, j]: [number, number], [di, dj]: [number, number]) {
+  const ni = i + di,
+    nj = j + dj;
+  if ((!di && !dj) || ni < 0 || nj < 0 || ni >= GW || nj >= GW) return -1;
+  return di && dj && (blocked[j * GW + ni] || blocked[nj * GW + i]) ? -1 : nj * GW + ni;
+}
+
 /** Unit vector towards the neighbouring cell closest to the flow target; diagonals never cut a wall corner. */
 export function flowDir(nav: Nav, x: number, y: number, dist = nav.dist): Pt | null {
-  const { blocked } = nav,
-    c = cellOf(x, y),
+  const c = cellOf(x, y),
     i = c % GW,
     j = (c - i) / GW;
   let best = -1,
     bv = dist[c] < 0 ? 1e9 : dist[c];
   for (let dj = -1; dj <= 1; dj++)
     for (let di = -1; di <= 1; di++) {
-      const ni = i + di,
-        nj = j + dj;
-      if ((!di && !dj) || ni < 0 || nj < 0 || ni >= GW || nj >= GW) continue;
-      const n = nj * GW + ni;
-      if (dist[n] < 0 || (di && dj && (blocked[j * GW + ni] || blocked[nj * GW + i]))) continue;
-      if (dist[n] < bv) {
-        bv = dist[n];
-        best = n;
-      }
+      const n = neighbour(nav.blocked, [i, j], [di, dj]);
+      if (n >= 0 && dist[n] >= 0 && dist[n] < bv) [bv, best] = [dist[n], n];
     }
   if (best < 0) return null;
   const tx = ((best % GW) + 0.5) * G - x,

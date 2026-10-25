@@ -12,7 +12,8 @@ describe("vault", () => {
       found++;
       const locked = floodFromOutside([...walls, ...plan.locks]);
       expect(reachable(locked, plan.room)).toBe(false);
-      for (const b of bld) for (const r of b.rooms) if (r !== plan.room) expect(reachable(locked, r)).toBe(true);
+      const others = bld.flatMap((b) => b.rooms).filter((r) => r !== plan.room);
+      expect(others.filter((r) => !reachable(locked, r))).toEqual([]);
       expect(reachable(floodFromOutside(walls), plan.room)).toBe(true);
     }
     // nearly every map has a multi-room central building to host one

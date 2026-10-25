@@ -1,6 +1,6 @@
 import { ITEMS, KEYS, def, type ItemKey } from "./items";
 import type { Kind } from "./raid";
-import { S, type Quest, type Upgrades } from "./state";
+import { S, type Quest, type QuestType, type Upgrades } from "./state";
 import { pick, uid } from "./util";
 import { ZONES, unlocked } from "./zones";
 
@@ -107,40 +107,50 @@ export interface RaidTally {
   haul: number;
 }
 
+type Offer = Omit<Quest, "u" | "have">;
+const OFFERS: Record<QuestType | "hunt", (lvl: number) => Offer> = {
+  bring: (lvl) => {
+    const k = pick(BRING.filter((k) => def(k).r <= Math.min(2, lvl + 1)));
+    const n = def(k).r >= 2 ? 1 : 2 + Math.floor(Math.random() * 2);
+    return { t: "bring", k, n, cr: Math.round((def(k).v * n * 1.7) / 10) * 10 };
+  },
+  // a hunt pays well over the component's resale, to make it worth picking that fight
+  hunt: () => {
+    const k = pick(huntable()),
+      n = [3, 2, 1, 1][def(k).r];
+    return { t: "bring", k, n, cr: Math.round((def(k).v * n * 3) / 10) * 10 };
+  },
+  kills: (lvl) => {
+    const n = [4, 6, 8, 10][lvl];
+    return { t: "kills", n, cr: n * 45 };
+  },
+  violet: (lvl) => {
+    const n = [1, 2, 2, 3][lvl];
+    return { t: "violet", n, cr: n * 260 };
+  },
+  vault: () => ({ t: "vault", n: 1, cr: 450 }),
+  boss: () => ({ t: "boss", n: 1, cr: 800 }),
+  haul: (lvl) => {
+    const n = [300, 600, 1000, 1600][lvl];
+    return { t: "haul", n, cr: Math.round(n * 0.5) };
+  },
+};
+
+function reward(lvl: number): ItemKey | undefined {
+  const roll = Math.random();
+  if (roll < 0.2) return "vkey";
+  if (roll < 0.4) return pick(KEYS.filter((k) => (def(k).t === "wpn" || def(k).t === "gear") && def(k).r >= 1 && def(k).r <= lvl + 1));
+}
+
 export function newQuest(): Quest {
   const lvl = Math.min(3, Math.floor(S.st.ext / 3));
   const taken = new Set(S.q.map((q) => q.t + (q.k || "")));
   const types = ["bring", "hunt", "hunt", "kills", "violet", "haul", "vault", ...(lvl >= 1 ? (["boss"] as const) : [])] as const;
   for (let t = 0; t < 40; t++) {
-    const ty = pick(types);
-    let q: Omit<Quest, "u" | "have">;
-    if (ty === "bring") {
-      const k = pick(BRING.filter((k) => def(k).r <= Math.min(2, lvl + 1)));
-      const n = def(k).r >= 2 ? 1 : 2 + Math.floor(Math.random() * 2);
-      q = { t: ty, k, n, cr: Math.round((def(k).v * n * 1.7) / 10) * 10 };
-    } else if (ty === "hunt") {
-      // a hunt pays well over the component's resale, to make it worth picking that fight
-      const k = pick(huntable()),
-        n = [3, 2, 1, 1][def(k).r];
-      q = { t: "bring", k, n, cr: Math.round((def(k).v * n * 3) / 10) * 10 };
-    } else if (ty === "kills") {
-      const n = [4, 6, 8, 10][lvl];
-      q = { t: ty, n, cr: n * 45 };
-    } else if (ty === "violet") {
-      const n = [1, 2, 2, 3][lvl];
-      q = { t: ty, n, cr: n * 260 };
-    } else if (ty === "vault") q = { t: ty, n: 1, cr: 450 };
-    else if (ty === "boss") q = { t: ty, n: 1, cr: 800 };
-    else {
-      const n = [300, 600, 1000, 1600][lvl];
-      q = { t: ty, n, cr: Math.round(n * 0.5) };
-    }
+    const q = OFFERS[pick(types)](lvl);
     if (taken.has(q.t + (q.k || ""))) continue;
-    const roll = Math.random();
-    if (roll < 0.2) q.rew = "vkey";
-    else if (roll < 0.4)
-      q.rew = pick(KEYS.filter((k) => (def(k).t === "wpn" || def(k).t === "gear") && def(k).r >= 1 && def(k).r <= lvl + 1));
-    return { u: uid(), have: 0, ...q };
+    const rew = reward(lvl);
+    return { u: uid(), have: 0, ...q, ...(rew && { rew }) };
   }
   return { u: uid(), have: 0, t: "kills", n: 5, cr: 225 };
 }

@@ -9,11 +9,11 @@ describe("melee", () => {
   });
 
   it("hits in front within reach, not behind or beyond", () => {
-    expect(inArc(0, 0, 0, 30, 10, 40, MELEE_ARC)).toBe(true);
-    expect(inArc(0, 0, 0, -30, 0, 40, MELEE_ARC)).toBe(false);
-    expect(inArc(0, 0, 0, 60, 0, 40, MELEE_ARC)).toBe(false);
+    expect(inArc({ x: 0, y: 0 }, 0, { x: 30, y: 10 }, { reach: 40, half: MELEE_ARC })).toBe(true);
+    expect(inArc({ x: 0, y: 0 }, 0, { x: -30, y: 0 }, { reach: 40, half: MELEE_ARC })).toBe(false);
+    expect(inArc({ x: 0, y: 0 }, 0, { x: 60, y: 0 }, { reach: 40, half: MELEE_ARC })).toBe(false);
     // the arc wraps around ±π
-    expect(inArc(0, 0, Math.PI, -30, -1, 40, MELEE_ARC)).toBe(true);
+    expect(inArc({ x: 0, y: 0 }, Math.PI, { x: -30, y: -1 }, { reach: 40, half: MELEE_ARC })).toBe(true);
   });
 });
 

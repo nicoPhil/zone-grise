@@ -40,7 +40,7 @@ export function hear(e: Awareness, x: number, y: number, secs = SEARCH_TIME) {
   [e.lx, e.ly, e.sr] = [x, y, Math.max(e.sr, secs)];
 }
 
-export function inCone(face: number, e: Pt, p: Pt, range: number, half: number) {
+export function inCone(face: number, e: Pt, p: Pt, { range, half }: { range: number; half: number }) {
   const dx = p.x - e.x,
     dy = p.y - e.y,
     d = Math.hypot(dx, dy);
@@ -51,7 +51,7 @@ export function inCone(face: number, e: Pt, p: Pt, range: number, half: number) 
 }
 
 /** Suspicion fills while the player is in view, from 0.2 s up close to 1.1 s at the edge of the cone, and fades out of view. */
-export function watch(e: Awareness, view: boolean, d: number, range: number, p: Pt, dt: number) {
+export function watch(e: Awareness, { view, d, range }: { view: boolean; d: number; range: number }, p: Pt, dt: number) {
   if (e.aggro) return;
   if (!view) {
     e.sus = Math.max(0, e.sus - dt * 0.4);

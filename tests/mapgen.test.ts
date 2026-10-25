@@ -2,9 +2,32 @@ import { describe, expect, it } from "vitest";
 import { collide, inWall } from "../src/world/geometry";
 import { EDGE, ENTRY_EXIT_D, ENTRY_VAULT_D, H, W, genMap, placeEntries } from "../src/world/mapgen";
 import { pickVault } from "../src/world/vault";
-import { G, cellOf, flowDir, makeNav, updFlow } from "../src/world/nav";
+import { G, type Nav, cellOf, flowDir, makeNav, updFlow } from "../src/world/nav";
+import type { Pt, Rect } from "../src/util";
 
 const MAPS = 40;
+
+function reached(nav: Nav, r: Rect) {
+  for (let y = r.y + 10; y < r.y + r.h - 10; y += G)
+    for (let x = r.x + 10; x < r.x + r.w - 10; x += G) {
+      const c = cellOf(x, y);
+      if (!nav.blocked[c] && nav.dist[c] >= 0) return true;
+    }
+  return false;
+}
+
+/** Walks like an aggro zombie (118 px/s at 60 fps) for at most 25 s; returns where it ends. */
+function chaseTo(nav: Nav, walls: Rect[], from: Pt, target: Pt): Pt {
+  const e = { ...from };
+  for (let steps = 0; Math.hypot(e.x - target.x, e.y - target.y) > 40 && steps < 60 * 25; steps++) {
+    const d = flowDir(nav, e.x, e.y) || { x: target.x - e.x, y: target.y - e.y };
+    const l = Math.hypot(d.x, d.y) || 1;
+    e.x += (d.x / l) * 2;
+    e.y += (d.y / l) * 2;
+    collide(walls, e, 14);
+  }
+  return e;
+}
 
 describe("generated buildings", () => {
   it("leave every room reachable from outside", () => {
@@ -12,16 +35,8 @@ describe("generated buildings", () => {
       const { walls, bld } = genMap();
       const nav = makeNav(walls);
       updFlow(nav, 60, 60);
-      for (const b of bld)
-        for (const r of b.rooms) {
-          let reachable = false;
-          for (let y = r.y + 10; y < r.y + r.h - 10; y += G)
-            for (let x = r.x + 10; x < r.x + r.w - 10; x += G) {
-              const c = cellOf(x, y);
-              if (!nav.blocked[c] && nav.dist[c] >= 0) reachable = true;
-            }
-          expect(reachable, `map ${m}, room at ${Math.round(r.x)},${Math.round(r.y)}`).toBe(true);
-        }
+      for (const r of bld.flatMap((b) => b.rooms))
+        expect(reached(nav, r), `map ${m}, room at ${Math.round(r.x)},${Math.round(r.y)}`).toBe(true);
     }
   });
 
@@ -34,16 +49,7 @@ describe("generated buildings", () => {
         if (target.y > H - 60 || inWall(walls, target.x, target.y, 14)) continue;
         updFlow(nav, target.x, target.y);
         const room = b.rooms[b.rooms.length - 1];
-        const e = { x: room.x + room.w / 2, y: room.y + room.h / 2 };
-        let steps = 0;
-        // 118 px/s at 60 fps, 25 s budget: same speed and patience as an aggro zombie
-        while (Math.hypot(e.x - target.x, e.y - target.y) > 40 && steps++ < 60 * 25) {
-          const d = flowDir(nav, e.x, e.y) || { x: target.x - e.x, y: target.y - e.y };
-          const l = Math.hypot(d.x, d.y) || 1;
-          e.x += (d.x / l) * 2;
-          e.y += (d.y / l) * 2;
-          collide(walls, e, 14);
-        }
+        const e = chaseTo(nav, walls, { x: room.x + room.w / 2, y: room.y + room.h / 2 }, target);
         expect(Math.hypot(e.x - target.x, e.y - target.y)).toBeLessThanOrEqual(40);
       }
     }

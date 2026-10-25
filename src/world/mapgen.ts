@@ -30,37 +30,43 @@ function cut(a: number, b: number, doors: number[]): [number, number][] {
     );
   return s.filter(([u, v]) => v - u > 4);
 }
-const hWall = (walls: Rect[], a: number, b: number, y: number, doors: number[]) => {
+const hWall = (walls: Rect[], [a, b]: [number, number], y: number, doors: number[]) => {
   for (const [u, v] of cut(a, b, doors)) walls.push({ x: u, y, w: v - u, h: TH });
 };
-const vWall = (walls: Rect[], a: number, b: number, x: number, doors: number[]) => {
+const vWall = (walls: Rect[], [a, b]: [number, number], x: number, doors: number[]) => {
   for (const [u, v] of cut(a, b, doors)) walls.push({ x, y: u, w: TH, h: v - u });
 };
 
-// `doors` holds every gap already cut in this building: a new partition must leave each of them clear
-function splitRooms(walls: Rect[], r: Rect, lvl: number, out: Rect[], doors: Rect[]) {
-  if (lvl >= 2 || Math.max(r.w, r.h) < 280) return void out.push(r);
+/** `doors` holds every gap already cut in this building: a new partition must leave each of them clear. */
+interface Split {
+  walls: Rect[];
+  out: Rect[];
+  doors: Rect[];
+}
+
+function splitRooms(s: Split, r: Rect, lvl: number) {
+  if (lvl >= 2 || Math.max(r.w, r.h) < 280) return void s.out.push(r);
   for (let t = 0; t < 20; t++) {
     if (r.w >= r.h) {
       const sx = r.x + r.w * rnd(0.38, 0.62) - TH / 2;
-      if (doors.some((d) => overlaps({ x: sx, y: r.y, w: TH, h: r.h }, d, 30))) continue;
+      if (s.doors.some((d) => overlaps({ x: sx, y: r.y, w: TH, h: r.h }, d, 30))) continue;
       const dy = rnd(r.y + 50, r.y + r.h - 50);
-      vWall(walls, r.y, r.y + r.h, sx, [dy]);
-      doors.push({ x: sx, y: dy - DOOR / 2, w: TH, h: DOOR });
-      splitRooms(walls, { x: r.x, y: r.y, w: sx - r.x, h: r.h }, lvl + 1, out, doors);
-      splitRooms(walls, { x: sx + TH, y: r.y, w: r.x + r.w - sx - TH, h: r.h }, lvl + 1, out, doors);
+      vWall(s.walls, [r.y, r.y + r.h], sx, [dy]);
+      s.doors.push({ x: sx, y: dy - DOOR / 2, w: TH, h: DOOR });
+      splitRooms(s, { x: r.x, y: r.y, w: sx - r.x, h: r.h }, lvl + 1);
+      splitRooms(s, { x: sx + TH, y: r.y, w: r.x + r.w - sx - TH, h: r.h }, lvl + 1);
       return;
     }
     const sy = r.y + r.h * rnd(0.38, 0.62) - TH / 2;
-    if (doors.some((d) => overlaps({ x: r.x, y: sy, w: r.w, h: TH }, d, 30))) continue;
+    if (s.doors.some((d) => overlaps({ x: r.x, y: sy, w: r.w, h: TH }, d, 30))) continue;
     const dx = rnd(r.x + 50, r.x + r.w - 50);
-    hWall(walls, r.x, r.x + r.w, sy, [dx]);
-    doors.push({ x: dx - DOOR / 2, y: sy, w: DOOR, h: TH });
-    splitRooms(walls, { x: r.x, y: r.y, w: r.w, h: sy - r.y }, lvl + 1, out, doors);
-    splitRooms(walls, { x: r.x, y: sy + TH, w: r.w, h: r.y + r.h - sy - TH }, lvl + 1, out, doors);
+    hWall(s.walls, [r.x, r.x + r.w], sy, [dx]);
+    s.doors.push({ x: dx - DOOR / 2, y: sy, w: DOOR, h: TH });
+    splitRooms(s, { x: r.x, y: r.y, w: r.w, h: sy - r.y }, lvl + 1);
+    splitRooms(s, { x: r.x, y: sy + TH, w: r.w, h: r.y + r.h - sy - TH }, lvl + 1);
     return;
   }
-  out.push(r);
+  s.out.push(r);
 }
 
 function genBuildings(walls: Rect[]): Building[] {
@@ -84,15 +90,22 @@ function genBuildings(walls: Rect[]): Building[] {
       );
       return [c];
     };
-    hWall(walls, x, x + w, y, door(0, x, x + w));
-    hWall(walls, x, x + w, y + h - TH, door(1, x, x + w));
-    vWall(walls, y + TH, y + h - TH, x, door(2, y + TH, y + h - TH));
-    vWall(walls, y + TH, y + h - TH, x + w - TH, door(3, y + TH, y + h - TH));
+    hWall(walls, [x, x + w], y, door(0, x, x + w));
+    hWall(walls, [x, x + w], y + h - TH, door(1, x, x + w));
+    vWall(walls, [y + TH, y + h - TH], x, door(2, y + TH, y + h - TH));
+    vWall(walls, [y + TH, y + h - TH], x + w - TH, door(3, y + TH, y + h - TH));
     const rooms: Rect[] = [];
-    splitRooms(walls, { x: x + TH, y: y + TH, w: w - 2 * TH, h: h - 2 * TH }, 0, rooms, doors);
+    splitRooms({ walls, out: rooms, doors }, { x: x + TH, y: y + TH, w: w - 2 * TH, h: h - 2 * TH }, 0);
     bs.push({ x, y, w, h, rooms, doors, floor: Math.floor(rnd(0, 3)) });
   }
   return bs;
+}
+
+/** A free-standing wall: long and horizontal, long and vertical, or a block. */
+function strayWall(k: number): { w: number; h: number } {
+  if (k < 0.45) return { w: rnd(120, 260), h: 24 };
+  if (k < 0.9) return { w: 24, h: rnd(120, 260) };
+  return { w: rnd(60, 120), h: rnd(60, 120) };
 }
 
 export function genMap(): { walls: Rect[]; bld: Building[] } {
@@ -107,8 +120,7 @@ export function genMap(): { walls: Rect[]; bld: Building[] } {
     const x = rnd(100, W - 300),
       y = rnd(100, H - 300),
       k = Math.random();
-    const w = k < 0.45 ? rnd(120, 260) : k < 0.9 ? 24 : rnd(60, 120);
-    const h = k < 0.45 ? 24 : k < 0.9 ? rnd(120, 260) : rnd(60, 120);
+    const { w, h } = strayWall(k);
     if (!bld.some((b) => overlaps({ x, y, w, h }, b, 70))) walls.push({ x, y, w, h });
   }
   return { walls, bld };
@@ -148,10 +160,16 @@ function lootTypes(kit: boolean): ItemDef["t"][] {
   return tr < wpn ? ["wpn"] : ["gear"];
 }
 
+function rarity(x: number, d: number) {
+  if (x < 0.02 + 0.1 * d) return 3;
+  if (x < 0.1 + 0.28 * d) return 2;
+  return x < 0.42 + 0.2 * d ? 1 : 0;
+}
+
 /** Crate loot of depth d; a military crate (kit) leans towards weapons and worn gear. */
 export function rollItem(d: number, minR = 0, kit = false): Item {
   const x = Math.random();
-  const r = Math.max(minR, x < 0.02 + 0.1 * d ? 3 : x < 0.1 + 0.28 * d ? 2 : x < 0.42 + 0.2 * d ? 1 : 0);
+  const r = Math.max(minR, rarity(x, d));
   const types = lootTypes(kit);
   const ofType = KEYS.filter((k) => types.includes(def(k).t) && k !== FREE);
   for (let k = r; k >= 0; k--) {

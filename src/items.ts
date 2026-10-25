@@ -50,10 +50,14 @@ export const SLOTS: Record<Slot, string> = {
   hands: "Mains",
   feet: "Pieds",
 };
-const gear = (n: string, slot: WornSlot, r: number, v: number, s: number, m: Mods) => ({ n, t: "gear", slot, r, v, s, ...m }) as const;
+const gear = (n: string, slot: WornSlot, base: { r: number; v: number; s: number }, m: Mods) =>
+  ({ n, t: "gear", slot, ...base, ...m }) as const;
 
-const melee = (n: string, r: number, v: number, dmg: number, rate: number, range: number, kb = 0) =>
-  ({ n, t: "wpn", r, v, s: 2, dmg, rate, range, spr: 0, pel: 1, noise: 60, mel: true, kb }) as const;
+const melee = (
+  n: string,
+  { r, v }: { r: number; v: number },
+  { dmg, rate, range, kb = 0 }: { dmg: number; rate: number; range: number; kb?: number },
+) => ({ n, t: "wpn", r, v, s: 2, dmg, rate, range, spr: 0, pel: 1, noise: 60, mel: true, kb }) as const;
 
 export const ITEMS = {
   cans: { n: "Boîte de conserve", t: "val", r: 0, v: 12, s: 1 },
@@ -94,12 +98,12 @@ export const ITEMS = {
   skin: { n: "Peau caméléon", t: "part", src: "stalker", r: 2, v: 140, s: 1 },
   scope: { n: "Optique", t: "part", src: "sniper", r: 2, v: 150, s: 1 },
   heart: { n: "Cœur de Brute", t: "part", src: "boss", r: 3, v: 400, s: 1 },
-  knife: melee("Couteau", 0, 0, 18, 2.5, 38, 6),
-  pipe: melee("Tuyau de plomb", 0, 40, 20, 1.6, 38, 10),
-  bat: melee("Batte cloutée", 1, 140, 22, 1.7, 44, 22),
-  machete: melee("Machette", 1, 160, 26, 1.8, 40),
-  axe: melee("Hache d'incendie", 2, 420, 48, 1.1, 44, 26),
-  katana: melee("Katana", 3, 1100, 40, 2.6, 48),
+  knife: melee("Couteau", { r: 0, v: 0 }, { dmg: 18, rate: 2.5, range: 38, kb: 6 }),
+  pipe: melee("Tuyau de plomb", { r: 0, v: 40 }, { dmg: 20, rate: 1.6, range: 38, kb: 10 }),
+  bat: melee("Batte cloutée", { r: 1, v: 140 }, { dmg: 22, rate: 1.7, range: 44, kb: 22 }),
+  machete: melee("Machette", { r: 1, v: 160 }, { dmg: 26, rate: 1.8, range: 40 }),
+  axe: melee("Hache d'incendie", { r: 2, v: 420 }, { dmg: 48, rate: 1.1, range: 44, kb: 26 }),
+  katana: melee("Katana", { r: 3, v: 1100 }, { dmg: 40, rate: 2.6, range: 48 }),
   p9: { n: "Pistolet 9 mm", t: "wpn", r: 0, v: 120, s: 2, dmg: 14, rate: 2.8, range: 300, spr: 0.05, pel: 1, noise: 200 },
   revolver: { n: "Revolver", t: "wpn", r: 1, v: 300, s: 2, dmg: 34, rate: 1.4, range: 330, spr: 0.03, pel: 1, noise: 260 },
   smg: { n: "PM compact", t: "wpn", r: 1, v: 380, s: 2, dmg: 8, rate: 8, range: 250, spr: 0.13, pel: 1, noise: 240 },
@@ -108,30 +112,30 @@ export const ITEMS = {
   ar: { n: "Fusil d'assaut", t: "wpn", r: 2, v: 900, s: 2, dmg: 17, rate: 5, range: 360, spr: 0.05, pel: 1, noise: 290 },
   dmr: { n: "Fusil de précision", t: "wpn", r: 3, v: 1400, s: 2, dmg: 60, rate: 1.2, range: 520, spr: 0.01, pel: 1, noise: 340 },
   lmg: { n: "Mitrailleuse légère", t: "wpn", r: 3, v: 1600, s: 3, dmg: 15, rate: 10, range: 340, spr: 0.1, pel: 1, noise: 340 },
-  jacket: gear("Veste renforcée", "body", 0, 80, 2, { red: 0.1 }),
-  vest1: gear("Gilet léger", "body", 1, 220, 2, { red: 0.2 }),
-  vest2: gear("Gilet lourd", "body", 2, 700, 2, { red: 0.4 }),
-  armor: gear("Armure de combat", "body", 3, 1500, 3, { red: 0.5 }),
-  beanie: gear("Bonnet épais", "head", 0, 40, 1, { red: 0.03 }),
-  hardhat: gear("Casque de chantier", "head", 1, 150, 2, { red: 0.06, hp: 10 }),
-  helmet: gear("Casque balistique", "head", 2, 600, 2, { red: 0.12 }),
-  visor: gear("Casque à visière", "head", 3, 1300, 2, { red: 0.15, vis: 0.15 }),
-  workgloves: gear("Gants de travail", "hands", 0, 40, 1, { mel: 0.1 }),
-  tacgloves: gear("Gants tactiques", "hands", 1, 180, 1, { fire: 0.1 }),
-  knuckles: gear("Gants coqués", "hands", 2, 520, 1, { mel: 0.3 }),
-  sniperglv: gear("Gants de tireur d'élite", "hands", 3, 1200, 1, { fire: 0.2, mel: 0.1 }),
-  sneakers: gear("Baskets", "feet", 0, 50, 2, { spd: 0.05 }),
-  boots: gear("Rangers", "feet", 1, 200, 2, { spd: 0.04, red: 0.04 }),
-  trail: gear("Chaussures de trail", "feet", 2, 550, 2, { spd: 0.12 }),
-  felt: gear("Bottes feutrées", "feet", 3, 1250, 2, { spd: 0.08, quiet: 0.3 }),
-  satchel: gear("Musette", "back", 0, 60, 2, { cap: 2 }),
-  daypack: gear("Sac de randonnée", "back", 1, 240, 2, { cap: 4 }),
-  milpack: gear("Sac militaire", "back", 2, 650, 3, { cap: 6 }),
-  exppack: gear("Sac d'expédition", "back", 3, 1400, 3, { cap: 9 }),
-  headlamp: gear("Lampe frontale", "trinket", 1, 200, 1, { vis: 0.3 }),
-  medal: gear("Médaille porte-bonheur", "trinket", 1, 220, 1, { hp: 15 }),
-  jammer: gear("Brouilleur", "trinket", 2, 600, 1, { quiet: 0.25 }),
-  vial: gear("Fiole de sérum", "trinket", 3, 1300, 1, { hp: 30, red: 0.05 }),
+  jacket: gear("Veste renforcée", "body", { r: 0, v: 80, s: 2 }, { red: 0.1 }),
+  vest1: gear("Gilet léger", "body", { r: 1, v: 220, s: 2 }, { red: 0.2 }),
+  vest2: gear("Gilet lourd", "body", { r: 2, v: 700, s: 2 }, { red: 0.4 }),
+  armor: gear("Armure de combat", "body", { r: 3, v: 1500, s: 3 }, { red: 0.5 }),
+  beanie: gear("Bonnet épais", "head", { r: 0, v: 40, s: 1 }, { red: 0.03 }),
+  hardhat: gear("Casque de chantier", "head", { r: 1, v: 150, s: 2 }, { red: 0.06, hp: 10 }),
+  helmet: gear("Casque balistique", "head", { r: 2, v: 600, s: 2 }, { red: 0.12 }),
+  visor: gear("Casque à visière", "head", { r: 3, v: 1300, s: 2 }, { red: 0.15, vis: 0.15 }),
+  workgloves: gear("Gants de travail", "hands", { r: 0, v: 40, s: 1 }, { mel: 0.1 }),
+  tacgloves: gear("Gants tactiques", "hands", { r: 1, v: 180, s: 1 }, { fire: 0.1 }),
+  knuckles: gear("Gants coqués", "hands", { r: 2, v: 520, s: 1 }, { mel: 0.3 }),
+  sniperglv: gear("Gants de tireur d'élite", "hands", { r: 3, v: 1200, s: 1 }, { fire: 0.2, mel: 0.1 }),
+  sneakers: gear("Baskets", "feet", { r: 0, v: 50, s: 2 }, { spd: 0.05 }),
+  boots: gear("Rangers", "feet", { r: 1, v: 200, s: 2 }, { spd: 0.04, red: 0.04 }),
+  trail: gear("Chaussures de trail", "feet", { r: 2, v: 550, s: 2 }, { spd: 0.12 }),
+  felt: gear("Bottes feutrées", "feet", { r: 3, v: 1250, s: 2 }, { spd: 0.08, quiet: 0.3 }),
+  satchel: gear("Musette", "back", { r: 0, v: 60, s: 2 }, { cap: 2 }),
+  daypack: gear("Sac de randonnée", "back", { r: 1, v: 240, s: 2 }, { cap: 4 }),
+  milpack: gear("Sac militaire", "back", { r: 2, v: 650, s: 3 }, { cap: 6 }),
+  exppack: gear("Sac d'expédition", "back", { r: 3, v: 1400, s: 3 }, { cap: 9 }),
+  headlamp: gear("Lampe frontale", "trinket", { r: 1, v: 200, s: 1 }, { vis: 0.3 }),
+  medal: gear("Médaille porte-bonheur", "trinket", { r: 1, v: 220, s: 1 }, { hp: 15 }),
+  jammer: gear("Brouilleur", "trinket", { r: 2, v: 600, s: 1 }, { quiet: 0.25 }),
+  vial: gear("Fiole de sérum", "trinket", { r: 3, v: 1300, s: 1 }, { hp: 30, red: 0.05 }),
 } satisfies Record<string, ItemDef>;
 
 export type ItemKey = keyof typeof ITEMS;
@@ -168,7 +172,9 @@ export const isBlade = (it: Item) => {
 export const KNIFE: Item = { k: FREE, u: "free-knife" };
 export const slotOf = (it: Item): Slot | null => {
   const d = def(it.k);
-  return d.t === "gear" ? d.slot : d.t === "wpn" ? (d.mel ? "blade" : "gun") : null;
+  if (d.t === "gear") return d.slot;
+  if (d.t !== "wpn") return null;
+  return d.mel ? "blade" : "gun";
 };
 
 export type Gear = Record<Slot, Item | null>;
