@@ -23,7 +23,7 @@ import { THEMES, blood, makeDecal, makeDecor, makeGround, stampCasing, type Deca
 import type { Tile } from "./render/assets";
 import { S, mode, save, setMode } from "./state";
 import { clearStick, moveVec, prefs } from "./input";
-import { CONE_HALF, WAVE_SEARCH, alert, hear, inCone, track, watch, type Awareness } from "./aware";
+import { CONE_HALF, WAVE_SEARCH, alert, hear, inCone, suspicious, track, watch, type Awareness } from "./aware";
 import { setRaidHud, showHint, toast, updHud } from "./ui/hud";
 import { closeBag } from "./ui/bag";
 import { renderEnd } from "./ui/end";
@@ -61,7 +61,7 @@ export const BLAST_R = 95,
   AIM_TIME = 1.1,
   LUNGE_R = 260,
   PACK_R = 280;
-/** Damage multiplier on an enemy that hasn't spotted the player. */
+/** Damage multiplier of a blade on an enemy that hasn't spotted the player. */
 export const SNEAK = 2.5;
 
 export interface Enemy extends Pt, Awareness {
@@ -546,7 +546,7 @@ function blast(r: Raid, x: number, y: number) {
   noise(r, x, y, 320);
   if (Math.hypot(p.x - x, p.y - y) < BLAST_R) hurt(r, 24);
   for (const o of [...r.enemies])
-    if (r.enemies.includes(o) && Math.hypot(o.x - x, o.y - y) < BLAST_R) hitEnemy(r, o, 60, o.x, o.y, true, false);
+    if (r.enemies.includes(o) && Math.hypot(o.x - x, o.y - y) < BLAST_R) hitEnemy(r, o, 60, o.x, o.y, true, "blast");
 }
 
 function killed(r: Raid, e: Enemy) {
@@ -573,13 +573,14 @@ function killed(r: Raid, e: Enemy) {
   if (Math.random() < (elite ? 0.75 : 0.45)) drop(rollItem(zoneDepth(r.zone, depth(e.x, e.y)) + (elite ? 0.1 : 0)));
 }
 
-function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = false, byPlayer = true) {
-  if (byPlayer && !e.aggro) [dmg, big] = [Math.round(dmg * SNEAK), true];
+function hitEnemy(r: Raid, e: Enemy, dmg: number, x: number, y: number, big = false, by: "gun" | "blade" | "blast" = "gun") {
+  // a blade the enemy never saw coming hits harder
+  if (by === "blade" && !e.aggro) [dmg, big] = [Math.round(dmg * SNEAK), true];
   e.hp -= dmg;
   e.hit = big ? 0.16 : 0.1;
   r.nums.push({ x: e.x + rnd(-6, 6), y: e.y - 18, v: dmg, life: 0.7, big });
-  if (byPlayer) alert(e, r.p.x, r.p.y);
-  else hear(e, x, y);
+  if (by === "blast") hear(e, x, y);
+  else alert(e, r.p.x, r.p.y);
   burst(r, x, y, C.bad, 4, 90);
   blood(r.decal, x, y, 3, false);
   if (e.hp <= 0) killed(r, e);
@@ -611,7 +612,7 @@ function strike(r: Raid, wd: WeaponStats) {
     e.x += Math.cos(a) * kb;
     e.y += Math.sin(a) * kb;
     collide(r.walls, e, KINDS[e.kind].r);
-    hitEnemy(r, e, wd.dmg, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10, true);
+    hitEnemy(r, e, wd.dmg, e.x - Math.cos(a) * 10, e.y - Math.sin(a) * 10, true, "blade");
     burst(r, e.x - Math.cos(a) * 12, e.y - Math.sin(a) * 12, "#f4efe4", 5, 120, true);
   }
   r.shake = Math.max(r.shake, 0.05);
@@ -846,9 +847,10 @@ export function update(dt: number) {
   if (wd && !sorting && !busy && prefs.fire && !moving && p.still > 0.08 && p.cd <= 0) {
     let best: Enemy | null = null,
       bd = wd.range;
+    // the gun only opens up on enemies already onto the player: approaching unseen stays the player's call
     for (const e of r.enemies) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
-      if (d < bd && los(r.walls, p, e)) {
+      if (d < bd && (e.aggro || suspicious(e)) && los(r.walls, p, e)) {
         bd = d;
         best = e;
       }
