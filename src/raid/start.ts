@@ -86,6 +86,8 @@ function newRaid(zi: number, sp: Pt, plan: VaultPlan | null, map: Pick<Raid, "wa
     ring: ringAt(sp.x, sp.y, 0),
     deep: 0,
     dmg: 0,
+    core: 0,
+    ttk: { s: 0, n: 0 },
     toastT: 0,
     shake: 0,
     flash: 0,

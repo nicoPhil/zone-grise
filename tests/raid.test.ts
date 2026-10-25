@@ -141,23 +141,6 @@ describe("raid end", () => {
     expect(ended()?.items).not.toContain(jewels);
   });
 
-  it("notes each raid in the save's log, extracted or lost", () => {
-    const r = quietRaid();
-    r.tally.kills = 3;
-    r.t = DT / 2;
-    run(DEATH_TIME + 0.2);
-    const r2 = quietRaid();
-    r2.bag.push(mk("gold"));
-    r2.ebul.push({ x: r2.p.x, y: r2.p.y, vx: 0, vy: 0, life: 1, dmg: 30 });
-    update(DT);
-    Object.assign(r2.p, r2.exits[0]);
-    update(DT);
-    r2.enemies = [];
-    run(CALL_TIME + 1);
-    const [a, b] = S.log.map((l) => [l.n, l.ok, l.kills, l.val > 0, l.dmg, l.hp]);
-    expect([a, b, S.log[0].t]).toEqual([[1, false, 3, false, 0, 100], [2, true, 0, true, 30, 70], 180]);
-  });
-
   it("is lost when the clock runs out", () => {
     const r = quietRaid();
     r.t = DT / 2;

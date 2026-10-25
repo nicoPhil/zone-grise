@@ -29,6 +29,6 @@ describe("share report", () => {
     const text = report("abc", new Date("2026-10-25T12:00:00Z"));
     expect(text).toContain("- gun : Fusil d'assaut +1 [r2]");
     expect(text).toContain("q1.05 (fire 0.08)");
-    expect(text.split("\n").at(-1)).toBe("7;Cœur;mort;1:35;1200;4;1;0;2;Cœur;140;0;90;300;800");
+    expect(text.split("\n").at(-1)).toBe("7;Cœur;mort;1:35;1200;4;1;0;2;Cœur;140;0;90;300;800;;");
   });
 });

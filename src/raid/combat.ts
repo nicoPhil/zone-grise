@@ -33,6 +33,10 @@ export function killed(r: Raid, e: Enemy) {
   if (!r.enemies.includes(e)) return;
   r.enemies.splice(r.enemies.indexOf(e), 1);
   r.tally.kills++;
+  if (e.hitAt !== undefined) {
+    r.ttk.s += e.hitAt - r.t;
+    r.ttk.n++;
+  }
   burst(r, e, C.bad, { n: e.kind === "boss" ? 40 : 14, sp: 160 });
   blood(r.decal, e, e.kind === "boss" ? 30 : 14, true);
   const drop = (it: Item) => {
@@ -61,6 +65,7 @@ export function hitEnemy(r: Raid, e: Enemy, { dmg: base, at, big: hard = false, 
     dmg = sneak ? Math.round(base * SNEAK) : base,
     big = hard || sneak;
   e.hp -= dmg;
+  e.hitAt ??= r.t;
   e.hit = big ? 0.16 : 0.1;
   r.nums.push({ x: e.x + rnd(-6, 6), y: e.y - 18, v: dmg, life: 0.7, big });
   if (by === "blast") hear(e, at.x, at.y);

@@ -8,7 +8,7 @@ import { renderEnd } from "./ui/end";
 import type { Pt } from "./util";
 import { collide } from "./world/geometry";
 import { updFlow } from "./world/nav";
-import { ringAt } from "./world/rings";
+import { CORE, ringAt } from "./world/rings";
 import { extractedIn, power } from "./zones";
 import { pocketed } from "./economy";
 import { moveBullets, moveEnemyBullets, playerAttacks } from "./raid/combat";
@@ -115,7 +115,8 @@ function moveEnemies(r: Raid, dt: number): boolean {
   return true;
 }
 
-function enterRing(r: Raid) {
+function enterRing(r: Raid, dt: number) {
+  if (r.ring === CORE) r.core += dt;
   const n = ringAt(r.p.x, r.p.y, r.ring);
   if (n === r.ring) return;
   r.ring = n;
@@ -160,7 +161,7 @@ export function update(frame: number) {
   const m = sorting ? { x: 0, y: 0 } : moveVec(),
     moving = m.x !== 0 || m.y !== 0;
   movePlayer(r, m, dt);
-  enterRing(r);
+  enterRing(r, dt);
   const busy = search(r, !moving && !sorting, dt);
   playerAttacks(r, { sorting, busy, moving });
   r.flash -= dt;
@@ -189,6 +190,8 @@ function logRaid(r: Raid, ok: boolean, val: number) {
     violet,
     deep: r.deep,
     dmg: Math.round(r.dmg),
+    core: Math.round(r.core),
+    ttk: r.ttk.n ? +(r.ttk.s / r.ttk.n).toFixed(1) : 0,
     hp: Math.max(0, Math.round(r.p.hp)),
     pw: r.power0,
     cr: S.credits,

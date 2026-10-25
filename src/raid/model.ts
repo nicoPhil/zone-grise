@@ -57,6 +57,8 @@ export interface Enemy extends Pt, Awareness {
   ph: number;
   /** time spent in the current phase */
   t: number;
+  /** raid clock when the player first hit it */
+  hitAt?: number;
 }
 export interface Crate extends Pt {
   d: number;
@@ -157,8 +159,11 @@ export interface Raid {
   /** index in RINGS of the ring the player is in, and the deepest one reached */
   ring: number;
   deep: number;
-  /** HP lost so far */
+  /** HP lost so far, seconds spent in the Cœur */
   dmg: number;
+  core: number;
+  /** seconds from first hit to kill, summed over the enemies killed after being hit */
+  ttk: { s: number; n: number };
   toastT: number;
   shake: number;
   flash: number;
