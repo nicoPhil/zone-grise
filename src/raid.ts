@@ -393,11 +393,12 @@ function burst(r: Raid, x: number, y: number, col: string, n = 8, sp = 140, glow
     r.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(0.2, 0.5), col, glow });
   }
 }
-const noise = (r: Raid, x: number, y: number, rad: number) => {
+const noise = (r: Raid, at: Pt, rad: number, from?: Enemy) => {
   // walls muffle: through them a noise carries half as far
   for (const e of r.enemies) {
-    const d = Math.hypot(e.x - x, e.y - y);
-    if (d < rad / 2 || (d < rad && los(r.walls, e, { x, y }))) hear(e, x, y);
+    if (e === from) continue;
+    const d = Math.hypot(e.x - at.x, e.y - at.y);
+    if (d < rad / 2 || (d < rad && los(r.walls, e, at))) hear(e, at.x, at.y);
   }
 };
 
@@ -543,7 +544,7 @@ function blast(r: Raid, x: number, y: number) {
   burst(r, x, y, "#a6d36a", 34, 260);
   burst(r, x, y, "#f2a33a", 16, 200, true);
   r.shake = Math.max(r.shake, 0.3);
-  noise(r, x, y, 320);
+  noise(r, { x, y }, 320);
   if (Math.hypot(p.x - x, p.y - y) < BLAST_R) hurt(r, 24);
   for (const o of [...r.enemies])
     if (r.enemies.includes(o) && Math.hypot(o.x - x, o.y - y) < BLAST_R) hitEnemy(r, o, 60, o.x, o.y, true, "blast");
@@ -616,7 +617,7 @@ function strike(r: Raid, wd: WeaponStats) {
     burst(r, e.x - Math.cos(a) * 12, e.y - Math.sin(a) * 12, "#f4efe4", 5, 120, true);
   }
   r.shake = Math.max(r.shake, 0.05);
-  noise(r, p.x, p.y, wd.noise);
+  noise(r, p, wd.noise);
 }
 
 /** Direction to walk to a searched spot, around walls; null once there. */
@@ -647,6 +648,8 @@ function shoot(r: Raid, e: Enemy, a: number, n: number, spread: number, speed: n
     const b = a + (n > 1 ? -spread + (2 * spread * i) / (n - 1) : rnd(-spread, spread));
     r.ebul.push({ x: e.x, y: e.y, vx: Math.cos(b) * speed, vy: Math.sin(b) * speed, life: 1.6, dmg });
   }
+  // a firefight draws the neighbours to the shooter
+  noise(r, e, e.kind === "sniper" ? 380 : 200, e);
 }
 
 function updateEnemy(r: Raid, e: Enemy, dt: number) {
@@ -872,7 +875,7 @@ export function update(dt: number) {
         });
       }
       burst(r, p.x + Math.cos(a0) * 18, p.y + Math.sin(a0) * 18, C.accent, 3, 60, true);
-      noise(r, p.x, p.y, wd.noise);
+      noise(r, p, wd.noise);
       r.flash = 0.07;
       const ea = a0 + 1.57 + rnd(-0.3, 0.3),
         es = rnd(90, 150);
