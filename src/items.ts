@@ -44,7 +44,7 @@ export const SLOTS: Record<Slot, string> = {
 const gear = (n: string, slot: WornSlot, r: number, v: number, s: number, m: Mods) => ({ n, t: "gear", slot, r, v, s, ...m }) as const;
 
 const melee = (n: string, r: number, v: number, dmg: number, rate: number, range: number, kb = 0) =>
-  ({ n, t: "wpn", r, v, s: 2, dmg, rate, range, spr: 0, pel: 1, noise: 80, mel: true, kb }) as const;
+  ({ n, t: "wpn", r, v, s: 2, dmg, rate, range, spr: 0, pel: 1, noise: 60, mel: true, kb }) as const;
 
 export const ITEMS = {
   cans: { n: "Boîte de conserve", t: "val", r: 0, v: 12, s: 1 },
@@ -81,14 +81,14 @@ export const ITEMS = {
   machete: melee("Machette", 1, 160, 26, 1.8, 40),
   axe: melee("Hache d'incendie", 2, 420, 48, 1.1, 44, 26),
   katana: melee("Katana", 3, 1100, 40, 2.6, 48),
-  p9: { n: "Pistolet 9 mm", t: "wpn", r: 0, v: 120, s: 2, dmg: 14, rate: 2.8, range: 300, spr: 0.05, pel: 1, noise: 320 },
-  revolver: { n: "Revolver", t: "wpn", r: 1, v: 300, s: 2, dmg: 34, rate: 1.4, range: 330, spr: 0.03, pel: 1, noise: 420 },
-  smg: { n: "PM compact", t: "wpn", r: 1, v: 380, s: 2, dmg: 8, rate: 8, range: 250, spr: 0.13, pel: 1, noise: 380 },
-  sg: { n: "Fusil à pompe", t: "wpn", r: 1, v: 450, s: 2, dmg: 9, rate: 1.1, range: 200, spr: 0.3, pel: 6, noise: 460 },
-  carbine: { n: "Carabine", t: "wpn", r: 2, v: 800, s: 2, dmg: 26, rate: 3, range: 430, spr: 0.02, pel: 1, noise: 450 },
-  ar: { n: "Fusil d'assaut", t: "wpn", r: 2, v: 900, s: 2, dmg: 17, rate: 5, range: 360, spr: 0.05, pel: 1, noise: 480 },
-  dmr: { n: "Fusil de précision", t: "wpn", r: 3, v: 1400, s: 2, dmg: 60, rate: 1.2, range: 520, spr: 0.01, pel: 1, noise: 560 },
-  lmg: { n: "Mitrailleuse légère", t: "wpn", r: 3, v: 1600, s: 3, dmg: 15, rate: 10, range: 340, spr: 0.1, pel: 1, noise: 560 },
+  p9: { n: "Pistolet 9 mm", t: "wpn", r: 0, v: 120, s: 2, dmg: 14, rate: 2.8, range: 300, spr: 0.05, pel: 1, noise: 200 },
+  revolver: { n: "Revolver", t: "wpn", r: 1, v: 300, s: 2, dmg: 34, rate: 1.4, range: 330, spr: 0.03, pel: 1, noise: 260 },
+  smg: { n: "PM compact", t: "wpn", r: 1, v: 380, s: 2, dmg: 8, rate: 8, range: 250, spr: 0.13, pel: 1, noise: 240 },
+  sg: { n: "Fusil à pompe", t: "wpn", r: 1, v: 450, s: 2, dmg: 9, rate: 1.1, range: 200, spr: 0.3, pel: 6, noise: 280 },
+  carbine: { n: "Carabine", t: "wpn", r: 2, v: 800, s: 2, dmg: 26, rate: 3, range: 430, spr: 0.02, pel: 1, noise: 270 },
+  ar: { n: "Fusil d'assaut", t: "wpn", r: 2, v: 900, s: 2, dmg: 17, rate: 5, range: 360, spr: 0.05, pel: 1, noise: 290 },
+  dmr: { n: "Fusil de précision", t: "wpn", r: 3, v: 1400, s: 2, dmg: 60, rate: 1.2, range: 520, spr: 0.01, pel: 1, noise: 340 },
+  lmg: { n: "Mitrailleuse légère", t: "wpn", r: 3, v: 1600, s: 3, dmg: 15, rate: 10, range: 340, spr: 0.1, pel: 1, noise: 340 },
   jacket: gear("Veste renforcée", "body", 0, 80, 2, { red: 0.1 }),
   vest1: gear("Gilet léger", "body", 1, 220, 2, { red: 0.2 }),
   vest2: gear("Gilet lourd", "body", 2, 700, 2, { red: 0.4 }),

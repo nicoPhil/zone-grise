@@ -20,8 +20,8 @@ export function makeNav(walls: Rect[]): Nav {
 }
 
 /** Breadth-first distance to (x,y) on the grid, so chasers walk around walls and through doors. */
-export function updFlow(nav: Nav, x: number, y: number) {
-  const { dist: d, queue: q, blocked } = nav;
+export function updFlow(nav: Nav, x: number, y: number, d = nav.dist) {
+  const { queue: q, blocked } = nav;
   d.fill(-1);
   let h = 0, t = 0;
   const s = cellOf(x, y);
@@ -43,8 +43,8 @@ export function updFlow(nav: Nav, x: number, y: number) {
 }
 
 /** Unit vector towards the neighbouring cell closest to the flow target; diagonals never cut a wall corner. */
-export function flowDir(nav: Nav, x: number, y: number): Pt | null {
-  const { dist, blocked } = nav, c = cellOf(x, y), i = c % GW, j = (c - i) / GW;
+export function flowDir(nav: Nav, x: number, y: number, dist = nav.dist): Pt | null {
+  const { blocked } = nav, c = cellOf(x, y), i = c % GW, j = (c - i) / GW;
   let best = -1, bv = dist[c] < 0 ? 1e9 : dist[c];
   for (let dj = -1; dj <= 1; dj++)
     for (let di = -1; di <= 1; di++) {

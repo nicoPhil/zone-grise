@@ -1,10 +1,10 @@
 import { def, nameOf, upgradeOver, wstat } from "../items";
-import { ALERT_POP } from "../aware";
+import { ALERT_POP, suspicious } from "../aware";
 import { STICK_R, moveVec, stick } from "../input";
-import { AIM_TIME, DEATH_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, RING_LIFE, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, type Crate, type Kind, type Raid } from "../raid";
+import { AIM_TIME, DEATH_TIME, EXTRACT_TIME, CRATE_TIME, KINDS, UNLOCK_TIME, VIOLET, bladeOf, hasKey, lockCentre, sight, type Crate, type Kind, type Raid } from "../raid";
 import { mode } from "../state";
 import { clamp, fmtM, rnd, type Pt } from "../util";
-import { MELEE_ARC, los } from "../world/geometry";
+import { MELEE_ARC, los, rayLen } from "../world/geometry";
 import { H, W } from "../world/mapgen";
 import { C, FONT, ctx, cv, rarCol, sg, shade, view } from "./canvas";
 import { T, floorPattern, sprite, tile, type CharKey } from "./assets";
@@ -195,6 +195,20 @@ export function draw(r: Raid | null) {
     ctx.fillRect(-3, -1.2, 6, 2.4);
     ctx.restore();
   }
+  // view cones of the enemies that haven't spotted the player, warming up as they grow suspicious
+  for (const e of r.enemies) {
+    if (e.aggro || e.kind === "stalker" || !seen(e)) continue;
+    const { range, half } = sight(e, p);
+    ctx.fillStyle = `rgba(255,${Math.round(235 - 165 * e.sus)},${Math.round(190 - 150 * e.sus)},${(0.11 + 0.16 * e.sus).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.moveTo(e.x, e.y);
+    for (let i = 0; i <= 14; i++) {
+      const a = e.fa - half + (2 * half * i) / 14, dx = Math.cos(a), dy = Math.sin(a), l = rayLen(r.walls, e.x, e.y, dx, dy, range);
+      ctx.lineTo(e.x + dx * l, e.y + dy * l);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
   for (const e of r.enemies) {
     if (!seen(e)) continue;
     const a = Math.atan2(p.y - e.y, p.x - e.x), [look, scale] = LOOK[e.kind];
@@ -205,7 +219,7 @@ export function draw(r: Raid | null) {
     if (e.kind === "alpha") glow(e.x, e.y, 46, C.bad, 0.35 + 0.1 * Math.sin(performance.now() / 150));
     // a lit fuse flashes white faster and faster
     const fuse = e.kind === "bloat" && e.ph > 0 && Math.sin(e.t * (10 + e.t * 40)) > 0;
-    sprite(look, e.x, e.y, e.kind === "gunner" || e.kind === "smg" || e.aggro ? a : Math.atan2(e.wy, e.wx) || 0, e.hit > 0 || fuse, scale);
+    sprite(look, e.x, e.y, e.aggro ? a : e.fa, e.hit > 0 || fuse, scale);
     ctx.globalAlpha = 1;
     if (e.kind === "shield") {
       ctx.strokeStyle = "#cfe3f2";
@@ -378,16 +392,9 @@ export function draw(r: Raid | null) {
     ctx.fillText("SORTIE", e.x, e.y + 5);
   }
   ctx.lineWidth = 3;
-  for (const q of r.rings) {
-    const f = 1 - q.life / RING_LIFE;
-    ctx.strokeStyle = `rgba(255,236,200,${0.6 * (1 - f)})`;
-    ctx.beginPath();
-    ctx.arc(q.x, q.y, q.rad * Math.sqrt(f), 0, 6.28);
-    ctx.stroke();
-  }
   ctx.textAlign = "center";
   for (const e of r.enemies)
-    if (seen(e) && (e.aggro || e.sr > 0)) {
+    if (seen(e) && (e.aggro || (suspicious(e) && e.kind !== "stalker"))) {
       ctx.fillStyle = e.aggro ? C.bad : C.accent;
       ctx.strokeStyle = "rgba(0,0,0,.7)";
       ctx.font = `800 ${20 + 14 * clamp(e.al / ALERT_POP, 0, 1)}px ` + FONT;

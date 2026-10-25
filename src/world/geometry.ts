@@ -68,3 +68,25 @@ export function nearestInReach<T extends Pt & { open: boolean }>(xs: T[], p: Pt,
 
 /** A shot travelling along (vx,vy) meets the front of something facing `face`, within 60° either side. */
 export const frontHit = (face: number, vx: number, vy: number) => (Math.cos(face) * vx + Math.sin(face) * vy) / (Math.hypot(vx, vy) || 1) < -0.5;
+
+/** Distance along the ray (x,y)+t·(dx,dy) to the first wall, capped at max. */
+export function rayLen(walls: Rect[], x: number, y: number, dx: number, dy: number, max: number) {
+  let best = max;
+  for (const w of walls) {
+    let t0 = 0, t1 = best;
+    if (Math.abs(dx) < 1e-9) {
+      if (x < w.x || x > w.x + w.w) continue;
+    } else {
+      const a = (w.x - x) / dx, b = (w.x + w.w - x) / dx;
+      [t0, t1] = [Math.max(t0, Math.min(a, b)), Math.min(t1, Math.max(a, b))];
+    }
+    if (Math.abs(dy) < 1e-9) {
+      if (y < w.y || y > w.y + w.h) continue;
+    } else {
+      const a = (w.y - y) / dy, b = (w.y + w.h - y) / dy;
+      [t0, t1] = [Math.max(t0, Math.min(a, b)), Math.min(t1, Math.max(a, b))];
+    }
+    if (t0 <= t1) best = t0;
+  }
+  return best;
+}
