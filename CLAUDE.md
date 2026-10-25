@@ -7,8 +7,10 @@ Pushing `main` deploys: the GitHub Action runs lint, tests and build, and publis
 
 `npm run lint && npm test && npm run build`
 
-- Never silence Biome with `biome-ignore`: split the function or file instead. Size and complexity rules only warn while
-  `draw()`, `update()` and `updateEnemy()` are too big; any new code must stay under the limits in `biome.json`.
+- Every Biome rule is an error, size and complexity included (limits in `biome.json`). Never silence one with
+  `biome-ignore`: split the function or the file along a real seam instead.
+- `src/raid.ts` keeps the raid loop and re-exports `src/raid/*` (model, core, combat, enemies, loot, start): import from
+  `./raid`, add code to the module it belongs to.
 - `npm run format` formats; the formatting commit is listed in `.git-blame-ignore-revs`.
 
 ## Layout
