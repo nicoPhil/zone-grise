@@ -122,6 +122,12 @@ export const RECIPES: Recipe[] = [
   r("gen4", 3, c(2500, { milbat: 2, scope: 2, fang: 1 })),
   r("dmr", 3, c(2000, { scope: 2, bolt: 3, gunparts: 4 })),
   r("armor", 3, c(2500, { plate: 4, skin: 2 })),
+  r("reddot1", 1, c(300, { gunparts: 3, scrap: 3 })),
+  r("spring1", 1, c(300, { gunparts: 3, bolts: 4 })),
+  r("silencer2", 2, c(700, { bolt: 2, gunparts: 3 })),
+  r("heavy2", 2, c(700, { bolt: 2, scrap: 6 })),
+  r("scope3", 3, c(2000, { scope: 2, gunparts: 4 })),
+  r("trigger3", 3, c(2000, { fang: 1, bolt: 3 })),
 ];
 
 /** Bench cost of the next level of a piece: rarer pieces cost more to improve. */
@@ -146,7 +152,7 @@ export const STOCK = 4;
 /** Draws the merchant's rotating pieces once per raid played, up to the rarity the trade post allows. */
 export function restock() {
   if (S.stock.raid === S.st.raids) return;
-  const pool = KEYS.filter((k) => wearable(k) && k !== FREE && def(k).r <= S.sta.trade);
+  const pool = KEYS.filter((k) => (wearable(k) || def(k).t === "att") && k !== FREE && def(k).r <= S.sta.trade);
   S.stock = { raid: S.st.raids, items: Array.from({ length: STOCK }, () => roll(mk(pick(pool)))) };
 }
 

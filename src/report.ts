@@ -1,4 +1,4 @@
-import { def, nameOf, valOf, type Item } from "./items";
+import { def, mounted, nameOf, valOf, type Item } from "./items";
 import { qInfo } from "./progression";
 import { stars } from "./rolls";
 import { S, type RaidLog } from "./state";
@@ -9,7 +9,8 @@ function piece([slot, it]: [string, Item | null]) {
   if (!it) return null;
   const fx = Object.entries(it.fx || {}).map(([k, v]) => `${k} ${v}`);
   const roll = it.q === undefined ? "" : ` ${stars(it)}★ q${it.q}${fx.length ? ` (${fx.join(", ")})` : ""}`;
-  return `- ${slot} : ${nameOf(it)} [r${def(it.k).r}]${roll}`;
+  const att = mounted(it).map((a) => `${def(a.k).n} [r${def(a.k).r}] q${a.q}`);
+  return `- ${slot} : ${nameOf(it)} [r${def(it.k).r}]${roll}${att.length ? ` + ${att.join(", ")}` : ""}`;
 }
 
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;

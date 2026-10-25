@@ -1,3 +1,4 @@
+import { ATT_ITEMS, ATT_SLOTS, attFx, attLines, withAtt, type AttDef, type AttSlot } from "./attach";
 import type { Kind } from "./raid";
 import { fmtM, fmtRate, uid } from "./util";
 
@@ -26,7 +27,8 @@ export type ItemDef =
   | (Base & { t: "stim"; dur: number })
   | (Base & WeaponStats & { t: "wpn" })
   | (Base & Mods & { t: "gear"; slot: WornSlot })
-  | (Base & ShieldStats & { t: "shield" });
+  | (Base & ShieldStats & { t: "shield" })
+  | AttDef;
 
 /** A shield generator: a reserve of points taken before HP, refilling at `rate` per second once `delay` seconds pass unhit. */
 export interface ShieldStats {
@@ -162,6 +164,7 @@ export const ITEMS = {
   gen2: shield("Bouclier civil", { r: 1, v: 260, s: 1 }, [35, 3, 20]),
   gen3: shield("Bouclier militaire", { r: 2, v: 720, s: 2 }, [55, 2.5, 30]),
   gen4: shield("Bouclier prototype", { r: 3, v: 1500, s: 2 }, [80, 2, 40]),
+  ...ATT_ITEMS,
 } satisfies Record<string, ItemDef>;
 
 export type ItemKey = keyof typeof ITEMS;
@@ -173,6 +176,8 @@ export interface Item {
   q?: number;
   /** rolled bonuses on top of the base ones */
   fx?: Mods;
+  /** attachments mounted on a gun */
+  att?: Partial<Record<AttSlot, Item>>;
 }
 
 const qOf = (it: Item) => it.q ?? 1;
@@ -292,8 +297,14 @@ export function wstat(it: Item): WeaponStats {
   const d = def(it.k);
   if (d.t !== "wpn") throw new Error(`${it.k} is not a weapon`);
   const lv = it.lv || 0;
-  return { ...d, dmg: Math.round(d.dmg * (1 + 0.15 * lv) * qOf(it)), rate: +(d.rate * (1 + 0.1 * lv)).toFixed(1) };
+  const w = { ...d, dmg: Math.round(d.dmg * (1 + 0.15 * lv) * qOf(it)), rate: +(d.rate * (1 + 0.1 * lv)).toFixed(1) };
+  return it.att ? withAtt(w, mounted(it).map(attOf)) : w;
 }
+
+/** The attachments mounted on a gun. */
+export const mounted = (gun: Item) => Object.values(gun.att || {}).filter((a): a is Item => !!a);
+/** What an attachment does to a gun's stats. */
+export const attOf = (a: Item) => attFx(a, def(a.k) as AttDef);
 
 export const dps = (it: Item) => {
   const w = wstat(it);
@@ -334,7 +345,9 @@ const extra = (it: Item, line: string) => [line, ...modLines(it.fx || {})].join(
 
 export function desc(it: Item): string {
   const d = def(it.k);
-  if (d.t === "wpn") return extra(it, weaponLine(it));
+  if (d.t === "wpn")
+    return extra(it, [weaponLine(it), ...mounted(it).map((a) => `${ATT_SLOTS[(def(a.k) as AttDef).slot]} : ${def(a.k).n}`)].join(" · "));
+  if (d.t === "att") return [ATT_SLOTS[d.slot], ...attLines(attOf(it))].join(" · ");
   if (d.t === "gear") return `${SLOTS[d.slot]} · ${modLines(modsOf(it)).join(" · ")}`;
   const sh = shieldOf(it);
   if (sh) return extra(it, `${sh.pts} pts de bouclier · recharge ${sh.rate}/s après ${fmtRate(sh.delay)} s sans dégâts`);

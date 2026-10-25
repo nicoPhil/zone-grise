@@ -1,5 +1,5 @@
 import { KNIFE, RAR, bagUsed, def, gearStats, mk, slotOf, valOf, type Item, type Slot } from "../items";
-import { MILITARY_SHIELDS, ROOM_SHIELDS, rollItem } from "../world/mapgen";
+import { MILITARY_ATT, MILITARY_SHIELDS, ROOM_SHIELDS, rollItem } from "../world/mapgen";
 import { cap, maxHp } from "../progression";
 import { C } from "../render/canvas";
 import { toast, updHud } from "../ui/hud";
@@ -125,7 +125,7 @@ function crateLoot(c: Crate): Item[] {
     });
   if (c.tier === 0) return [Math.random() < 0.3 ? mk(pick(["bandage", "bandage", "med"] as const)) : rollItem(c.d * 0.4)];
   if (c.tier === 1) return Array.from({ length: n(1) }, () => rollItem(c.d, { shield: ROOM_SHIELDS }));
-  return Array.from({ length: n(2) }, () => rollItem(c.d, { minR: 1, kit: true, shield: MILITARY_SHIELDS }));
+  return Array.from({ length: n(2) }, () => rollItem(c.d, { minR: 1, kit: true, shield: MILITARY_SHIELDS, att: MILITARY_ATT }));
 }
 
 function openCrate(r: Raid, c: Crate) {

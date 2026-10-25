@@ -20,7 +20,7 @@ describe("melee", () => {
 describe("loot", () => {
   it("crates never drop the free kit nor enemy components, and can drop every other item kind", () => {
     const seen = new Set<string>();
-    for (let i = 0; i < 20000; i++) seen.add(rollItem(Math.random(), { shield: 0.05 }).k);
+    for (let i = 0; i < 20000; i++) seen.add(rollItem(Math.random(), { shield: 0.05, att: 0.15 }).k);
     expect(seen.has(FREE)).toBe(false);
     for (const k of KEYS) {
       if (def(k).t === "part") expect(seen.has(k), k).toBe(false);

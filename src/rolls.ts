@@ -45,6 +45,8 @@ function bonus(k: keyof Mods, g: number): number {
 /** Gives a weapon, a worn piece or a shield its rolled quality and bonuses; other items come back as they are. */
 export function roll(it: Item): Item {
   const slot = slotOf(it);
+  // an attachment rolls only its quality, which scales its gains
+  if (def(it.k).t === "att") return { ...it, q: +rnd(Q_MIN, Q_MAX).toFixed(3) };
   if (!slot || it.k === FREE) return it;
   const g = grade(it);
   const keys = [...POOL[slot]].sort(() => Math.random() - 0.5).slice(0, COUNT[def(it.k).r]);

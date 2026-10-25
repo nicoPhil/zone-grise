@@ -111,6 +111,10 @@ const zoneExtractions = (s: Partial<Save>) => fresh().zx.map((z, i) => (Array.is
 const stockOf = (s: Partial<Save>): Save["stock"] =>
   s.stock && Array.isArray(s.stock.items) ? { raid: s.stock.raid, items: s.stock.items.filter((i) => isItemKey(i?.k)) } : fresh().stock;
 
+/** Drops the attachments whose key no longer exists from a gun. */
+const cleanAtt = (it: Item): Item =>
+  it.att ? { ...it, att: Object.fromEntries(Object.entries(it.att).filter(([, a]) => isItemKey(a?.k))) } : it;
+
 const logOf = (s: Partial<Save>) => (Array.isArray(s.log) ? s.log.slice(-LOG_MAX) : []);
 
 // saves written before the progression update have no `up` / `q`; unknown item keys are dropped
@@ -129,13 +133,13 @@ export function parseSave(raw: string | null): Save {
   for (const it of [...Object.values(old.eq || {}), old.w, old.m, old.a]) {
     const i = ok(it),
       slot: Slot | null = i && slotOf(i);
-    if (i && slot && !eq[slot]) eq[slot] = i;
+    if (i && slot && !eq[slot]) eq[slot] = cleanAtt(i);
   }
   const zx = zoneExtractions(s);
   return {
     ...fresh(),
     ...s,
-    stash: s.stash.filter((i) => isItemKey(i?.k)),
+    stash: s.stash.filter((i) => isItemKey(i?.k)).map(cleanAtt),
     lo: { eq, meds: s.lo.meds || 0, keys: s.lo.keys || 0 },
     up: { ...fresh().up, ...s.up },
     sta: { ...fresh().sta, ...s.sta },

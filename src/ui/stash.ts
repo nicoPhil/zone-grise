@@ -4,6 +4,7 @@ import { KEY_MAX, cap, count, maxHp, medMax, norm, pay, qInfo } from "../progres
 import { startRaid } from "../raid";
 import { report } from "../report";
 import { roll } from "../rolls";
+import { freeOnGun, strip } from "../armory";
 import { assetsReady } from "../render/assets";
 import { KEY, S, resetSave, save, setMode } from "../state";
 import { $ } from "../util";
@@ -14,6 +15,7 @@ import { MARKET_ACTIONS, marketPick, tabTrade } from "./market";
 import { pin, popup } from "./popup";
 import { row, stackKey, stacks } from "./row";
 import { sheet } from "./sheet";
+import { ATTACH_ACTIONS, attTag, mountBtn, unmountBtns } from "./attach";
 import { WORKSHOP_ACTIONS, recipeOf, tabWorkshop, workshopReady } from "./workshop";
 
 type Tab = "raid" | "stash" | "quest" | "shop" | "trade";
@@ -76,9 +78,10 @@ function tabStash() {
       g.length > 1
         ? `<button data-a="sellall" data-g="${stackKey(i)}" aria-label="Tout vendre">${icon("sellAll")}${saleOf(i) * g.length}</button>`
         : "";
-    const btns = `<div class="btns">${eq}${recycleBtn(i)}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${saleOf(i)}</button>${all}</div>`;
+    const btns = `<div class="btns">${eq}${mountBtn(i)}${recycleBtn(i)}<button data-a="sell" data-u="${i.u}" aria-label="Vendre">${icon("sell")}${saleOf(i)}</button>${all}</div>`;
     const tags = [
       upgradeOver(i, lo.eq) ? `<span class="better">↑ mieux que l'équipé</span>` : "",
+      attTag(i),
       need.has(i.k) ? `<span class="need">utile : ${need.get(i.k)}</span>` : "",
     ].filter(Boolean);
     return row(i, btns, [desc(i), ...tags].join(" · "), g.length);
@@ -88,7 +91,7 @@ function tabStash() {
       <button class="sellval" data-a="sellval">${icon("sellAll")}Vendre les objets de valeur</button>
       ${list.length ? list.join("") : `<p class="empty">Rien pour l'instant. Le loot ramené d'un raid arrive ici.</p>`}
       <p class="note">Une pièce d'équipement prend une case, les autres objets s'empilent par 10. La Réserve de l'atelier agrandit le coffre. « Vendre les objets de valeur » garde ce que réclament un contrat ou la prochaine étape de l'atelier (marqués « utile »).</p>
-      <p class="note">${icon("equip")} équiper · ${icon("recycle")} recycler en matériaux · ${icon("sell")} vendre un · ${icon("sellAll")} tout vendre (prix en cr)</p>
+      <p class="note">${icon("equip")} équiper · ${icon("attach")} monter sur l'arme · ${icon("recycle")} recycler en matériaux · ${icon("sell")} vendre un · ${icon("sellAll")} tout vendre (prix en cr)</p>
     </div>`;
 }
 
@@ -128,6 +131,7 @@ function itemPopup(it: Item) {
     ].filter(Boolean),
     [
       wearable(it.k) ? `<button data-a="eq" data-u="${it.u}">${icon("equip")}Équiper</button>` : "",
+      mountBtn(it, "Monter"),
       recycleOf(it.k) ? `<button data-a="recycle" data-u="${it.u}" aria-label="Recycler">${icon("recycle")}Recycler</button>` : "",
       `<button data-a="sell" data-u="${it.u}" aria-label="Vendre">${icon("sell")}${saleOf(it)}</button>`,
       n > 1
@@ -153,7 +157,8 @@ function stashPopup() {
   const slot = (Object.keys(lo.eq) as Slot[]).find((k) => lo.eq[k]?.u === sel),
     worn = slot && lo.eq[slot];
   if (!worn) return offerPopup(sel);
-  return popup(worn, ["équipé"], [`<button data-a="unequip" data-slot="${slot}">${icon("unequip")}Retirer</button>`]);
+  const off = slot === "gun" ? unmountBtns(worn) : [];
+  return popup(worn, ["équipé"], [`<button data-a="unequip" data-slot="${slot}">${icon("unequip")}Retirer</button>`, ...off]);
 }
 
 export function renderStash() {
@@ -164,7 +169,7 @@ export function renderStash() {
   const upReady = workshopReady();
   const tabs: [Tab, string, boolean][] = [
     ["raid", "Raid", false],
-    ["stash", "Coffre", S.stash.some((i) => upgradeOver(i, S.lo.eq))],
+    ["stash", "Coffre", S.stash.some((i) => upgradeOver(i, S.lo.eq) || freeOnGun(i))],
     ["quest", "Contrats", S.q.some((q) => qInfo(q).done)],
     ["shop", "Atelier", upReady],
     ["trade", "Marchand", false],
@@ -238,14 +243,16 @@ function zone(b: HTMLElement) {
 
 function sell(b: HTMLElement) {
   const it = take(b.dataset.u);
-  if (it) S.credits += saleOf(it);
+  if (!it) return;
+  S.stash.push(...strip(it));
+  S.credits += saleOf(it);
 }
 
 function recycle(b: HTMLElement) {
   const it = S.stash.find((x) => x.u === b.dataset.u);
   if (!it || !recycleOf(it.k)) return;
   take(it.u);
-  S.stash.push(...recycled(it.k));
+  S.stash.push(...strip(it), ...recycled(it.k));
   toast("Recyclé : " + recycleTxt(it));
 }
 
@@ -274,6 +281,7 @@ const ACTIONS: Record<string, ((b: HTMLElement) => void) | undefined> = {
   recycle,
   ...MARKET_ACTIONS,
   ...WORKSHOP_ACTIONS,
+  ...ATTACH_ACTIONS,
   claim,
   reroll,
   share,

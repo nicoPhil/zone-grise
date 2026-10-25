@@ -7,7 +7,7 @@ beforeEach(() => setSave(fresh()));
 
 describe("share report", () => {
   it("lists the worn pieces with their roll and one line per logged raid", () => {
-    S.lo.eq.gun = { ...mk("ar"), lv: 1, q: 1.05, fx: { fire: 0.08 } };
+    S.lo.eq.gun = { ...mk("ar"), lv: 1, q: 1.05, fx: { fire: 0.08 }, att: { sight: { ...mk("scope3"), q: 1 } } };
     const raid = {
       n: 7,
       z: 2,
@@ -28,7 +28,7 @@ describe("share report", () => {
     S.log.push(raid);
     const text = report("abc", new Date("2026-10-25T12:00:00Z"));
     expect(text).toContain("- gun : Fusil d'assaut +1 [r2]");
-    expect(text).toContain("q1.05 (fire 0.08)");
+    expect(text).toContain("q1.05 (fire 0.08) + Lunette [r3] q1");
     S.log.push({ ...raid, gun: { fired: 40, hits: 30, kills: 4 } });
     expect(report("abc").split("\n").at(-1)).toMatch(/;7\.5;75$/);
     expect(text.split("\n").at(-1)).toBe("7;Cœur;mort;1:35;1200;4;1;0;2;Cœur;140;0;90;300;800;;;;;");
